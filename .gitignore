@@ -18,3 +18,7 @@ Thumbs.db
 # Temporary files
 *.bak
 *.tmp
+
+# Private files
+PLAN_ACTION.md
+RAPPORT_AUDIT.md
