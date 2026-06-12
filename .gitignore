@@ -20,5 +20,6 @@ Thumbs.db
 *.tmp
 
 # Private files
+AGENTS.md
 PLAN_ACTION.md
 RAPPORT_AUDIT.md
