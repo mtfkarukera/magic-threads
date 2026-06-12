@@ -20,6 +20,9 @@ Correctifs issus de la phase 1 du [plan d'action](PLAN_ACTION.md) (audit du 12 j
 ### Qualité
 - Lint ESLint au vert (0 erreur, 0 avertissement) : suppression des commentaires `/* global */` redondants, configuration dédiée pour `experiment-api/` (contexte chrome : `sourceType: script`, pas de `setTimeout`/`clearTimeout` globaux) ; correction d'une indentation trompeuse dans le handler de redimensionnement.
 
+### Modifié
+- **ID de l'extension** : `magicthreads-b@xulforum.org` → `magic-threads@mtfkarukera.net` (domaine `xulforum.org` non possédé ; l'ID est définitif après publication sur ATN). Thunderbird traitera cette version comme une nouvelle extension : désinstaller l'ancienne, les préférences repartent aux valeurs par défaut.
+
 ## [2.1.1] - 2026-06-12
 
 ### Corrigé
