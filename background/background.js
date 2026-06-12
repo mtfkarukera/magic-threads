@@ -80,17 +80,44 @@ function getLabels(count) {
 }
 
 // ---- Logique commune d'affichage du fil ----
-let currentRequestId = 0;
+// Compteur de requêtes PAR ONGLET : une requête n'est invalidée que par une
+// requête plus récente (ou un masquage) concernant le même onglet.
+const tabRequestIds = new Map();
+
+function nextRequestId(tabId) {
+  const id = (tabRequestIds.get(tabId) || 0) + 1;
+  tabRequestIds.set(tabId, id);
+  return id;
+}
+
+// Invalide les requêtes en vol pour un onglet (appelé avant tout masquage).
+function invalidateRequests(tabId) {
+  nextRequestId(tabId);
+}
+
+// Éviter que la Map ne grossisse indéfiniment
+browser.tabs.onRemoved.addListener((tabId) => {
+  tabRequestIds.delete(tabId);
+});
 
 async function showThreadForMessage(tab, message) {
-  const requestId = ++currentRequestId;
+  const requestId = nextRequestId(tab.id);
   console.log("Magic Threads: Message affiché, ID:", message.id, "tab:", tab.id);
 
-  let threadData = await ThreadResolver.getThreadMessages(message.id);
+  // Requête Gloda et lecture des préférences en parallèle :
+  // plus aucun await entre le contrôle de fraîcheur et showBanner.
+  const [threadData, order, navMode, sidebarPos, mainViewPos] = await Promise.all([
+    ThreadResolver.getThreadMessages(message.id),
+    getThreadOrder(),
+    getNavigationMode(),
+    getSidebarPosition(),
+    getMainViewPosition()
+  ]);
 
-  // Vérifier que la requête est toujours d'actualité (pas de clic rapide entre-temps)
-  if (requestId !== currentRequestId) {
-    console.log("Magic Threads: Requête annulée (clic rapide), requestId:", requestId);
+  // Vérifier que la requête est toujours d'actualité pour CET onglet
+  // (pas de clic rapide ni de masquage entre-temps)
+  if (requestId !== tabRequestIds.get(tab.id)) {
+    console.log("Magic Threads: Requête obsolète ignorée, requestId:", requestId);
     return;
   }
 
@@ -103,16 +130,12 @@ async function showThreadForMessage(tab, message) {
   }
 
   // Trier les messages selon l'ordre défini dans les préférences
-  let order = await getThreadOrder();
   if (order === "antichronological") {
     threadData.sort((a, b) => b.date - a.date);
   } else {
     threadData.sort((a, b) => a.date - b.date);
   }
 
-  let navMode = await getNavigationMode();
-  let sidebarPos = await getSidebarPosition();
-  let mainViewPos = await getMainViewPosition();
   let labels = getLabels(threadData.length);
 
   await browser.magicThreadsWindow.showBanner(
@@ -130,10 +153,14 @@ async function showThreadForMessage(tab, message) {
 browser.mailTabs.onSelectedMessagesChanged.addListener(async (tab, messageList) => {
   try {
     if (!messageList || !messageList.messages || messageList.messages.length === 0) {
+      // Invalider les requêtes en vol : sinon un fil parti avant la
+      // désélection pourrait réafficher le panneau après le masquage.
+      invalidateRequests(tab.id);
       await browser.magicThreadsWindow.hideBanner(tab.id).catch(() => {});
       return;
     }
     if (messageList.messages.length > 1) {
+      invalidateRequests(tab.id);
       await browser.magicThreadsWindow.hideBanner(tab.id).catch(() => {});
       return;
     }

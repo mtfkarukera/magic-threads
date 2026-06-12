@@ -22,5 +22,17 @@
   "rules": {
     "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
     "no-console": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["experiment-api/**/*.js"],
+      "parserOptions": {
+        "sourceType": "script"
+      },
+      "globals": {
+        "setTimeout": "off",
+        "clearTimeout": "off"
+      }
+    }
+  ]
 }

@@ -5,9 +5,30 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
-## [2.1.0] - 2026-06-12
+## [2.1.2] - 2026-06-12
 
-### En cours
+Correctifs issus de la phase 1 du [plan d'action](PLAN_ACTION.md) (audit du 12 juin 2026).
+
+### Corrigé
+- **Poignée de redimensionnement absente en sidebar gauche** : la variable `pendingResizeHandle` était déclarée dans un bloc `if` et hors de portée au moment de l'insertion dans le Shadow DOM — la poignée n'était jamais ajoutée.
+- **Conditions de course à l'affichage du fil** : le compteur de requêtes, global, est remplacé par un compteur **par onglet** ; les requêtes en vol sont invalidées lors du masquage du panneau (désélection, multi-sélection) ; plus aucun `await` entre le contrôle de fraîcheur et l'affichage (préférences chargées en parallèle de la requête Gloda via `Promise.all`).
+- **Requête Gloda de conversation sans timeout** : `getConversationMessages` bénéficie du même délai maximal (10 s) que la requête initiale ; le timer est annulé en cas d'exception synchrone de Gloda.
+
+### Sécurité
+- Suppression du log de l'URI complète du message lors de la navigation (fuite de métadonnées dans la console globale).
+
+### Qualité
+- Lint ESLint au vert (0 erreur, 0 avertissement) : suppression des commentaires `/* global */` redondants, configuration dédiée pour `experiment-api/` (contexte chrome : `sourceType: script`, pas de `setTimeout`/`clearTimeout` globaux) ; correction d'une indentation trompeuse dans le handler de redimensionnement.
+
+## [2.1.1] - 2026-06-12
+
+### Corrigé
+- **Nettoyage au déchargement de l'extension** : `cleanupSidebar3PaneContainer` était inaccessible depuis `onShutdown()` (portée limitée à `getAPI()`), empêchant la restauration des marges du `messageBrowser` à la désactivation/désinstallation. La fonction est déplacée au niveau du module.
+
+### Modifié
+- **Logs de démarrage** : la version affichée est lue dynamiquement depuis le manifest au lieu d'être codée en dur.
+
+## [2.1.0] - 2026-06-12
 
 ### Ajouté
 - **Internationalisation (i18n)** : support de 7 langues (fr, en, de, ja, es, pt, vi)

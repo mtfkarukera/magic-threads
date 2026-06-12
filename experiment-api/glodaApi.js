@@ -2,8 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-/* global ExtensionCommon, Services, ChromeUtils */
-
 ChromeUtils.defineESModuleGetters(this, {
   Gloda: "resource:///modules/gloda/GlodaPublic.sys.mjs",
 });
@@ -13,6 +11,8 @@ const { setTimeout, clearTimeout } = ChromeUtils.importESModule(
 );
 
 const kSnippetLength = 700;
+// Délai maximal d'attente d'une requête Gloda (index corrompu, arrêt en cours…)
+const kGlodaTimeoutMs = 10000;
 
 /* exported convGloda */
 var convGloda = class extends ExtensionCommon.ExtensionAPI {
@@ -70,40 +70,57 @@ var convGloda = class extends ExtensionCommon.ExtensionAPI {
 };
 
 function getGlodaMessages(msgHdrs) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       console.warn("Magic Threads: Gloda timeout — résolution avec tableau vide.");
       resolve([]);
-    }, 10000);
-    Gloda.getMessageCollectionForHeaders(
-      msgHdrs,
-      {
-        onItemsAdded() {},
-        onItemsModified() {},
-        onItemsRemoved() {},
-        onQueryCompleted(collection) {
-          clearTimeout(timeout);
-          resolve(collection.items);
+    }, kGlodaTimeoutMs);
+    try {
+      Gloda.getMessageCollectionForHeaders(
+        msgHdrs,
+        {
+          onItemsAdded() {},
+          onItemsModified() {},
+          onItemsRemoved() {},
+          onQueryCompleted(collection) {
+            clearTimeout(timeout);
+            resolve(collection.items);
+          },
         },
-      },
-      null
-    );
+        null
+      );
+    } catch (e) {
+      // Exception synchrone (ex. Gloda désactivée) : annuler le timer
+      // pour éviter un warn trompeur 10 s plus tard.
+      clearTimeout(timeout);
+      reject(e);
+    }
   });
 }
 
 function getConversationMessages(conversation) {
-  return new Promise((resolve) => {
-    conversation.getMessagesCollection(
-      {
-        onItemsAdded() {},
-        onItemsModified() {},
-        onItemsRemoved() {},
-        onQueryCompleted(collection) {
-          resolve(collection.items);
-        }
-      },
-      false
-    );
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      console.warn("Magic Threads: Gloda conversation timeout — résolution avec tableau vide.");
+      resolve([]);
+    }, kGlodaTimeoutMs);
+    try {
+      conversation.getMessagesCollection(
+        {
+          onItemsAdded() {},
+          onItemsModified() {},
+          onItemsRemoved() {},
+          onQueryCompleted(collection) {
+            clearTimeout(timeout);
+            resolve(collection.items);
+          }
+        },
+        false
+      );
+    } catch (e) {
+      clearTimeout(timeout);
+      reject(e);
+    }
   });
 }
 

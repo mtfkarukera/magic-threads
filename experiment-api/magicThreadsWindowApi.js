@@ -2,8 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-/* global ExtensionCommon, Services */
-
 /**
  * Magic Threads Window Experiment API
  * 
@@ -469,6 +467,11 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       }
       let doc = shadowRoot.ownerDocument;
 
+      // Poignée de redimensionnement à insérer APRÈS le wrapper (cas sidebar gauche).
+      // Déclarée au niveau de la fonction : une déclaration dans le bloc `if` ci-dessous
+      // serait hors de portée au moment de l'insertion (bug corrigé en v2.1.2).
+      let pendingResizeHandle = null;
+
       // Styles
       let style = doc.createElement("style");
       style.textContent = getSharedCSS() + (layoutMode === "sidebar" ? getSidebarCSS() : getBottomCSS());
@@ -566,7 +569,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
                 }
               }
             }
-            }
+          }
 
           function onMouseUp() {
             isResizing = false;
@@ -579,7 +582,6 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         });
 
         // La poignée est placée du côté intérieur du sidebar
-        let pendingResizeHandle = null;
         if (sidebarPosition === "left") {
           // Sidebar à gauche : poignée à droite (après le wrapper)
           pendingResizeHandle = resizeHandle;
@@ -713,7 +715,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       shadowRoot.appendChild(wrapper);
 
       // Ajouter la poignée après le wrapper si sidebar-left
-      if (typeof pendingResizeHandle !== "undefined" && pendingResizeHandle) {
+      if (pendingResizeHandle) {
         shadowRoot.appendChild(pendingResizeHandle);
       }
 
@@ -1039,7 +1041,6 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
               background: false
             });
 
-            console.log("Magic Threads: Navigation dans onglet message, URI:", msgURI);
             return true;
           } catch (e) {
             console.error("Magic Threads: Erreur navigateMessageTab:", e);
