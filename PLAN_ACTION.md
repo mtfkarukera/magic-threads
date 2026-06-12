@@ -42,7 +42,7 @@
 - [ ] **4.2 Avant toute soumission ATN** — ~~changer l'ID~~ (fait en 2.1.2 : `magic-threads@mtfkarukera.net`) ; ajouter `icons` au manifest ; inclure LICENSE dans le XPI (`build.sh:35-46`) ; rédiger la justification des deux Experiment APIs ; extraction de version robuste dans `build.sh:14`.
 - [ ] **4.3 Mettre les docs à niveau** — ARCHITECTURE.md : `getMessageCollectionForHeaders` (pas `GlodaMsgSearcher`), les 3 chemins réels de navigation, les 2 écouteurs (`onSelectedMessagesChanged` + `onMessageDisplayed`), retirer « gauche » 3-pane ; AGENTS.md : idem + corriger `onMessagesDisplayOff` (inexistant) ; CHANGELOG : corriger « beside ».
 - [ ] **4.4 Refactoring de `magicThreadsWindowApi.js`** (1 117 lignes) — extraire les CSS en constantes de module, `attachResizeBehavior()` factorisé, `buildThreadItem()` ; constantes nommées pour `300`, `150/600`, `10000`… Réduit le risque de récidive du bug 1.1.
-- [ ] **4.5 Veille de compatibilité** — tester chaque beta/ESR de Thunderbird (DOM `about:3pane`, Gloda) ; anticiper MV3 (`onMessagesDisplayed`, event pages) et ESLint 9 (flat config). Pas de `strict_max_version` (recommandation confirmée).
+- [ ] **4.5 Veille de compatibilité** — tester chaque beta/ESR de Thunderbird (DOM `about:3pane`, Gloda) ; anticiper MV3 (`onMessagesDisplayed`, event pages) et ESLint 9 (flat config). ⚠️ Correctif à la recommandation initiale de l'audit : le validateur ATN **exige** `strict_max_version` pour les extensions à Experiment APIs (ajouté en 2.1.2 : `151.*`) — à relever à chaque nouvelle version de TB validée.
 
 ---
 
