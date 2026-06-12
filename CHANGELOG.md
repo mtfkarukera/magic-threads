@@ -24,6 +24,10 @@ Correctifs issus de la phase 1 du [plan d'action](PLAN_ACTION.md) (audit du 12 j
 - **ID de l'extension** : `magicthreads-b@xulforum.org` → `magic-threads@mtfkarukera.net` (domaine `xulforum.org` non possédé ; l'ID est définitif après publication sur ATN). Thunderbird traitera cette version comme une nouvelle extension : désinstaller l'ancienne, les préférences repartent aux valeurs par défaut.
 - **`strict_max_version: "151.*"`** ajouté au manifest : exigé par le validateur ATN pour les extensions utilisant des Experiment APIs. À relever à chaque version de Thunderbird validée (testé sur 140 ESR et 151).
 
+### Ajouté
+- **Icône de l'extension** (16/32/48/64/128 px, dossier `icons/`), déclarée dans le manifest — affichée dans le gestionnaire de modules et sur la fiche ATN.
+- **LICENSE incluse dans le XPI** (exigence de distribution MPL-2.0 relevée par l'audit).
+
 ## [2.1.1] - 2026-06-12
 
 ### Corrigé

@@ -38,6 +38,8 @@ zip -r -q "${DIST_DIR}/${XPI_NAME}" \
     experiment-api/ \
     options/ \
     _locales/ \
+    icons/ \
+    LICENSE \
     -x "*.git*" \
     -x "*.swp" \
     -x "*~" \
