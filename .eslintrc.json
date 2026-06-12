@@ -1,0 +1,26 @@
+{
+  "env": {
+    "browser": true,
+    "webextensions": true,
+    "es2021": true
+  },
+  "extends": "eslint:recommended",
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module"
+  },
+  "globals": {
+    "ExtensionCommon": "readonly",
+    "Services": "readonly",
+    "ChromeUtils": "readonly",
+    "Gloda": "readonly",
+    "GlodaMsgIndexer": "readonly",
+    "Cu": "readonly",
+    "Ci": "readonly",
+    "Cc": "readonly"
+  },
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "no-console": "off"
+  }
+}

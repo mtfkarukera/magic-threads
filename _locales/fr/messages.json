@@ -1,0 +1,168 @@
+{
+  "extensionName": {
+    "message": "Magic Threads",
+    "description": "Extension name shown in add-on manager"
+  },
+  "extensionDescription": {
+    "message": "Affiche le fil chronologique des e-mails sous forme de métadonnées et snippets dans le panneau message.",
+    "description": "Extension description shown in add-on manager"
+  },
+  "panelTitle": {
+    "message": "🧵 Fil ($COUNT$)",
+    "description": "Title of the thread panel showing message count",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "12"
+      }
+    }
+  },
+  "modeCurrentTab": {
+    "message": "Onglet courant 🔁",
+    "description": "Navigation mode indicator: open in current tab"
+  },
+  "modeNewTab": {
+    "message": "Nouvel onglet ↗️",
+    "description": "Navigation mode indicator: open in new tab"
+  },
+  "tooltipCurrentTab": {
+    "message": "Clic bascule le message dans l'onglet actif",
+    "description": "Tooltip for current tab mode"
+  },
+  "tooltipNewTab": {
+    "message": "Clic ouvre le message dans un nouvel onglet",
+    "description": "Tooltip for new tab mode"
+  },
+  "tooltipToggleMode": {
+    "message": "Changer le mode de navigation",
+    "description": "Tooltip for the toggle navigation mode button"
+  },
+  "tooltipCollapseExpand": {
+    "message": "Réduire/Déplier le panneau",
+    "description": "Tooltip for collapse/expand button"
+  },
+  "tooltipResize": {
+    "message": "Glisser pour redimensionner",
+    "description": "Tooltip for the resize handle"
+  },
+  "tooltipAttachment": {
+    "message": "Pièce(s) jointe(s)",
+    "description": "Tooltip for the attachment paperclip icon"
+  },
+  "folderInbox": {
+    "message": "Boîte de réception",
+    "description": "Label for inbox folder type"
+  },
+  "folderSent": {
+    "message": "Envoyés",
+    "description": "Label for sent folder type"
+  },
+  "folderArchive": {
+    "message": "Archives",
+    "description": "Label for archive folder type"
+  },
+  "folderDrafts": {
+    "message": "Brouillons",
+    "description": "Label for drafts folder type"
+  },
+  "folderTrash": {
+    "message": "Corbeille",
+    "description": "Label for trash folder type"
+  },
+  "unknownAuthor": {
+    "message": "Inconnu",
+    "description": "Fallback author name when author is unknown"
+  },
+  "optionsTitle": {
+    "message": "Préférences de Magic Threads",
+    "description": "Options page main title"
+  },
+  "optNavGroupTitle": {
+    "message": "Comportement lors du clic sur un message du fil :",
+    "description": "Options group title for navigation behavior"
+  },
+  "optNavCurrentTabLabel": {
+    "message": "Ouvrir dans l'onglet courant (Saut de dossier)",
+    "description": "Label for current tab navigation option"
+  },
+  "optNavCurrentTabDesc": {
+    "message": "Affiche le message sélectionné dans le panneau principal. L'application bascule automatiquement de dossier si nécessaire. C'est le comportement le plus naturel pour éviter l'accumulation d'onglets.",
+    "description": "Description for current tab navigation option"
+  },
+  "optNavNewTabLabel": {
+    "message": "Ouvrir dans un nouvel onglet natif",
+    "description": "Label for new tab navigation option"
+  },
+  "optNavNewTabDesc": {
+    "message": "Ouvre le message ciblé dans un nouvel onglet de message Thunderbird. Cela préserve votre positionnement et votre dossier courant dans l'onglet de travail principal.",
+    "description": "Description for new tab navigation option"
+  },
+  "optSidebarGroupTitle": {
+    "message": "Position du fil en onglet message :",
+    "description": "Options group title for sidebar position in message tabs"
+  },
+  "optSidebarRight": {
+    "message": "Panneau à droite",
+    "description": "Label for right sidebar option"
+  },
+  "optSidebarRightDesc": {
+    "message": "Le fil de discussion s'affiche dans un panneau latéral à droite du message. Le contenu du message reste à sa position habituelle.",
+    "description": "Description for right sidebar option"
+  },
+  "optSidebarLeft": {
+    "message": "Panneau à gauche",
+    "description": "Label for left sidebar option"
+  },
+  "optSidebarLeftDesc": {
+    "message": "Le fil de discussion s'affiche dans un panneau latéral à gauche du message.",
+    "description": "Description for left sidebar option"
+  },
+  "optMainViewGroupTitle": {
+    "message": "Position du fil en vue principale :",
+    "description": "Options group title for main view position"
+  },
+  "optMainViewBottom": {
+    "message": "En bas du message",
+    "description": "Label for bottom position in main view"
+  },
+  "optMainViewBottomDesc": {
+    "message": "Le fil s'affiche sous le message avec une poignée de redimensionnement verticale.",
+    "description": "Description for bottom position option"
+  },
+  "optMainViewRight": {
+    "message": "Panneau à droite du message",
+    "description": "Label for right sidebar in main view"
+  },
+  "optMainViewRightDesc": {
+    "message": "Le fil s'affiche en panneau latéral à droite du message, avec une poignée de redimensionnement horizontale.",
+    "description": "Description for right sidebar in main view"
+  },
+  "optMainViewLeft": {
+    "message": "Panneau à gauche du message",
+    "description": "Label for left sidebar in main view"
+  },
+  "optMainViewLeftDesc": {
+    "message": "Le fil s'affiche en panneau latéral à gauche du message, avec une poignée de redimensionnement horizontale.",
+    "description": "Description for left sidebar in main view"
+  },
+  "optStatusSaved": {
+    "message": "Préférences enregistrées avec succès.",
+    "description": "Status message shown after saving preferences"
+  },
+  "optThreadOrderTitle": {
+    "message": "Ordre de tri des messages :",
+    "description": "Options group title for sorting order of the thread messages"
+  },
+  "optThreadOrderDesc": {
+    "message": "Détermine si les messages les plus récents s'affichent en haut ou en bas du fil.",
+    "description": "Description for antichronological sorting option"
+  },
+  "optThreadOrderAntichrono": {
+    "message": "Plus récents en haut (antichronologique) [Défaut]",
+    "description": "Label for antichronological sorting option"
+  },
+  "optThreadOrderChrono": {
+    "message": "Plus anciens en haut (chronologique)",
+    "description": "Label for chronological sorting option"
+  }
+}

@@ -1,0 +1,168 @@
+{
+  "extensionName": {
+    "message": "Magic Threads",
+    "description": "Extension name shown in add-on manager"
+  },
+  "extensionDescription": {
+    "message": "Hiển thị chuỗi email theo trình tự thời gian dưới dạng siêu dữ liệu và đoạn trích trong bảng tin nhắn.",
+    "description": "Extension description shown in add-on manager"
+  },
+  "panelTitle": {
+    "message": "🧵 Chuỗi ($COUNT$)",
+    "description": "Title of the thread panel showing message count",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "12"
+      }
+    }
+  },
+  "modeCurrentTab": {
+    "message": "Thẻ hiện tại 🔁",
+    "description": "Navigation mode indicator: open in current tab"
+  },
+  "modeNewTab": {
+    "message": "Thẻ mới ↗️",
+    "description": "Navigation mode indicator: open in new tab"
+  },
+  "tooltipCurrentTab": {
+    "message": "Nhấp để chuyển tin nhắn trong thẻ đang hoạt động",
+    "description": "Tooltip for current tab mode"
+  },
+  "tooltipNewTab": {
+    "message": "Nhấp để mở tin nhắn trong thẻ mới",
+    "description": "Tooltip for new tab mode"
+  },
+  "tooltipToggleMode": {
+    "message": "Thay đổi chế độ điều hướng",
+    "description": "Tooltip for the toggle navigation mode button"
+  },
+  "tooltipCollapseExpand": {
+    "message": "Thu gọn/Mở rộng bảng",
+    "description": "Tooltip for collapse/expand button"
+  },
+  "tooltipResize": {
+    "message": "Kéo để thay đổi kích thước",
+    "description": "Tooltip for the resize handle"
+  },
+  "tooltipAttachment": {
+    "message": "Tệp đính kèm",
+    "description": "Tooltip for the attachment paperclip icon"
+  },
+  "folderInbox": {
+    "message": "Hộp thư đến",
+    "description": "Label for inbox folder type"
+  },
+  "folderSent": {
+    "message": "Đã gửi",
+    "description": "Label for sent folder type"
+  },
+  "folderArchive": {
+    "message": "Lưu trữ",
+    "description": "Label for archive folder type"
+  },
+  "folderDrafts": {
+    "message": "Thư nháp",
+    "description": "Label for drafts folder type"
+  },
+  "folderTrash": {
+    "message": "Thùng rác",
+    "description": "Label for trash folder type"
+  },
+  "unknownAuthor": {
+    "message": "Không rõ",
+    "description": "Fallback author name when author is unknown"
+  },
+  "optionsTitle": {
+    "message": "Tùy chọn Magic Threads",
+    "description": "Options page main title"
+  },
+  "optNavGroupTitle": {
+    "message": "Hành vi khi nhấp vào tin nhắn trong chuỗi:",
+    "description": "Options group title for navigation behavior"
+  },
+  "optNavCurrentTabLabel": {
+    "message": "Mở trong thẻ hiện tại (Nhảy thư mục)",
+    "description": "Label for current tab navigation option"
+  },
+  "optNavCurrentTabDesc": {
+    "message": "Hiển thị tin nhắn đã chọn trong bảng chính. Ứng dụng tự động chuyển thư mục nếu cần. Đây là hành vi tự nhiên nhất để tránh tích lũy thẻ.",
+    "description": "Description for current tab navigation option"
+  },
+  "optNavNewTabLabel": {
+    "message": "Mở trong thẻ gốc mới",
+    "description": "Label for new tab navigation option"
+  },
+  "optNavNewTabDesc": {
+    "message": "Mở tin nhắn được chọn trong thẻ tin nhắn Thunderbird mới. Điều này giữ nguyên vị trí và thư mục hiện tại của bạn trong thẻ làm việc chính.",
+    "description": "Description for new tab navigation option"
+  },
+  "optSidebarGroupTitle": {
+    "message": "Vị trí chuỗi trong thẻ tin nhắn:",
+    "description": "Options group title for sidebar position in message tabs"
+  },
+  "optSidebarRight": {
+    "message": "Bảng bên phải",
+    "description": "Label for right sidebar option"
+  },
+  "optSidebarRightDesc": {
+    "message": "Chuỗi được hiển thị trong bảng bên phải của tin nhắn. Nội dung tin nhắn giữ nguyên vị trí thông thường.",
+    "description": "Description for right sidebar option"
+  },
+  "optSidebarLeft": {
+    "message": "Bảng bên trái",
+    "description": "Label for left sidebar option"
+  },
+  "optSidebarLeftDesc": {
+    "message": "Chuỗi được hiển thị trong bảng bên trái của tin nhắn.",
+    "description": "Description for left sidebar option"
+  },
+  "optMainViewGroupTitle": {
+    "message": "Vị trí chuỗi trong chế độ xem chính:",
+    "description": "Options group title for main view position"
+  },
+  "optMainViewBottom": {
+    "message": "Bên dưới tin nhắn",
+    "description": "Label for bottom position in main view"
+  },
+  "optMainViewBottomDesc": {
+    "message": "Chuỗi được hiển thị bên dưới tin nhắn với thanh điều chỉnh kích thước dọc.",
+    "description": "Description for bottom position option"
+  },
+  "optMainViewRight": {
+    "message": "Bảng bên phải tin nhắn",
+    "description": "Label for right sidebar in main view"
+  },
+  "optMainViewRightDesc": {
+    "message": "Chuỗi được hiển thị trong bảng bên phải của tin nhắn, với thanh điều chỉnh kích thước ngang.",
+    "description": "Description for right sidebar in main view"
+  },
+  "optMainViewLeft": {
+    "message": "Bảng bên trái tin nhắn",
+    "description": "Label for left sidebar in main view"
+  },
+  "optMainViewLeftDesc": {
+    "message": "Chuỗi được hiển thị trong bảng bên trái của tin nhắn, với thanh điều chỉnh kích thước ngang.",
+    "description": "Description for left sidebar in main view"
+  },
+  "optStatusSaved": {
+    "message": "Tùy chọn đã được lưu thành công.",
+    "description": "Status message shown after saving preferences"
+  },
+  "optThreadOrderTitle": {
+    "message": "Thứ tự sắp xếp tin nhắn trong luồng:",
+    "description": "Options group title for sorting order of the thread messages"
+  },
+  "optThreadOrderDesc": {
+    "message": "Xác định xem các tin nhắn gần đây nhất được hiển thị ở trên cùng hay dưới cùng của luồng.",
+    "description": "Description for antichronological sorting option"
+  },
+  "optThreadOrderAntichrono": {
+    "message": "Mới nhất ở trên cùng (ngược thời gian) [Mặc định]",
+    "description": "Label for antichronological sorting option"
+  },
+  "optThreadOrderChrono": {
+    "message": "Cũ nhất ở trên cùng (theo thời gian)",
+    "description": "Label for chronological sorting option"
+  }
+}

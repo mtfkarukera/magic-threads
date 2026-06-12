@@ -1,0 +1,168 @@
+{
+  "extensionName": {
+    "message": "Magic Threads",
+    "description": "Extension name shown in add-on manager"
+  },
+  "extensionDescription": {
+    "message": "Displays the chronological email thread as metadata and snippets in the message panel.",
+    "description": "Extension description shown in add-on manager"
+  },
+  "panelTitle": {
+    "message": "🧵 Thread ($COUNT$)",
+    "description": "Title of the thread panel showing message count",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "12"
+      }
+    }
+  },
+  "modeCurrentTab": {
+    "message": "Current tab 🔁",
+    "description": "Navigation mode indicator: open in current tab"
+  },
+  "modeNewTab": {
+    "message": "New tab ↗️",
+    "description": "Navigation mode indicator: open in new tab"
+  },
+  "tooltipCurrentTab": {
+    "message": "Click switches the message in the active tab",
+    "description": "Tooltip for current tab mode"
+  },
+  "tooltipNewTab": {
+    "message": "Click opens the message in a new tab",
+    "description": "Tooltip for new tab mode"
+  },
+  "tooltipToggleMode": {
+    "message": "Change navigation mode",
+    "description": "Tooltip for the toggle navigation mode button"
+  },
+  "tooltipCollapseExpand": {
+    "message": "Collapse/Expand panel",
+    "description": "Tooltip for collapse/expand button"
+  },
+  "tooltipResize": {
+    "message": "Drag to resize",
+    "description": "Tooltip for the resize handle"
+  },
+  "tooltipAttachment": {
+    "message": "Attachment(s)",
+    "description": "Tooltip for the attachment paperclip icon"
+  },
+  "folderInbox": {
+    "message": "Inbox",
+    "description": "Label for inbox folder type"
+  },
+  "folderSent": {
+    "message": "Sent",
+    "description": "Label for sent folder type"
+  },
+  "folderArchive": {
+    "message": "Archives",
+    "description": "Label for archive folder type"
+  },
+  "folderDrafts": {
+    "message": "Drafts",
+    "description": "Label for drafts folder type"
+  },
+  "folderTrash": {
+    "message": "Trash",
+    "description": "Label for trash folder type"
+  },
+  "unknownAuthor": {
+    "message": "Unknown",
+    "description": "Fallback author name when author is unknown"
+  },
+  "optionsTitle": {
+    "message": "Magic Threads Preferences",
+    "description": "Options page main title"
+  },
+  "optNavGroupTitle": {
+    "message": "Behavior when clicking a message in the thread:",
+    "description": "Options group title for navigation behavior"
+  },
+  "optNavCurrentTabLabel": {
+    "message": "Open in current tab (Folder jump)",
+    "description": "Label for current tab navigation option"
+  },
+  "optNavCurrentTabDesc": {
+    "message": "Displays the selected message in the main panel. The application automatically switches folders if necessary. This is the most natural behavior to avoid tab accumulation.",
+    "description": "Description for current tab navigation option"
+  },
+  "optNavNewTabLabel": {
+    "message": "Open in a new native tab",
+    "description": "Label for new tab navigation option"
+  },
+  "optNavNewTabDesc": {
+    "message": "Opens the targeted message in a new Thunderbird message tab. This preserves your position and current folder in the main working tab.",
+    "description": "Description for new tab navigation option"
+  },
+  "optSidebarGroupTitle": {
+    "message": "Thread position in message tab:",
+    "description": "Options group title for sidebar position in message tabs"
+  },
+  "optSidebarRight": {
+    "message": "Panel on the right",
+    "description": "Label for right sidebar option"
+  },
+  "optSidebarRightDesc": {
+    "message": "The thread is displayed in a side panel to the right of the message. The message content stays in its usual position.",
+    "description": "Description for right sidebar option"
+  },
+  "optSidebarLeft": {
+    "message": "Panel on the left",
+    "description": "Label for left sidebar option"
+  },
+  "optSidebarLeftDesc": {
+    "message": "The thread is displayed in a side panel to the left of the message.",
+    "description": "Description for left sidebar option"
+  },
+  "optMainViewGroupTitle": {
+    "message": "Thread position in main view:",
+    "description": "Options group title for main view position"
+  },
+  "optMainViewBottom": {
+    "message": "Below the message",
+    "description": "Label for bottom position in main view"
+  },
+  "optMainViewBottomDesc": {
+    "message": "The thread is displayed below the message with a vertical resize handle.",
+    "description": "Description for bottom position option"
+  },
+  "optMainViewRight": {
+    "message": "Panel to the right of the message",
+    "description": "Label for right sidebar in main view"
+  },
+  "optMainViewRightDesc": {
+    "message": "The thread is displayed in a side panel to the right of the message, with a horizontal resize handle.",
+    "description": "Description for right sidebar in main view"
+  },
+  "optMainViewLeft": {
+    "message": "Panel to the left of the message",
+    "description": "Label for left sidebar in main view"
+  },
+  "optMainViewLeftDesc": {
+    "message": "The thread is displayed in a side panel to the left of the message, with a horizontal resize handle.",
+    "description": "Description for left sidebar in main view"
+  },
+  "optStatusSaved": {
+    "message": "Preferences saved successfully.",
+    "description": "Status message shown after saving preferences"
+  },
+  "optThreadOrderTitle": {
+    "message": "Thread message sorting order:",
+    "description": "Options group title for sorting order of the thread messages"
+  },
+  "optThreadOrderDesc": {
+    "message": "Determines whether the most recent messages are displayed at the top or bottom of the thread.",
+    "description": "Description for antichronological sorting option"
+  },
+  "optThreadOrderAntichrono": {
+    "message": "Most recent at the top (reverse-chronological) [Default]",
+    "description": "Label for antichronological sorting option"
+  },
+  "optThreadOrderChrono": {
+    "message": "Oldest at the top (chronological)",
+    "description": "Label for chronological sorting option"
+  }
+}

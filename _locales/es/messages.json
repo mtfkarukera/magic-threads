@@ -1,0 +1,168 @@
+{
+  "extensionName": {
+    "message": "Magic Threads",
+    "description": "Extension name shown in add-on manager"
+  },
+  "extensionDescription": {
+    "message": "Muestra el hilo cronológico de correos electrónicos como metadatos y fragmentos en el panel de mensajes.",
+    "description": "Extension description shown in add-on manager"
+  },
+  "panelTitle": {
+    "message": "🧵 Hilo ($COUNT$)",
+    "description": "Title of the thread panel showing message count",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "12"
+      }
+    }
+  },
+  "modeCurrentTab": {
+    "message": "Pestaña actual 🔁",
+    "description": "Navigation mode indicator: open in current tab"
+  },
+  "modeNewTab": {
+    "message": "Nueva pestaña ↗️",
+    "description": "Navigation mode indicator: open in new tab"
+  },
+  "tooltipCurrentTab": {
+    "message": "Clic cambia el mensaje en la pestaña activa",
+    "description": "Tooltip for current tab mode"
+  },
+  "tooltipNewTab": {
+    "message": "Clic abre el mensaje en una nueva pestaña",
+    "description": "Tooltip for new tab mode"
+  },
+  "tooltipToggleMode": {
+    "message": "Cambiar el modo de navegación",
+    "description": "Tooltip for the toggle navigation mode button"
+  },
+  "tooltipCollapseExpand": {
+    "message": "Contraer/Expandir el panel",
+    "description": "Tooltip for collapse/expand button"
+  },
+  "tooltipResize": {
+    "message": "Arrastrar para redimensionar",
+    "description": "Tooltip for the resize handle"
+  },
+  "tooltipAttachment": {
+    "message": "Archivo(s) adjunto(s)",
+    "description": "Tooltip for the attachment paperclip icon"
+  },
+  "folderInbox": {
+    "message": "Bandeja de entrada",
+    "description": "Label for inbox folder type"
+  },
+  "folderSent": {
+    "message": "Enviados",
+    "description": "Label for sent folder type"
+  },
+  "folderArchive": {
+    "message": "Archivos",
+    "description": "Label for archive folder type"
+  },
+  "folderDrafts": {
+    "message": "Borradores",
+    "description": "Label for drafts folder type"
+  },
+  "folderTrash": {
+    "message": "Papelera",
+    "description": "Label for trash folder type"
+  },
+  "unknownAuthor": {
+    "message": "Desconocido",
+    "description": "Fallback author name when author is unknown"
+  },
+  "optionsTitle": {
+    "message": "Preferencias de Magic Threads",
+    "description": "Options page main title"
+  },
+  "optNavGroupTitle": {
+    "message": "Comportamiento al hacer clic en un mensaje del hilo:",
+    "description": "Options group title for navigation behavior"
+  },
+  "optNavCurrentTabLabel": {
+    "message": "Abrir en la pestaña actual (Salto de carpeta)",
+    "description": "Label for current tab navigation option"
+  },
+  "optNavCurrentTabDesc": {
+    "message": "Muestra el mensaje seleccionado en el panel principal. La aplicación cambia automáticamente de carpeta si es necesario. Es el comportamiento más natural para evitar la acumulación de pestañas.",
+    "description": "Description for current tab navigation option"
+  },
+  "optNavNewTabLabel": {
+    "message": "Abrir en una nueva pestaña nativa",
+    "description": "Label for new tab navigation option"
+  },
+  "optNavNewTabDesc": {
+    "message": "Abre el mensaje seleccionado en una nueva pestaña de mensaje de Thunderbird. Esto preserva su posición y carpeta actual en la pestaña de trabajo principal.",
+    "description": "Description for new tab navigation option"
+  },
+  "optSidebarGroupTitle": {
+    "message": "Posición del hilo en la pestaña de mensaje:",
+    "description": "Options group title for sidebar position in message tabs"
+  },
+  "optSidebarRight": {
+    "message": "Panel a la derecha",
+    "description": "Label for right sidebar option"
+  },
+  "optSidebarRightDesc": {
+    "message": "El hilo se muestra en un panel lateral a la derecha del mensaje. El contenido del mensaje permanece en su posición habitual.",
+    "description": "Description for right sidebar option"
+  },
+  "optSidebarLeft": {
+    "message": "Panel a la izquierda",
+    "description": "Label for left sidebar option"
+  },
+  "optSidebarLeftDesc": {
+    "message": "El hilo se muestra en un panel lateral a la izquierda del mensaje.",
+    "description": "Description for left sidebar option"
+  },
+  "optMainViewGroupTitle": {
+    "message": "Posición del hilo en la vista principal:",
+    "description": "Options group title for main view position"
+  },
+  "optMainViewBottom": {
+    "message": "Debajo del mensaje",
+    "description": "Label for bottom position in main view"
+  },
+  "optMainViewBottomDesc": {
+    "message": "El hilo se muestra debajo del mensaje con un control de redimensionamiento vertical.",
+    "description": "Description for bottom position option"
+  },
+  "optMainViewRight": {
+    "message": "Panel a la derecha del mensaje",
+    "description": "Label for right sidebar in main view"
+  },
+  "optMainViewRightDesc": {
+    "message": "El hilo se muestra en un panel lateral a la derecha del mensaje, con un control de redimensionamiento horizontal.",
+    "description": "Description for right sidebar in main view"
+  },
+  "optMainViewLeft": {
+    "message": "Panel a la izquierda del mensaje",
+    "description": "Label for left sidebar in main view"
+  },
+  "optMainViewLeftDesc": {
+    "message": "El hilo se muestra en un panel lateral a la izquierda del mensaje, con un control de redimensionamiento horizontal.",
+    "description": "Description for left sidebar in main view"
+  },
+  "optStatusSaved": {
+    "message": "Preferencias guardadas correctamente.",
+    "description": "Status message shown after saving preferences"
+  },
+  "optThreadOrderTitle": {
+    "message": "Orden de clasificación de los mensajes:",
+    "description": "Options group title for sorting order of the thread messages"
+  },
+  "optThreadOrderDesc": {
+    "message": "Determina si los mensajes más recientes se muestran al principio o al final del hilo.",
+    "description": "Description for antichronological sorting option"
+  },
+  "optThreadOrderAntichrono": {
+    "message": "Más recientes al principio (anticroonológico) [Predeterminado]",
+    "description": "Label for antichronological sorting option"
+  },
+  "optThreadOrderChrono": {
+    "message": "Más antiguos al principio (cronológico)",
+    "description": "Label for chronological sorting option"
+  }
+}

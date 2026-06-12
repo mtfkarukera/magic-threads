@@ -1,0 +1,45 @@
+{
+  "manifest_version": 2,
+  "name": "__MSG_extensionName__",
+  "version": "2.1.1",
+  "description": "__MSG_extensionDescription__",
+  "default_locale": "fr",
+  "author": "Antigravity",
+  "background": {
+    "scripts": ["background/background.js"],
+    "type": "module"
+  },
+  "permissions": [
+    "messagesRead",
+    "accountsRead",
+    "storage"
+  ],
+  "experiment_apis": {
+    "convGloda": {
+      "schema": "experiment-api/glodaSchema.json",
+      "parent": {
+        "scopes": ["addon_parent"],
+        "paths": [["convGloda"]],
+        "script": "experiment-api/glodaApi.js"
+      }
+    },
+    "magicThreadsWindow": {
+      "schema": "experiment-api/magicThreadsWindowSchema.json",
+      "parent": {
+        "scopes": ["addon_parent"],
+        "paths": [["magicThreadsWindow"]],
+        "script": "experiment-api/magicThreadsWindowApi.js"
+      }
+    }
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "magicthreads-b@xulforum.org",
+      "strict_min_version": "128.0"
+    }
+  }
+}

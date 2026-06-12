@@ -1,0 +1,168 @@
+{
+  "extensionName": {
+    "message": "Magic Threads",
+    "description": "Extension name shown in add-on manager"
+  },
+  "extensionDescription": {
+    "message": "メッセージパネルにメールスレッドのメタデータとスニペットを時系列で表示します。",
+    "description": "Extension description shown in add-on manager"
+  },
+  "panelTitle": {
+    "message": "🧵 スレッド ($COUNT$)",
+    "description": "Title of the thread panel showing message count",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "12"
+      }
+    }
+  },
+  "modeCurrentTab": {
+    "message": "現在のタブ 🔁",
+    "description": "Navigation mode indicator: open in current tab"
+  },
+  "modeNewTab": {
+    "message": "新しいタブ ↗️",
+    "description": "Navigation mode indicator: open in new tab"
+  },
+  "tooltipCurrentTab": {
+    "message": "クリックでアクティブなタブにメッセージを切り替えます",
+    "description": "Tooltip for current tab mode"
+  },
+  "tooltipNewTab": {
+    "message": "クリックで新しいタブにメッセージを開きます",
+    "description": "Tooltip for new tab mode"
+  },
+  "tooltipToggleMode": {
+    "message": "ナビゲーションモードを切り替える",
+    "description": "Tooltip for the toggle navigation mode button"
+  },
+  "tooltipCollapseExpand": {
+    "message": "パネルの折りたたみ/展開",
+    "description": "Tooltip for collapse/expand button"
+  },
+  "tooltipResize": {
+    "message": "ドラッグしてサイズを変更",
+    "description": "Tooltip for the resize handle"
+  },
+  "tooltipAttachment": {
+    "message": "添付ファイル",
+    "description": "Tooltip for the attachment paperclip icon"
+  },
+  "folderInbox": {
+    "message": "受信トレイ",
+    "description": "Label for inbox folder type"
+  },
+  "folderSent": {
+    "message": "送信済みトレイ",
+    "description": "Label for sent folder type"
+  },
+  "folderArchive": {
+    "message": "アーカイブ",
+    "description": "Label for archive folder type"
+  },
+  "folderDrafts": {
+    "message": "下書き",
+    "description": "Label for drafts folder type"
+  },
+  "folderTrash": {
+    "message": "ごみ箱",
+    "description": "Label for trash folder type"
+  },
+  "unknownAuthor": {
+    "message": "不明",
+    "description": "Fallback author name when author is unknown"
+  },
+  "optionsTitle": {
+    "message": "Magic Threads の設定",
+    "description": "Options page main title"
+  },
+  "optNavGroupTitle": {
+    "message": "スレッド内のメッセージをクリックしたときの動作:",
+    "description": "Options group title for navigation behavior"
+  },
+  "optNavCurrentTabLabel": {
+    "message": "現在のタブで開く（フォルダー移動）",
+    "description": "Label for current tab navigation option"
+  },
+  "optNavCurrentTabDesc": {
+    "message": "選択したメッセージをメインパネルに表示します。必要に応じてフォルダーが自動的に切り替わります。タブの増加を防ぐ最も自然な動作です。",
+    "description": "Description for current tab navigation option"
+  },
+  "optNavNewTabLabel": {
+    "message": "新しいネイティブタブで開く",
+    "description": "Label for new tab navigation option"
+  },
+  "optNavNewTabDesc": {
+    "message": "対象のメッセージを Thunderbird の新しいメッセージタブで開きます。メインの作業タブでの位置と現在のフォルダーが保持されます。",
+    "description": "Description for new tab navigation option"
+  },
+  "optSidebarGroupTitle": {
+    "message": "メッセージタブでのスレッド表示位置:",
+    "description": "Options group title for sidebar position in message tabs"
+  },
+  "optSidebarRight": {
+    "message": "右側パネル",
+    "description": "Label for right sidebar option"
+  },
+  "optSidebarRightDesc": {
+    "message": "スレッドがメッセージの右側にサイドパネルとして表示されます。メッセージの内容は通常の位置に留まります。",
+    "description": "Description for right sidebar option"
+  },
+  "optSidebarLeft": {
+    "message": "左側パネル",
+    "description": "Label for left sidebar option"
+  },
+  "optSidebarLeftDesc": {
+    "message": "スレッドがメッセージの左側にサイドパネルとして表示されます。",
+    "description": "Description for left sidebar option"
+  },
+  "optMainViewGroupTitle": {
+    "message": "メインビューでのスレッド表示位置:",
+    "description": "Options group title for main view position"
+  },
+  "optMainViewBottom": {
+    "message": "メッセージの下",
+    "description": "Label for bottom position in main view"
+  },
+  "optMainViewBottomDesc": {
+    "message": "スレッドがメッセージの下に垂直リサイズハンドル付きで表示されます。",
+    "description": "Description for bottom position option"
+  },
+  "optMainViewRight": {
+    "message": "メッセージの右側パネル",
+    "description": "Label for right sidebar in main view"
+  },
+  "optMainViewRightDesc": {
+    "message": "スレッドがメッセージの右側にサイドパネルとして、水平リサイズハンドル付きで表示されます。",
+    "description": "Description for right sidebar in main view"
+  },
+  "optMainViewLeft": {
+    "message": "メッセージの左側パネル",
+    "description": "Label for left sidebar in main view"
+  },
+  "optMainViewLeftDesc": {
+    "message": "スレッドがメッセージの左側にサイドパネルとして、水平リサイズハンドル付きで表示されます。",
+    "description": "Description for left sidebar in main view"
+  },
+  "optStatusSaved": {
+    "message": "設定が正常に保存されました。",
+    "description": "Status message shown after saving preferences"
+  },
+  "optThreadOrderTitle": {
+    "message": "スレッドのメッセージ並べ替え順:",
+    "description": "Options group title for sorting order of the thread messages"
+  },
+  "optThreadOrderDesc": {
+    "message": "最新のメッセージをスレッドの上部と下部のどちらに表示するかを決定します。",
+    "description": "Description for antichronological sorting option"
+  },
+  "optThreadOrderAntichrono": {
+    "message": "最新を上部に表示 (逆時系列) [デフォルト]",
+    "description": "Label for antichronological sorting option"
+  },
+  "optThreadOrderChrono": {
+    "message": "最古を上部に表示 (時系列)",
+    "description": "Label for chronological sorting option"
+  }
+}

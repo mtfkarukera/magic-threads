@@ -1,0 +1,20 @@
+[
+  {
+    "namespace": "convGloda",
+    "functions": [
+      {
+        "name": "getThreadMessages",
+        "type": "function",
+        "description": "Interroge Gloda pour recuperer tous les messages du fil de discussion lie a l'identifiant de message fourni.",
+        "async": true,
+        "parameters": [
+          {
+            "name": "messageId",
+            "type": "integer",
+            "description": "L'identifiant du message dans le contexte WebExtension."
+          }
+        ]
+      }
+    ]
+  }
+]

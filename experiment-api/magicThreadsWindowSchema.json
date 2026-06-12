@@ -1,0 +1,100 @@
+[
+  {
+    "namespace": "magicThreadsWindow",
+    "functions": [
+      {
+        "name": "showBanner",
+        "type": "function",
+        "async": true,
+        "description": "Affiche ou met à jour le panneau de fil de discussion dans le message pane d'un onglet mail.",
+        "parameters": [
+          {
+            "name": "tabId",
+            "type": "integer",
+            "description": "ID de l'onglet mail cible."
+          },
+          {
+            "name": "threadDataJSON",
+            "type": "string",
+            "description": "Données du fil de discussion en JSON sérialisé."
+          },
+          {
+            "name": "currentMessageId",
+            "type": "integer",
+            "description": "ID WebExtension du message actuellement affiché."
+          },
+          {
+            "name": "navigationMode",
+            "type": "string",
+            "description": "Mode de navigation (currentTab ou newTab)."
+          },
+          {
+            "name": "sidebarPosition",
+            "type": "string",
+            "description": "Position du sidebar en onglet message (left ou right)."
+          },
+          {
+            "name": "mainViewPosition",
+            "type": "string",
+            "description": "Position du panneau en vue principale 3-pane (bottom, left, right)."
+          },
+          {
+            "name": "labelsJSON",
+            "type": "string",
+            "description": "Chaînes i18n sérialisées en JSON pour le rendu du panneau."
+          }
+        ]
+      },
+      {
+        "name": "hideBanner",
+        "type": "function",
+        "async": true,
+        "description": "Masque le panneau de fil de discussion.",
+        "parameters": [
+          {
+            "name": "tabId",
+            "type": "integer",
+            "description": "ID de l'onglet mail cible."
+          }
+        ]
+      },
+      {
+        "name": "navigateMessageTab",
+        "type": "function",
+        "async": true,
+        "description": "Navigue un onglet message pour afficher un autre message sans ouvrir de nouvel onglet.",
+        "parameters": [
+          {
+            "name": "tabId",
+            "type": "integer",
+            "description": "ID de l'onglet message cible."
+          },
+          {
+            "name": "messageId",
+            "type": "integer",
+            "description": "ID WebExtension du message à afficher."
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "name": "onBannerItemClicked",
+        "type": "function",
+        "description": "Déclenché quand l'utilisateur clique sur un message du fil dans le panneau.",
+        "parameters": [
+          {
+            "name": "messageId",
+            "type": "integer",
+            "description": "ID WebExtension du message cliqué."
+          },
+          {
+            "name": "mode",
+            "type": "string",
+            "description": "Mode de navigation (currentTab ou newTab)."
+          }
+        ]
+      }
+    ]
+  }
+]

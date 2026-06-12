@@ -1,0 +1,168 @@
+{
+  "extensionName": {
+    "message": "Magic Threads",
+    "description": "Extension name shown in add-on manager"
+  },
+  "extensionDescription": {
+    "message": "Zeigt den chronologischen E-Mail-Thread als Metadaten und Textausschnitte im Nachrichtenbereich an.",
+    "description": "Extension description shown in add-on manager"
+  },
+  "panelTitle": {
+    "message": "🧵 Thread ($COUNT$)",
+    "description": "Title of the thread panel showing message count",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "12"
+      }
+    }
+  },
+  "modeCurrentTab": {
+    "message": "Aktueller Tab 🔁",
+    "description": "Navigation mode indicator: open in current tab"
+  },
+  "modeNewTab": {
+    "message": "Neuer Tab ↗️",
+    "description": "Navigation mode indicator: open in new tab"
+  },
+  "tooltipCurrentTab": {
+    "message": "Klick wechselt die Nachricht im aktiven Tab",
+    "description": "Tooltip for current tab mode"
+  },
+  "tooltipNewTab": {
+    "message": "Klick öffnet die Nachricht in einem neuen Tab",
+    "description": "Tooltip for new tab mode"
+  },
+  "tooltipToggleMode": {
+    "message": "Navigationsmodus wechseln",
+    "description": "Tooltip for the toggle navigation mode button"
+  },
+  "tooltipCollapseExpand": {
+    "message": "Bereich ein-/ausklappen",
+    "description": "Tooltip for collapse/expand button"
+  },
+  "tooltipResize": {
+    "message": "Ziehen zum Ändern der Größe",
+    "description": "Tooltip for the resize handle"
+  },
+  "tooltipAttachment": {
+    "message": "Anhang/Anhänge",
+    "description": "Tooltip for the attachment paperclip icon"
+  },
+  "folderInbox": {
+    "message": "Posteingang",
+    "description": "Label for inbox folder type"
+  },
+  "folderSent": {
+    "message": "Gesendet",
+    "description": "Label for sent folder type"
+  },
+  "folderArchive": {
+    "message": "Archiv",
+    "description": "Label for archive folder type"
+  },
+  "folderDrafts": {
+    "message": "Entwürfe",
+    "description": "Label for drafts folder type"
+  },
+  "folderTrash": {
+    "message": "Papierkorb",
+    "description": "Label for trash folder type"
+  },
+  "unknownAuthor": {
+    "message": "Unbekannt",
+    "description": "Fallback author name when author is unknown"
+  },
+  "optionsTitle": {
+    "message": "Magic Threads – Einstellungen",
+    "description": "Options page main title"
+  },
+  "optNavGroupTitle": {
+    "message": "Verhalten beim Klick auf eine Nachricht im Thread:",
+    "description": "Options group title for navigation behavior"
+  },
+  "optNavCurrentTabLabel": {
+    "message": "Im aktuellen Tab öffnen (Ordnerwechsel)",
+    "description": "Label for current tab navigation option"
+  },
+  "optNavCurrentTabDesc": {
+    "message": "Zeigt die ausgewählte Nachricht im Hauptbereich an. Die Anwendung wechselt bei Bedarf automatisch den Ordner. Dies ist das natürlichste Verhalten, um eine Anhäufung von Tabs zu vermeiden.",
+    "description": "Description for current tab navigation option"
+  },
+  "optNavNewTabLabel": {
+    "message": "In einem neuen nativen Tab öffnen",
+    "description": "Label for new tab navigation option"
+  },
+  "optNavNewTabDesc": {
+    "message": "Öffnet die ausgewählte Nachricht in einem neuen Thunderbird-Nachrichtentab. Dadurch bleiben Ihre Position und Ihr aktueller Ordner im Hauptarbeitstab erhalten.",
+    "description": "Description for new tab navigation option"
+  },
+  "optSidebarGroupTitle": {
+    "message": "Thread-Position im Nachrichtentab:",
+    "description": "Options group title for sidebar position in message tabs"
+  },
+  "optSidebarRight": {
+    "message": "Bereich rechts",
+    "description": "Label for right sidebar option"
+  },
+  "optSidebarRightDesc": {
+    "message": "Der Thread wird in einem Seitenbereich rechts neben der Nachricht angezeigt. Der Nachrichteninhalt bleibt an seiner gewohnten Position.",
+    "description": "Description for right sidebar option"
+  },
+  "optSidebarLeft": {
+    "message": "Bereich links",
+    "description": "Label for left sidebar option"
+  },
+  "optSidebarLeftDesc": {
+    "message": "Der Thread wird in einem Seitenbereich links neben der Nachricht angezeigt.",
+    "description": "Description for left sidebar option"
+  },
+  "optMainViewGroupTitle": {
+    "message": "Thread-Position in der Hauptansicht:",
+    "description": "Options group title for main view position"
+  },
+  "optMainViewBottom": {
+    "message": "Unterhalb der Nachricht",
+    "description": "Label for bottom position in main view"
+  },
+  "optMainViewBottomDesc": {
+    "message": "Der Thread wird unterhalb der Nachricht mit einem vertikalen Größenänderungsgriff angezeigt.",
+    "description": "Description for bottom position option"
+  },
+  "optMainViewRight": {
+    "message": "Bereich rechts neben der Nachricht",
+    "description": "Label for right sidebar in main view"
+  },
+  "optMainViewRightDesc": {
+    "message": "Der Thread wird in einem Seitenbereich rechts neben der Nachricht mit einem horizontalen Größenänderungsgriff angezeigt.",
+    "description": "Description for right sidebar in main view"
+  },
+  "optMainViewLeft": {
+    "message": "Bereich links neben der Nachricht",
+    "description": "Label for left sidebar in main view"
+  },
+  "optMainViewLeftDesc": {
+    "message": "Der Thread wird in einem Seitenbereich links neben der Nachricht mit einem horizontalen Größenänderungsgriff angezeigt.",
+    "description": "Description for left sidebar in main view"
+  },
+  "optStatusSaved": {
+    "message": "Einstellungen erfolgreich gespeichert.",
+    "description": "Status message shown after saving preferences"
+  },
+  "optThreadOrderTitle": {
+    "message": "Sortierreihenfolge der Nachrichten:",
+    "description": "Options group title for sorting order of the thread messages"
+  },
+  "optThreadOrderDesc": {
+    "message": "Bestimmt, ob die neuesten Nachrichten oben oder unten im Thread angezeigt werden.",
+    "description": "Description for antichronological sorting option"
+  },
+  "optThreadOrderAntichrono": {
+    "message": "Neueste oben (antichronologisch) [Standard]",
+    "description": "Label for antichronological sorting option"
+  },
+  "optThreadOrderChrono": {
+    "message": "Älteste oben (chronologisch)",
+    "description": "Label for chronological sorting option"
+  }
+}
