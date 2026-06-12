@@ -20,13 +20,35 @@ bash build.sh
 
 Produit `dist/magic-threads-VERSION.xpi` et un lien symbolique `dist/magic-threads.xpi`.
 
+### Linter — OBLIGATOIRE en fin de sprint, avant tout commit
+
+```bash
+npx eslint background/ experiment-api/ options/   # doit être à 0 erreur, 0 warning
+npx web-ext lint --source-dir . --ignore-files "dist/**" "*.md" "LICENSE" "build.sh" ".eslintrc.json"
+```
+
+**Lecture du résultat `web-ext lint`** : ce linter est basé sur celui de Firefox et ne connaît pas
+Thunderbird. Le bruit attendu (à IGNORER) est :
+
+- 1 erreur `MANIFEST_FIELD_PRIVILEGED` sur `/experiment_apis` (faux positif — le validateur
+  d'addons.thunderbird.net utilise un fork qui accepte ce champ)
+- des warnings `UNSUPPORTED_API` ("not implemented by Firefox") sur les APIs Thunderbird
+  (`mailTabs.*`, `messageDisplay.*`, `messages.*`, `convGloda.*`, `magicThreadsWindow.*`)
+- des warnings sur les permissions `messagesRead` / `accountsRead`
+
+**Toute erreur ou warning AU-DELÀ de cette base de référence doit être corrigé avant commit.**
+Rappel ATN : `strict_max_version` est **exigé** dans le manifest pour les extensions à
+Experiment APIs (contrairement à la règle générale WebExtension) — le relever à chaque
+version majeure de Thunderbird validée.
+
 ### Tester
 
 1. Installer le XPI via Thunderbird : **Modules complémentaires** → ⚙️ → **Installer depuis un fichier…**
 2. Sélectionner un message appartenant à un fil (conversation) existant
 3. Vérifier que le panneau s'affiche avec les métadonnées correctes
 
-> **Note** : il n'y a pas de tests automatisés. Le test se fait manuellement dans Thunderbird.
+> **Note** : il n'y a pas de tests automatisés. Le test fonctionnel se fait manuellement dans
+> Thunderbird (idéalement sur les deux canaux : ESR et release).
 
 ## Architecture
 
