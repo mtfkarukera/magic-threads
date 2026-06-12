@@ -5,6 +5,11 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.2.1] - 2026-06-13
+
+### Corrigé
+- **Fil incomplet (conversations Gloda fragmentées)** : Gloda affecte la conversation à l'indexation et ne fusionne jamais rétroactivement — une même chaîne de réponses pouvait être éclatée en plusieurs conversations (indexation dans le désordre, reconstruction d'index), et le panneau n'affichait alors qu'un fragment variant selon le message cliqué (constaté en recette : 2/5/10/14 pour un fil de ~50). Le résolveur réunit désormais la conversation Gloda du message, le fil local du dossier (`nsIMsgThread`, soit exactement ce que la liste de messages affiche) et les conversations sœurs retrouvées en suivant les en-têtes `References` (requêtes Gloda `headerMessageID`), avec dédoublonnage par `Message-ID`. Expansion bornée (3 passes, 100 identifiants par requête, 500 messages max) pour préserver la réactivité.
+
 ## [2.2.0] - 2026-06-12
 
 Durcissement sécurité et nettoyages issus de la phase 2 du [plan d'action](PLAN_ACTION.md).

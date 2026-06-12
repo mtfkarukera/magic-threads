@@ -13,6 +13,11 @@ const { setTimeout, clearTimeout } = ChromeUtils.importESModule(
 const kSnippetLength = 700;
 // Délai maximal d'attente d'une requête Gloda (index corrompu, arrêt en cours…)
 const kGlodaTimeoutMs = 10000;
+// Bornes de la réunification des conversations fragmentées (v2.2.1) :
+// nombre de passes d'expansion, taille des requêtes, taille maximale du fil.
+const kMaxMergeRounds = 3;
+const kMaxIdsPerQuery = 100;
+const kMaxThreadMessages = 500;
 
 /* exported convGloda */
 var convGloda = class extends ExtensionCommon.ExtensionAPI {
@@ -26,24 +31,15 @@ var convGloda = class extends ExtensionCommon.ExtensionAPI {
               return [];
             }
 
-            let glodaMessages = await getGlodaMessages([msgHdr]);
-            if (!glodaMessages || glodaMessages.length === 0) {
-              let fallback = translateStandardMessage(context, msgHdr);
-              return fallback ? [fallback] : [];
-            }
-
-            let glodaMsg = glodaMessages[0];
-            let conversation = glodaMsg.conversation;
-            if (!conversation) {
-              let fallback = translateStandardMessage(context, msgHdr);
-              return fallback ? [fallback] : [];
-            }
-
-            let threadGlodaMessages = await getConversationMessages(conversation);
+            // Résolution complète : conversation Gloda + fil local du dossier
+            // + réunification des conversations fragmentées via References.
+            let entries = await resolveFullThread(msgHdr);
 
             let results = [];
-            for (let msg of threadGlodaMessages) {
-              let webMsg = translateGlodaMessage(context, msg);
+            for (let entry of entries) {
+              let webMsg = entry.glodaMsg
+                ? translateGlodaMessage(context, entry.glodaMsg)
+                : translateStandardMessage(context, entry.msgHdr);
               if (webMsg) {
                 results.push(webMsg);
               }
@@ -68,6 +64,185 @@ var convGloda = class extends ExtensionCommon.ExtensionAPI {
     };
   }
 };
+
+/**
+ * Résout le fil COMPLET d'un message (v2.2.1).
+ *
+ * Pourquoi : Gloda affecte la conversation au moment de l'indexation et ne
+ * fusionne jamais rétroactivement. Une même chaîne de réponses peut donc être
+ * éclatée en plusieurs conversations Gloda (indexation dans le désordre,
+ * reconstruction d'index…), alors que la liste de messages de Thunderbird,
+ * qui recalcule le fil dynamiquement (nsIMsgThread), les regroupe.
+ *
+ * Stratégie (bornée par kMaxMergeRounds / kMaxIdsPerQuery / kMaxThreadMessages) :
+ * 1. Conversation Gloda du message.
+ * 2. Fil local nsIMsgThread du dossier de chaque message connu — exactement ce
+ *    que la liste de Thunderbird affiche.
+ * 3. Expansion par References : retrouver via Gloda (headerMessageID) les
+ *    messages référencés mais absents, puis absorber leurs conversations.
+ * Les doublons sont réunis par Message-ID (la version Gloda, avec snippet,
+ * est préférée à l'en-tête brut).
+ *
+ * @returns {Array<{glodaMsg?: object, msgHdr: nsIMsgDBHdr}>}
+ */
+async function resolveFullThread(msgHdr) {
+  let byHeaderId = new Map(); // Message-ID → { glodaMsg?, msgHdr }
+  let knownConvIds = new Set();
+  let queriedRefs = new Set();
+  let pendingHdrs = []; // en-têtes sans version Gloda, à résoudre par lot
+
+  function addGloda(m) {
+    if (!m.folderMessage || byHeaderId.size >= kMaxThreadMessages) return false;
+    let hid = m.headerMessageID || m.folderMessage.messageId;
+    let existing = byHeaderId.get(hid);
+    if (existing && existing.glodaMsg) return false;
+    byHeaderId.set(hid, { glodaMsg: m, msgHdr: m.folderMessage });
+    if (m.conversation) knownConvIds.add(m.conversation.id);
+    return !existing;
+  }
+
+  function addHdr(hdr) {
+    if (!hdr || byHeaderId.size >= kMaxThreadMessages) return false;
+    let hid = hdr.messageId;
+    if (!hid || byHeaderId.has(hid)) return false;
+    byHeaderId.set(hid, { msgHdr: hdr });
+    pendingHdrs.push(hdr);
+    return true;
+  }
+
+  // Le fil local nsIMsgThread du dossier d'un en-tête (vision "liste de messages")
+  function absorbLocalThread(hdr) {
+    try {
+      let db = hdr.folder && hdr.folder.msgDatabase;
+      if (!db) return;
+      let thread = db.getThreadContainingMsgHdr(hdr);
+      if (!thread) return;
+      for (let i = 0; i < thread.numChildren; i++) {
+        addHdr(thread.getChildHdrAt(i));
+      }
+    } catch (e) {
+      // Dossier sans base locale exploitable : ignorer
+    }
+  }
+
+  // ---- Amorce : conversation Gloda du message + son fil local ----
+  try {
+    let glodaMessages = await getGlodaMessages([msgHdr]);
+    if (glodaMessages.length && glodaMessages[0].conversation) {
+      let members = await getConversationMessages(glodaMessages[0].conversation);
+      for (let m of members) addGloda(m);
+    }
+  } catch (e) {
+    // Gloda indisponible : on continuera avec le fil local seul
+  }
+  addHdr(msgHdr);
+  absorbLocalThread(msgHdr);
+
+  // ---- Expansion bornée ----
+  for (let round = 0; round < kMaxMergeRounds; round++) {
+    let grew = false;
+
+    // a) Résoudre par lot les en-têtes sans version Gloda, et absorber
+    //    leurs conversations entières (ramène les copies des autres dossiers)
+    if (pendingHdrs.length) {
+      let batch = pendingHdrs.splice(0, kMaxIdsPerQuery);
+      try {
+        let glodaMsgs = await getGlodaMessages(batch);
+        let newConvs = [];
+        for (let m of glodaMsgs) {
+          if (m.conversation && !knownConvIds.has(m.conversation.id)) {
+            knownConvIds.add(m.conversation.id);
+            newConvs.push(m.conversation);
+          }
+          if (addGloda(m)) grew = true;
+        }
+        for (let conv of newConvs) {
+          let members = await getConversationMessages(conv);
+          for (let m of members) {
+            if (addGloda(m)) {
+              grew = true;
+              absorbLocalThread(m.folderMessage);
+            }
+          }
+        }
+      } catch (e) {
+        // Lot non résolu : les en-têtes bruts restent affichables
+      }
+    }
+
+    // b) Suivre les References vers les messages absents du fil connu
+    let wanted = [];
+    for (let entry of byHeaderId.values()) {
+      let hdr = entry.msgHdr;
+      if (!hdr) continue;
+      for (let i = 0; i < hdr.numReferences && wanted.length < kMaxIdsPerQuery; i++) {
+        let ref = hdr.getStringReference(i);
+        if (ref && !byHeaderId.has(ref) && !queriedRefs.has(ref)) {
+          queriedRefs.add(ref);
+          wanted.push(ref);
+        }
+      }
+      if (wanted.length >= kMaxIdsPerQuery) break;
+    }
+
+    if (wanted.length) {
+      try {
+        let found = await queryGlodaByHeaderMessageId(wanted);
+        let newConvs = [];
+        for (let m of found) {
+          if (m.conversation && !knownConvIds.has(m.conversation.id)) {
+            knownConvIds.add(m.conversation.id);
+            newConvs.push(m.conversation);
+          }
+          if (addGloda(m)) grew = true;
+        }
+        for (let conv of newConvs) {
+          let members = await getConversationMessages(conv);
+          for (let m of members) {
+            if (addGloda(m)) {
+              grew = true;
+              absorbLocalThread(m.folderMessage);
+            }
+          }
+        }
+      } catch (e) {
+        // Requête References non aboutie : fil partiel, sans casse
+      }
+    }
+
+    if (!grew && !pendingHdrs.length) break;
+  }
+
+  return [...byHeaderId.values()];
+}
+
+/**
+ * Requête Gloda par Message-ID (attribut headerMessageID).
+ */
+function queryGlodaByHeaderMessageId(ids) {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      console.warn("Magic Threads: Gloda headerMessageID timeout — resolving with empty array.");
+      resolve([]);
+    }, kGlodaTimeoutMs);
+    try {
+      let query = Gloda.newQuery(Gloda.NOUN_MESSAGE);
+      query.headerMessageID(...ids);
+      query.getCollection({
+        onItemsAdded() {},
+        onItemsModified() {},
+        onItemsRemoved() {},
+        onQueryCompleted(collection) {
+          clearTimeout(timeout);
+          resolve(collection.items);
+        }
+      });
+    } catch (e) {
+      clearTimeout(timeout);
+      reject(e);
+    }
+  });
+}
 
 function getGlodaMessages(msgHdrs) {
   return new Promise((resolve, reject) => {
