@@ -137,14 +137,6 @@
     "message": "Der Thread wird in einem Seitenbereich rechts neben der Nachricht mit einem horizontalen Größenänderungsgriff angezeigt.",
     "description": "Description for right sidebar in main view"
   },
-  "optMainViewLeft": {
-    "message": "Bereich links neben der Nachricht",
-    "description": "Label for left sidebar in main view"
-  },
-  "optMainViewLeftDesc": {
-    "message": "Der Thread wird in einem Seitenbereich links neben der Nachricht mit einem horizontalen Größenänderungsgriff angezeigt.",
-    "description": "Description for left sidebar in main view"
-  },
   "optStatusSaved": {
     "message": "Einstellungen erfolgreich gespeichert.",
     "description": "Status message shown after saving preferences"

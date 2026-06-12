@@ -31,6 +31,11 @@ function loadOptions() {
     mainViewPosition: "bottom",
     threadOrder: "antichronological"
   }).then((items) => {
+    // Migration (v2.2.0) : la position « left » en vue principale n'existe plus
+    if (items.mainViewPosition === "left") {
+      items.mainViewPosition = "right";
+      storage.set({ mainViewPosition: "right" }).catch(console.error);
+    }
     // Navigation mode
     const navRadio = document.querySelector(`input[name="navigationMode"][value="${items.navigationMode}"]`);
     if (navRadio) {

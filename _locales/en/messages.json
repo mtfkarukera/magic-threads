@@ -137,14 +137,6 @@
     "message": "The thread is displayed in a side panel to the right of the message, with a horizontal resize handle.",
     "description": "Description for right sidebar in main view"
   },
-  "optMainViewLeft": {
-    "message": "Panel to the left of the message",
-    "description": "Label for left sidebar in main view"
-  },
-  "optMainViewLeftDesc": {
-    "message": "The thread is displayed in a side panel to the left of the message, with a horizontal resize handle.",
-    "description": "Description for left sidebar in main view"
-  },
   "optStatusSaved": {
     "message": "Preferences saved successfully.",
     "description": "Status message shown after saving preferences"

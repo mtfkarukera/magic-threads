@@ -137,14 +137,6 @@
     "message": "Chuỗi được hiển thị trong bảng bên phải của tin nhắn, với thanh điều chỉnh kích thước ngang.",
     "description": "Description for right sidebar in main view"
   },
-  "optMainViewLeft": {
-    "message": "Bảng bên trái tin nhắn",
-    "description": "Label for left sidebar in main view"
-  },
-  "optMainViewLeftDesc": {
-    "message": "Chuỗi được hiển thị trong bảng bên trái của tin nhắn, với thanh điều chỉnh kích thước ngang.",
-    "description": "Description for left sidebar in main view"
-  },
   "optStatusSaved": {
     "message": "Tùy chọn đã được lưu thành công.",
     "description": "Status message shown after saving preferences"

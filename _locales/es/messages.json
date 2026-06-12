@@ -137,14 +137,6 @@
     "message": "El hilo se muestra en un panel lateral a la derecha del mensaje, con un control de redimensionamiento horizontal.",
     "description": "Description for right sidebar in main view"
   },
-  "optMainViewLeft": {
-    "message": "Panel a la izquierda del mensaje",
-    "description": "Label for left sidebar in main view"
-  },
-  "optMainViewLeftDesc": {
-    "message": "El hilo se muestra en un panel lateral a la izquierda del mensaje, con un control de redimensionamiento horizontal.",
-    "description": "Description for left sidebar in main view"
-  },
   "optStatusSaved": {
     "message": "Preferencias guardadas correctamente.",
     "description": "Status message shown after saving preferences"

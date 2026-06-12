@@ -14,9 +14,61 @@
             "description": "ID de l'onglet mail cible."
           },
           {
-            "name": "threadDataJSON",
-            "type": "string",
-            "description": "Données du fil de discussion en JSON sérialisé."
+            "name": "threadData",
+            "type": "array",
+            "description": "Messages du fil de discussion (métadonnées uniquement).",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "description": "ID WebExtension du message."
+                },
+                "headerMessageId": {
+                  "type": "string",
+                  "optional": true,
+                  "description": "Message-ID de l'en-tête."
+                },
+                "author": {
+                  "type": "string",
+                  "optional": true,
+                  "description": "Expéditeur (en-tête From)."
+                },
+                "date": {
+                  "type": "number",
+                  "description": "Timestamp en millisecondes."
+                },
+                "folder": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "Dossier contenant le message.",
+                  "properties": {
+                    "accountId": { "type": "string", "optional": true },
+                    "path": { "type": "string", "optional": true },
+                    "type": { "type": "string", "optional": true }
+                  }
+                },
+                "snippet": {
+                  "type": "string",
+                  "optional": true,
+                  "description": "Extrait du corps du message (texte brut)."
+                },
+                "isRead": {
+                  "type": "boolean",
+                  "optional": true
+                },
+                "hasAttachments": {
+                  "type": "boolean",
+                  "optional": true
+                },
+                "tags": {
+                  "type": "array",
+                  "optional": true,
+                  "items": { "type": "string" }
+                }
+              }
+            }
           },
           {
             "name": "currentMessageId",
@@ -26,22 +78,43 @@
           {
             "name": "navigationMode",
             "type": "string",
-            "description": "Mode de navigation (currentTab ou newTab)."
+            "enum": ["currentTab", "newTab"],
+            "description": "Mode de navigation au clic sur un message du fil."
           },
           {
             "name": "sidebarPosition",
             "type": "string",
-            "description": "Position du sidebar en onglet message (left ou right)."
+            "enum": ["left", "right"],
+            "description": "Position du sidebar en onglet message."
           },
           {
             "name": "mainViewPosition",
             "type": "string",
-            "description": "Position du panneau en vue principale 3-pane (bottom, left, right)."
+            "enum": ["bottom", "right"],
+            "description": "Position du panneau en vue principale 3-pane."
           },
           {
-            "name": "labelsJSON",
-            "type": "string",
-            "description": "Chaînes i18n sérialisées en JSON pour le rendu du panneau."
+            "name": "labels",
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Chaînes i18n pour le rendu du panneau (les clés absentes retombent sur les libellés par défaut).",
+            "properties": {
+              "panelTitle": { "type": "string", "optional": true },
+              "modeCurrentTab": { "type": "string", "optional": true },
+              "modeNewTab": { "type": "string", "optional": true },
+              "tooltipCurrentTab": { "type": "string", "optional": true },
+              "tooltipNewTab": { "type": "string", "optional": true },
+              "tooltipToggleMode": { "type": "string", "optional": true },
+              "tooltipCollapseExpand": { "type": "string", "optional": true },
+              "tooltipResize": { "type": "string", "optional": true },
+              "tooltipAttachment": { "type": "string", "optional": true },
+              "folderInbox": { "type": "string", "optional": true },
+              "folderSent": { "type": "string", "optional": true },
+              "folderArchive": { "type": "string", "optional": true },
+              "folderDrafts": { "type": "string", "optional": true },
+              "folderTrash": { "type": "string", "optional": true },
+              "unknownAuthor": { "type": "string", "optional": true }
+            }
           }
         ]
       },
@@ -62,7 +135,7 @@
         "name": "navigateMessageTab",
         "type": "function",
         "async": true,
-        "description": "Navigue un onglet message pour afficher un autre message sans ouvrir de nouvel onglet.",
+        "description": "Remplace le contenu d'un onglet message par un autre message (l'onglet est recréé à l'identique). Résout à true en cas de succès.",
         "parameters": [
           {
             "name": "tabId",
@@ -91,7 +164,8 @@
           {
             "name": "mode",
             "type": "string",
-            "description": "Mode de navigation (currentTab ou newTab)."
+            "enum": ["currentTab", "newTab"],
+            "description": "Mode de navigation au moment du clic."
           }
         ]
       }

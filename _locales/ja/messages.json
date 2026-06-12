@@ -137,14 +137,6 @@
     "message": "スレッドがメッセージの右側にサイドパネルとして、水平リサイズハンドル付きで表示されます。",
     "description": "Description for right sidebar in main view"
   },
-  "optMainViewLeft": {
-    "message": "メッセージの左側パネル",
-    "description": "Label for left sidebar in main view"
-  },
-  "optMainViewLeftDesc": {
-    "message": "スレッドがメッセージの左側にサイドパネルとして、水平リサイズハンドル付きで表示されます。",
-    "description": "Description for left sidebar in main view"
-  },
   "optStatusSaved": {
     "message": "設定が正常に保存されました。",
     "description": "Status message shown after saving preferences"

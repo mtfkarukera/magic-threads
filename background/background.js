@@ -4,9 +4,6 @@
 
 import { ThreadResolver } from "./threadResolver.js";
 
-const extVersion = browser.runtime.getManifest().version;
-console.log(`Magic Threads v${extVersion}: Démarrage du script d'arrière-plan.`);
-
 // ---- Préférences utilisateur ----
 const storage = browser.storage.sync || browser.storage.local;
 
@@ -31,15 +28,24 @@ async function getSidebarPosition() {
 async function getMainViewPosition() {
   try {
     let prefs = await storage.get({ mainViewPosition: "bottom" });
-    let pos = prefs.mainViewPosition;
-    if (pos === "left") {
-      return "right";
-    }
-    return pos;
+    return prefs.mainViewPosition;
   } catch (e) {
     return "bottom";
   }
 }
+
+// Migration (v2.2.0) : la position « left » en vue principale a été retirée.
+// La valeur stockée est convertie une fois pour toutes — fin du remap silencieux.
+const prefsMigrated = (async () => {
+  try {
+    let prefs = await storage.get({ mainViewPosition: "bottom" });
+    if (prefs.mainViewPosition === "left") {
+      await storage.set({ mainViewPosition: "right" });
+    }
+  } catch (e) {
+    // storage indisponible : rien à migrer
+  }
+})();
 
 async function getThreadOrder() {
   try {
@@ -101,8 +107,10 @@ browser.tabs.onRemoved.addListener((tabId) => {
 });
 
 async function showThreadForMessage(tab, message) {
+  // S'assurer que la migration des préférences est terminée avant toute lecture
+  // (le schéma de showBanner n'accepte plus la valeur héritée "left").
+  await prefsMigrated;
   const requestId = nextRequestId(tab.id);
-  console.log("Magic Threads: Message affiché, ID:", message.id, "tab:", tab.id);
 
   // Requête Gloda et lecture des préférences en parallèle :
   // plus aucun await entre le contrôle de fraîcheur et showBanner.
@@ -117,11 +125,8 @@ async function showThreadForMessage(tab, message) {
   // Vérifier que la requête est toujours d'actualité pour CET onglet
   // (pas de clic rapide ni de masquage entre-temps)
   if (requestId !== tabRequestIds.get(tab.id)) {
-    console.log("Magic Threads: Requête obsolète ignorée, requestId:", requestId);
     return;
   }
-
-  console.log("Magic Threads: Fil récupéré, taille:", threadData ? threadData.length : 0);
 
   // Message orphelin → masquer
   if (!threadData || threadData.length <= 1) {
@@ -140,12 +145,12 @@ async function showThreadForMessage(tab, message) {
 
   await browser.magicThreadsWindow.showBanner(
     tab.id,
-    JSON.stringify(threadData),
+    threadData,
     message.id,
     navMode,
     sidebarPos,
     mainViewPos,
-    JSON.stringify(labels)
+    labels
   );
 }
 
@@ -166,7 +171,7 @@ browser.mailTabs.onSelectedMessagesChanged.addListener(async (tab, messageList) 
     }
     await showThreadForMessage(tab, messageList.messages[0]);
   } catch (e) {
-    console.error("Magic Threads: Erreur dans onSelectedMessagesChanged:", e);
+    console.error("Magic Threads: error in onSelectedMessagesChanged:", e);
   }
 });
 
@@ -179,17 +184,16 @@ browser.messageDisplay.onMessageDisplayed.addListener(async (tab, message) => {
     }
     await showThreadForMessage(tab, message);
   } catch (e) {
-    console.error("Magic Threads: Erreur dans onMessageDisplayed:", e);
+    console.error("Magic Threads: error in onMessageDisplayed:", e);
   }
 });
 
 // ---- Écouteur de clics sur les éléments du fil ----
 browser.magicThreadsWindow.onBannerItemClicked.addListener(async (messageId, mode) => {
-  console.log("Magic Threads: Clic sur message ID:", messageId, "mode:", mode);
   try {
     await handleOpenMessage(messageId, mode);
   } catch (e) {
-    console.error("Magic Threads: Erreur de navigation:", e);
+    console.error("Magic Threads: navigation error:", e);
   }
 });
 
@@ -201,12 +205,11 @@ async function handleOpenMessage(messageId, mode) {
 
   // Dans un onglet message : utiliser l'API Experiment pour naviguer dans le même onglet
   if (isInMessageTab) {
-    console.log("Magic Threads: Navigation dans onglet message →", activeTab.id);
     try {
       let success = await browser.magicThreadsWindow.navigateMessageTab(activeTab.id, messageId);
       if (success) return;
     } catch (e) {
-      console.warn("Magic Threads: Fallback ouverture nouvel onglet:", e);
+      console.warn("Magic Threads: falling back to a new tab:", e);
     }
     // Fallback
     await browser.messageDisplay.open({ messageId, active: true });
@@ -221,7 +224,6 @@ async function handleOpenMessage(messageId, mode) {
   // Mode "currentTab" : naviguer dans le 3-pane
   let mailTabs = await browser.mailTabs.query({ currentWindow: true });
   if (!mailTabs || mailTabs.length === 0) {
-    console.log("Magic Threads: Pas de 3-pane, fallback ouverture en nouvel onglet.");
     await browser.messageDisplay.open({ messageId, active: true });
     return;
   }
@@ -229,7 +231,7 @@ async function handleOpenMessage(messageId, mode) {
   let mailTab = mailTabs[0];
   let targetMsg = await browser.messages.get(messageId);
   if (!targetMsg) {
-    throw new Error("E-mail cible introuvable.");
+    throw new Error("Target message not found.");
   }
 
   let folderId = targetMsg.folder.id || targetMsg.folder;
@@ -239,4 +241,3 @@ async function handleOpenMessage(messageId, mode) {
   await browser.mailTabs.setSelectedMessages(mailTab.id, [messageId]);
 }
 
-console.log(`Magic Threads v${extVersion}: Script d'arrière-plan initialisé avec succès.`);

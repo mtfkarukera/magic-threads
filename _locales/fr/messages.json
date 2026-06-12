@@ -137,14 +137,6 @@
     "message": "Le fil s'affiche en panneau latéral à droite du message, avec une poignée de redimensionnement horizontale.",
     "description": "Description for right sidebar in main view"
   },
-  "optMainViewLeft": {
-    "message": "Panneau à gauche du message",
-    "description": "Label for left sidebar in main view"
-  },
-  "optMainViewLeftDesc": {
-    "message": "Le fil s'affiche en panneau latéral à gauche du message, avec une poignée de redimensionnement horizontale.",
-    "description": "Description for left sidebar in main view"
-  },
   "optStatusSaved": {
     "message": "Préférences enregistrées avec succès.",
     "description": "Status message shown after saving preferences"

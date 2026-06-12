@@ -5,6 +5,25 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.2.0] - 2026-06-12
+
+Durcissement sécurité et nettoyages issus de la phase 2 du [plan d'action](PLAN_ACTION.md).
+
+### Sécurité
+- **Schémas Experiment strictement typés** : `showBanner` reçoit désormais des structures validées par le schéma WebExtension (tableau de messages à propriétés typées, objet de libellés à clés énumérées, `additionalProperties: false`, `enum` sur les modes et positions) au lieu de chaînes JSON opaques (`JSON.parse` supprimé du contexte chrome). Défense en profondeur à la frontière privilégiée.
+
+### Corrigé
+- **Nettoyage à la désactivation** : `onShutdown` couvre désormais toutes les fenêtres, y compris les fenêtres message autonomes (`mail:messageWindow`), et restaure `position` sur le `messagePane` (style résiduel).
+- **Changement de position du panneau en onglet message** : le panneau latéral est recréé du bon côté si la préférence change pendant que l'onglet est ouvert (avant : panneau d'un côté, marge de l'autre).
+- **Navigation en onglet message** : le nouvel onglet est ouvert avant la fermeture de l'ancien — plus de perte d'onglet si l'ouverture échoue.
+- **Message sans date** : classé en fin de fil (epoch) au lieu de prendre la première place avec la date courante.
+
+### Modifié
+- **Redimensionnement en Pointer Events** avec capture (`setPointerCapture`) : plus de listeners orphelins sur le document si le panneau est reconstruit pendant un glisser, relâchement hors fenêtre géré, support tactile (`touch-action: none`).
+- **Option « panneau à gauche » en vue principale définitivement retirée** : la valeur stockée `left` est migrée vers `right` au démarrage (fin du remap silencieux qui rendait la page d'options mensongère), code mort et clés i18n `optMainViewLeft*` supprimés des 7 locales.
+- **Logs** : suppression des `console.log` de routine ; les `warn`/`error` conservés sont en anglais.
+- **Qualité** : flag pièce jointe via `Ci.nsMsgMessageFlags.Attachment` (au lieu de `0x10000000` en dur), bornes de redimensionnement en constantes nommées, snippet à 700 caractères pleins (off-by-one).
+
 ## [2.1.2] - 2026-06-12
 
 Correctifs issus de la phase 1 du [plan d'action](PLAN_ACTION.md) (audit du 12 juin 2026).

@@ -72,7 +72,7 @@ var convGloda = class extends ExtensionCommon.ExtensionAPI {
 function getGlodaMessages(msgHdrs) {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
-      console.warn("Magic Threads: Gloda timeout — résolution avec tableau vide.");
+      console.warn("Magic Threads: Gloda timeout — resolving with empty array.");
       resolve([]);
     }, kGlodaTimeoutMs);
     try {
@@ -101,7 +101,7 @@ function getGlodaMessages(msgHdrs) {
 function getConversationMessages(conversation) {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
-      console.warn("Magic Threads: Gloda conversation timeout — résolution avec tableau vide.");
+      console.warn("Magic Threads: Gloda conversation timeout — resolving with empty array.");
       resolve([]);
     }, kGlodaTimeoutMs);
     try {
@@ -127,11 +127,13 @@ function getConversationMessages(conversation) {
 /**
  * Normalise un timestamp depuis un nsIMsgDBHdr.
  * dateInSeconds retourne des secondes, date retourne des microsecondes.
+ * Un message sans date retourne 0 (epoch) : il se classe en fin de fil
+ * au lieu d'usurper la première place avec Date.now().
  */
 function normalizeDate(msgHdr) {
   if (msgHdr.dateInSeconds) return msgHdr.dateInSeconds * 1000;
   if (msgHdr.date) return Math.floor(msgHdr.date / 1000);
-  return Date.now();
+  return 0;
 }
 
 function translateGlodaMessage(context, msg) {
@@ -152,9 +154,9 @@ function translateGlodaMessage(context, msg) {
       path: message.folder.path,
       type: message.folder.type
     } : { accountId: "", path: "?", type: "" },
-    snippet: msg.indexedBodyText?.substring(0, kSnippetLength - 1) || "...",
+    snippet: msg.indexedBodyText?.substring(0, kSnippetLength) || "...",
     isRead: message.read,
-    hasAttachments: !!(msg.folderMessage.flags & 0x10000000),
+    hasAttachments: !!(msg.folderMessage.flags & Ci.nsMsgMessageFlags.Attachment),
     tags: message.tags || []
   };
 }
@@ -174,7 +176,7 @@ function translateStandardMessage(context, msgHdr) {
     } : { accountId: "", path: "?", type: "" },
     snippet: "...",
     isRead: message.read,
-    hasAttachments: !!(msgHdr.flags & 0x10000000),
+    hasAttachments: !!(msgHdr.flags & Ci.nsMsgMessageFlags.Attachment),
     tags: message.tags || []
   };
 }

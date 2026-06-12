@@ -137,14 +137,6 @@
     "message": "O tópico é exibido em um painel lateral à direita da mensagem, com uma alça de redimensionamento horizontal.",
     "description": "Description for right sidebar in main view"
   },
-  "optMainViewLeft": {
-    "message": "Painel à esquerda da mensagem",
-    "description": "Label for left sidebar in main view"
-  },
-  "optMainViewLeftDesc": {
-    "message": "O tópico é exibido em um painel lateral à esquerda da mensagem, com uma alça de redimensionamento horizontal.",
-    "description": "Description for left sidebar in main view"
-  },
   "optStatusSaved": {
     "message": "Preferências salvas com sucesso.",
     "description": "Status message shown after saving preferences"

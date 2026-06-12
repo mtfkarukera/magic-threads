@@ -15,16 +15,17 @@
  * Toutes les chaînes d'interface passent par le paramètre `labels` (i18n).
  */
 
+// Bornes de redimensionnement du panneau
+const BOTTOM_MIN_HEIGHT = 44;
+const BOTTOM_MAX_HEIGHT = 600;
+const SIDEBAR_MIN_WIDTH = 150;
+const SIDEBAR_MAX_WIDTH = 600;
+
 /**
  * Nettoie les styles appliqués par injectSide3Pane (position:absolute + margin).
  * Cette fonction est au niveau du module pour être accessible par getAPI() et onShutdown().
  */
 function cleanupSidebar3PaneContainer(container, contentDoc) {
-  // Déconnecter le ResizeObserver si présent (legacy)
-  if (container._resizeObserver) {
-    container._resizeObserver.disconnect();
-    delete container._resizeObserver;
-  }
   // Restaurer les marges du messageBrowser
   let msgBrowserId = container.dataset.msgBrowserId;
   let msgBrowser = msgBrowserId ? contentDoc.getElementById(msgBrowserId) : contentDoc.getElementById("messageBrowser");
@@ -32,6 +33,109 @@ function cleanupSidebar3PaneContainer(container, contentDoc) {
     msgBrowser.style.marginLeft = "";
     msgBrowser.style.marginRight = "";
   }
+}
+
+/**
+ * Retire le conteneur Magic Threads d'un document de contenu (about:3pane ou
+ * about:message) et restaure tous les styles natifs modifiés.
+ * Utilisé par onShutdown pour tous les types de fenêtres.
+ */
+function cleanupInjectedDoc(contentDoc) {
+  let container = contentDoc.getElementById("magic-threads-container");
+  if (!container) return;
+  // Sidebar onglet message : restaurer les paddings du body
+  if (container.dataset.layoutContext === "messageTab") {
+    let body = contentDoc.body || contentDoc.documentElement;
+    if (body) {
+      body.style.paddingLeft = "";
+      body.style.paddingRight = "";
+      body.style.boxSizing = "";
+    }
+  }
+  // Sidebar 3-pane : restaurer marges du messageBrowser et position du messagePane
+  if (container.dataset.layoutMode === "sidebar3pane") {
+    cleanupSidebar3PaneContainer(container, contentDoc);
+    let messagePane = contentDoc.getElementById("messagePane");
+    if (messagePane) {
+      messagePane.style.position = "";
+    }
+  }
+  container.remove();
+}
+
+/**
+ * Attache le comportement de redimensionnement à une poignée, en Pointer Events
+ * avec capture : les événements suivent la poignée même hors de la fenêtre, et
+ * aucun listener n'est posé sur le document (pas de listener orphelin si le
+ * panneau est reconstruit pendant un glisser).
+ * @param {Element} handle - La poignée de redimensionnement.
+ * @param {string} axis - "y" (panneau bottom) ou "x" (sidebar).
+ * @param {ShadowRoot} shadowRoot - Le shadow root du panneau.
+ * @param {string} sidebarPosition - "left" ou "right" (axe x uniquement).
+ */
+function attachResizeBehavior(handle, axis, shadowRoot, sidebarPosition) {
+  let hostEl = shadowRoot.host;
+
+  handle.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    let startPos = axis === "y" ? e.screenY : e.screenX;
+    let startSize = axis === "y" ? hostEl.offsetHeight : hostEl.offsetWidth;
+    handle.setPointerCapture(e.pointerId);
+
+    function onPointerMove(ev) {
+      if (axis === "y") {
+        // Panneau bottom : glisser vers le haut = agrandir
+        let delta = startPos - ev.screenY;
+        let newHeight = Math.max(BOTTOM_MIN_HEIGHT, Math.min(startSize + delta, BOTTOM_MAX_HEIGHT));
+        hostEl.style.height = newHeight + "px";
+        return;
+      }
+
+      // Sidebar : le sens dépend du côté
+      let delta = sidebarPosition === "right" ? startPos - ev.screenX : ev.screenX - startPos;
+      let newWidth = Math.max(SIDEBAR_MIN_WIDTH, Math.min(startSize + delta, SIDEBAR_MAX_WIDTH));
+      hostEl.style.width = newWidth + "px";
+
+      // Répercuter la largeur sur le document hôte (padding du body ou marge du messageBrowser)
+      let contentDoc = hostEl.ownerDocument;
+      if (hostEl.dataset.layoutContext === "messageTab") {
+        let body = contentDoc.body || contentDoc.documentElement;
+        if (sidebarPosition === "left") {
+          body.style.paddingLeft = newWidth + "px";
+        } else {
+          body.style.paddingRight = newWidth + "px";
+        }
+      } else if (hostEl.dataset.layoutMode === "sidebar3pane") {
+        let msgBrowserId = hostEl.dataset.msgBrowserId;
+        let msgBrowser = msgBrowserId ? contentDoc.getElementById(msgBrowserId) : null;
+        if (msgBrowser) {
+          if (sidebarPosition === "left") {
+            msgBrowser.style.marginLeft = newWidth + "px";
+          } else {
+            msgBrowser.style.marginRight = newWidth + "px";
+          }
+        }
+      }
+    }
+
+    function onPointerEnd(ev) {
+      handle.removeEventListener("pointermove", onPointerMove);
+      handle.removeEventListener("pointerup", onPointerEnd);
+      handle.removeEventListener("pointercancel", onPointerEnd);
+      try {
+        handle.releasePointerCapture(ev.pointerId);
+      } catch (err) {
+        // Capture déjà relâchée (ex. poignée retirée du DOM pendant le glisser)
+      }
+    }
+
+    handle.addEventListener("pointermove", onPointerMove);
+    handle.addEventListener("pointerup", onPointerEnd);
+    handle.addEventListener("pointercancel", onPointerEnd);
+  });
 }
 
 /* exported magicThreadsWindow */
@@ -76,7 +180,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           modeName
         };
       } catch (e) {
-        console.error("Magic Threads: Erreur getTabInfo:", e);
+        console.error("Magic Threads: getTabInfo error:", e);
         return null;
       }
     }
@@ -96,8 +200,6 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       if (multiMsgBrowser && multiMsgBrowser.parentElement) return multiMsgBrowser.parentElement;
       return null;
     }
-
-
 
     // =================================================================
     // CSS — Shared
@@ -343,6 +445,9 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           opacity: 0.7;
           transition: opacity 0.2s, background-color 0.2s;
         }
+        .resize-handle {
+          touch-action: none;
+        }
         .resize-handle:hover {
           opacity: 1;
           background-color: var(--card-hover-bg);
@@ -378,6 +483,9 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           background-position: center;
           opacity: 0.7;
           transition: opacity 0.2s, background-color 0.2s;
+        }
+        .resize-handle {
+          touch-action: none;
         }
         .resize-handle:hover {
           opacity: 1;
@@ -483,38 +591,8 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         let resizeHandle = doc.createElement("div");
         resizeHandle.className = "resize-handle";
         resizeHandle.title = labels.tooltipResize;
+        attachResizeBehavior(resizeHandle, "y", shadowRoot, sidebarPosition);
         shadowRoot.appendChild(resizeHandle);
-
-        let isResizing = false;
-        let startY = 0;
-        let startHeight = 0;
-        let hostEl = shadowRoot.host;
-
-        resizeHandle.addEventListener("mousedown", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          isResizing = true;
-          startY = e.screenY;
-          startHeight = hostEl.offsetHeight;
-
-          let topDoc = hostEl.ownerDocument;
-
-          function onMouseMove(ev) {
-            if (!isResizing) return;
-            let delta = startY - ev.screenY;
-            let newHeight = Math.max(44, Math.min(startHeight + delta, 600));
-            hostEl.style.height = newHeight + "px";
-          }
-
-          function onMouseUp() {
-            isResizing = false;
-            topDoc.removeEventListener("mousemove", onMouseMove);
-            topDoc.removeEventListener("mouseup", onMouseUp);
-          }
-
-          topDoc.addEventListener("mousemove", onMouseMove);
-          topDoc.addEventListener("mouseup", onMouseUp);
-        });
       }
 
       if (layoutMode === "sidebar") {
@@ -522,64 +600,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         let resizeHandle = doc.createElement("div");
         resizeHandle.className = "resize-handle";
         resizeHandle.title = labels.tooltipResize;
-
-        let hostEl = shadowRoot.host;
-        let isResizing = false;
-        let startX = 0;
-        let startWidth = 0;
-
-        resizeHandle.addEventListener("mousedown", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          isResizing = true;
-          startX = e.screenX;
-          startWidth = hostEl.offsetWidth;
-
-          let topDoc = hostEl.ownerDocument;
-
-          function onMouseMove(ev) {
-            if (!isResizing) return;
-            let delta;
-            if (sidebarPosition === "right") {
-              delta = startX - ev.screenX;
-            } else {
-              delta = ev.screenX - startX;
-            }
-            let newWidth = Math.max(150, Math.min(startWidth + delta, 600));
-            hostEl.style.width = newWidth + "px";
-
-            // Mettre à jour le padding/margin du body ou du parent
-            let bodyOrParent = hostEl.parentElement;
-            if (hostEl.dataset.layoutContext === "messageTab") {
-              // Mode onglet message : mettre à jour le padding du body
-              if (sidebarPosition === "left") {
-                bodyOrParent.style.paddingLeft = newWidth + "px";
-              } else {
-                bodyOrParent.style.paddingRight = newWidth + "px";
-              }
-            } else if (hostEl.dataset.layoutMode === "sidebar3pane") {
-              // Mode 3-pane sidebar : mettre à jour la marge du messageBrowser
-              let msgBrowserId = hostEl.dataset.msgBrowserId;
-              let msgBrowser = msgBrowserId ? hostEl.ownerDocument.getElementById(msgBrowserId) : null;
-              if (msgBrowser) {
-                if (sidebarPosition === "left") {
-                  msgBrowser.style.marginLeft = newWidth + "px";
-                } else {
-                  msgBrowser.style.marginRight = newWidth + "px";
-                }
-              }
-            }
-          }
-
-          function onMouseUp() {
-            isResizing = false;
-            topDoc.removeEventListener("mousemove", onMouseMove);
-            topDoc.removeEventListener("mouseup", onMouseUp);
-          }
-
-          topDoc.addEventListener("mousemove", onMouseMove);
-          topDoc.addEventListener("mouseup", onMouseUp);
-        });
+        attachResizeBehavior(resizeHandle, "x", shadowRoot, sidebarPosition);
 
         // La poignée est placée du côté intérieur du sidebar
         if (sidebarPosition === "left") {
@@ -736,20 +757,16 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
     function injectBottom(contentDoc, threadData, currentMessageId, navigationMode, labels) {
       let container = contentDoc.getElementById("magic-threads-container");
 
-      // Si un ancien conteneur d'un autre mode existe, le retirer
+      // Si un ancien conteneur d'un autre mode existe : restaurer les styles natifs et retirer
       if (container && container.dataset.layoutMode !== "bottom") {
-        // Restaurer si c'était un sidebar 3-pane
-        if (container.dataset.layoutMode === "sidebar3pane") {
-          cleanupSidebar3PaneContainer(container, contentDoc);
-        }
-        container.remove();
+        cleanupInjectedDoc(contentDoc);
         container = null;
       }
 
       if (!container) {
         let parent = findMessagePaneParent(contentDoc);
         if (!parent) {
-          console.error("Magic Threads: Aucun conteneur parent trouvé dans about:3pane");
+          console.error("Magic Threads: no parent container found in about:3pane");
           return false;
         }
         container = contentDoc.createElement("div");
@@ -758,7 +775,6 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         container.dataset.layoutMode = "bottom";
         parent.appendChild(container);
         container.attachShadow({ mode: "open" });
-        console.log("Magic Threads: Conteneur bottom créé dans:", parent.id || parent.tagName);
       }
       container.style.display = "flex";
       container.removeAttribute("hidden");
@@ -774,34 +790,29 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
     function injectSide3Pane(contentDoc, threadData, currentMessageId, navigationMode, sidePosition, labels) {
       let container = contentDoc.getElementById("magic-threads-container");
 
-      if (container && container.dataset.layoutMode !== "sidebar3pane") {
-        // Un ancien conteneur bottom existe → le retirer
-        container.remove();
+      // Ancien conteneur d'un autre mode, ou position changée : nettoyer et recréer
+      if (container && (container.dataset.layoutMode !== "sidebar3pane" ||
+                        container.dataset.sidebarPosition !== sidePosition)) {
+        cleanupInjectedDoc(contentDoc);
         container = null;
       }
 
-      // Si le conteneur existe mais la position a changé, le supprimer pour recréer
-      if (container && container.dataset.sidebarPosition !== sidePosition) {
-        cleanupSidebar3PaneContainer(container, contentDoc);
-        container.remove();
-        container = null;
+      // Le messagePane est un custom element <message-pane> en display:flex flex-direction:column
+      // avec overflow:auto et grid-area:message. C'est un containing block.
+      let messagePane = contentDoc.getElementById("messagePane");
+      if (!messagePane) {
+        console.error("Magic Threads: messagePane not found in about:3pane");
+        return false;
+      }
+
+      // S'assurer que messagePane est un containing block pour position:absolute.
+      // Ré-affirmé à chaque affichage : TB peut réinitialiser les styles, et le
+      // nettoyage (onShutdown/cleanupInjectedDoc) restaure position à "".
+      if (!messagePane.style.position) {
+        messagePane.style.position = "relative";
       }
 
       if (!container) {
-        // Le messagePane est un custom element <message-pane> en display:flex flex-direction:column
-        // avec overflow:auto et grid-area:message. C'est un containing block.
-        let messagePane = contentDoc.getElementById("messagePane");
-        if (!messagePane) {
-          console.error("Magic Threads: messagePane introuvable dans about:3pane");
-          return false;
-        }
-
-        // S'assurer que messagePane est un containing block pour position:absolute
-        // (overflow:auto le rend déjà, mais position:relative est plus explicite)
-        if (!messagePane.style.position) {
-          messagePane.style.position = "relative";
-        }
-
         let sideWidth = 300;
 
         container = contentDoc.createElement("div");
@@ -837,7 +848,6 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
 
         messagePane.appendChild(container);
         container.attachShadow({ mode: "open" });
-        console.log("Magic Threads: Sidebar 3-pane créé (absolute dans messagePane), position:", sidePosition);
       }
 
       // S'assurer que le messageBrowser a la marge correcte par rapport à la taille actuelle du conteneur,
@@ -870,6 +880,13 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       let container = contentDoc.getElementById("magic-threads-container");
       let body = contentDoc.body || contentDoc.documentElement;
 
+      // Si la préférence de position a changé pendant que l'onglet est ouvert :
+      // restaurer le padding de l'ancien côté et recréer le conteneur
+      if (container && container.dataset.sidebarPosition !== sidebarPosition) {
+        cleanupInjectedDoc(contentDoc);
+        container = null;
+      }
+
       if (!container) {
         container = contentDoc.createElement("div");
         container.id = "magic-threads-container";
@@ -892,7 +909,6 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
 
         body.appendChild(container);
         container.attachShadow({ mode: "open" });
-        console.log("Magic Threads: Sidebar créé, position:", sidebarPosition);
       }
 
       // S'assurer que le body a le padding correct par rapport à la taille actuelle du conteneur
@@ -920,55 +936,40 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
 
     return {
       magicThreadsWindow: {
-        async showBanner(tabId, threadDataJSON, currentMessageId, navigationMode, sidebarPosition, mainViewPosition, labelsJSON) {
+        async showBanner(tabId, threadData, currentMessageId, navigationMode, sidebarPosition, mainViewPosition, labels) {
           try {
             let tabInfo = getTabInfo(tabId);
             if (!tabInfo) {
-              console.warn("Magic Threads: contentWindow non disponible pour tabId:", tabId);
+              console.warn("Magic Threads: contentWindow unavailable for tab:", tabId);
               return;
             }
 
             let contentDoc = tabInfo.contentWin.document;
-            let threadData = JSON.parse(threadDataJSON);
+            // Les types et formes sont garantis par le schéma (magicThreadsWindowSchema.json)
             if (!Array.isArray(threadData) || threadData.length === 0) return;
-            let labels;
-            try {
-              labels = labelsJSON ? JSON.parse(labelsJSON) : DEFAULT_LABELS;
-            } catch (e) {
-              labels = DEFAULT_LABELS;
-            }
             // Fusionner avec les valeurs par défaut pour les clés manquantes
-            labels = Object.assign({}, DEFAULT_LABELS, labels);
+            labels = Object.assign({}, DEFAULT_LABELS, labels || {});
 
             let success = false;
 
             if (tabInfo.isMessageTab) {
               // Onglet message → sidebar avec position fixe
               success = injectSidebar(contentDoc, threadData, currentMessageId, navigationMode, sidebarPosition || "right", labels);
-              if (success) {
-                console.log("Magic Threads: Sidebar affiché avec", threadData.length, "messages.");
-              }
             } else {
-              // 3-pane → selon mainViewPosition
+              // 3-pane → selon mainViewPosition (le schéma garantit "bottom" ou "right")
               let mvp = mainViewPosition || "bottom";
-              if (mvp === "left" || mvp === "right") {
+              if (mvp === "right") {
                 success = injectSide3Pane(contentDoc, threadData, currentMessageId, navigationMode, mvp, labels);
-                if (success) {
-                  console.log("Magic Threads: Sidebar 3-pane affiché avec", threadData.length, "messages.");
-                }
               } else {
                 success = injectBottom(contentDoc, threadData, currentMessageId, navigationMode, labels);
-                if (success) {
-                  console.log("Magic Threads: Bannière bottom affichée avec", threadData.length, "messages.");
-                }
               }
             }
 
             if (!success) {
-              console.error("Magic Threads: Échec injection pour tabId:", tabId, "mode:", tabInfo.modeName);
+              console.error("Magic Threads: injection failed for tab:", tabId, "mode:", tabInfo.modeName);
             }
           } catch (e) {
-            console.error("Magic Threads: Erreur showBanner:", e);
+            console.error("Magic Threads: showBanner error:", e);
           }
         },
 
@@ -1007,43 +1008,46 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           try {
             let tabObject = context.extension.tabManager.get(tabId);
             if (!tabObject || !tabObject.nativeTab) {
-              console.warn("Magic Threads: Tab introuvable pour navigateMessageTab:", tabId);
+              console.warn("Magic Threads: tab not found for navigateMessageTab:", tabId);
               return false;
             }
 
             let msgHdr = context.extension.messageManager.get(messageId);
             if (!msgHdr) {
-              console.warn("Magic Threads: Message introuvable:", messageId);
+              console.warn("Magic Threads: message not found:", messageId);
               return false;
             }
 
             let chromeBrowser = tabObject.nativeTab.chromeBrowser;
             if (!chromeBrowser) {
-              console.warn("Magic Threads: Pas de chromeBrowser.");
+              console.warn("Magic Threads: no chromeBrowser.");
               return false;
             }
 
             let win = chromeBrowser.ownerGlobal;
             let tabmail = win.document.getElementById("tabmail");
             if (!tabmail) {
-              console.warn("Magic Threads: tabmail introuvable.");
+              console.warn("Magic Threads: tabmail not found.");
               return false;
             }
 
             let msgURI = msgHdr.folder.getUriForMsg(msgHdr);
             if (!msgURI) {
-              console.warn("Magic Threads: URI de message invalide");
+              console.warn("Magic Threads: invalid message URI");
               return false;
             }
-            tabmail.closeTab(tabObject.nativeTab);
+            // Ouvrir AVANT de fermer : si openTab échoue, l'onglet de
+            // l'utilisateur n'est pas perdu (l'exception déclenche le fallback).
+            let nativeTab = tabObject.nativeTab;
             tabmail.openTab("mailMessageTab", {
               messageURI: msgURI,
               background: false
             });
+            tabmail.closeTab(nativeTab);
 
             return true;
           } catch (e) {
-            console.error("Magic Threads: Erreur navigateMessageTab:", e);
+            console.error("Magic Threads: navigateMessageTab error:", e);
             return false;
           }
         },
@@ -1069,42 +1073,38 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
   onShutdown(isAppShutdown) {
     if (isAppShutdown) return;
     try {
-      for (let window of Services.wm.getEnumerator("mail:3pane")) {
+      // Énumérer TOUTES les fenêtres (3-pane ET fenêtres message autonomes mail:messageWindow)
+      for (let window of Services.wm.getEnumerator(null)) {
         try {
-          let contentDoc = window.document;
-          // Nettoyer dans le document 3-pane principal
-          let container = contentDoc.getElementById("magic-threads-container");
-          if (container) {
-            // Restaurer les marges si nécessaire
-            if (container.dataset.layoutMode === "sidebar3pane") {
-              cleanupSidebar3PaneContainer(container, contentDoc);
-            }
-            container.remove();
-          }
-          // Nettoyer dans les onglets message ouverts
-          let tabmail = contentDoc.getElementById("tabmail");
+          let doc = window.document;
+          let contentDocs = [];
+
+          // Fenêtres principales : parcourir les onglets de tabmail
+          // (couvre about:3pane et les onglets message about:message)
+          let tabmail = doc.getElementById("tabmail");
           if (tabmail) {
             for (let tab of tabmail.tabInfo) {
-              try {
-                let chromeBrowser = tab.chromeBrowser;
-                if (chromeBrowser && chromeBrowser.contentDocument) {
-                  let tabContainer = chromeBrowser.contentDocument.getElementById("magic-threads-container");
-                  if (tabContainer) {
-                    // Restaurer les paddings du body
-                    if (tabContainer.dataset.sidebarPosition) {
-                      let body = chromeBrowser.contentDocument.body;
-                      if (body) {
-                        body.style.paddingLeft = "";
-                        body.style.paddingRight = "";
-                        body.style.boxSizing = "";
-                      }
-                    }
-                    tabContainer.remove();
-                  }
-                }
-              } catch (e) {
-                // Ignorer les erreurs par onglet
+              let chromeBrowser = tab.chromeBrowser;
+              if (chromeBrowser && chromeBrowser.contentDocument) {
+                contentDocs.push(chromeBrowser.contentDocument);
               }
+            }
+          }
+
+          // Fenêtres message autonomes : le browser héberge directement about:message
+          let msgBrowser = doc.getElementById("messageBrowser");
+          if (msgBrowser && msgBrowser.contentDocument) {
+            contentDocs.push(msgBrowser.contentDocument);
+          }
+
+          // Défense en profondeur : le document de la fenêtre elle-même
+          contentDocs.push(doc);
+
+          for (let contentDoc of contentDocs) {
+            try {
+              cleanupInjectedDoc(contentDoc);
+            } catch (e) {
+              // Ignorer les erreurs par document
             }
           }
         } catch (e) {
@@ -1112,7 +1112,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         }
       }
     } catch (e) {
-      console.error("Magic Threads: Erreur lors du nettoyage onShutdown:", e);
+      console.error("Magic Threads: onShutdown cleanup error:", e);
     }
   }
 };
