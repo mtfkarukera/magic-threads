@@ -45,7 +45,7 @@ Accéder aux options via **Modules complémentaires** → **Magic Threads** → 
 | Ordre de tri | Sens d'affichage des messages du fil | Antichronologique (plus récent en haut) [Défaut] / Chronologique (plus ancien en haut) |
 
 > [!NOTE]
-> **Comportement des onglets ouverts :** Les onglets de message déjà ouverts conservent la disposition appliquée lors de leur ouverture. Un changement de préférence ne s'applique qu'aux nouveaux messages affichés. Pour appliquer immédiatement les nouvelles préférences, fermez et ré-ouvrez l'onglet.
+> **Comportement des onglets ouverts :** Un changement de préférence est appliqué au prochain affichage de message — y compris dans les onglets déjà ouverts (depuis la v2.2.0, le panneau se repositionne du bon côté au message suivant).
 
 ## Langues supportées
 
