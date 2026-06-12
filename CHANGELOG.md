@@ -5,6 +5,11 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.2.2] - 2026-06-13
+
+### Corrigé
+- **Compteur de fil dépendant du point d'entrée** : les en-têtes `References` ne pointant que vers les ancêtres, la réunification 2.2.1 pouvait rester partielle selon le message cliqué (17 vs 63 sur le même fil, typiquement depuis un transfert dans Envoyés). Le fil local `nsIMsgThread` est désormais absorbé pour **chaque** message ramené — et non plus seulement pour le message cliqué — ce qui relie les branches dans les deux sens (ancêtres ET descendants). Passes d'expansion portées de 3 à 4.
+
 ## [2.2.1] - 2026-06-13
 
 ### Corrigé

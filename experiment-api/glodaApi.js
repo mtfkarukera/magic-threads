@@ -15,7 +15,7 @@ const kSnippetLength = 700;
 const kGlodaTimeoutMs = 10000;
 // Bornes de la réunification des conversations fragmentées (v2.2.1) :
 // nombre de passes d'expansion, taille des requêtes, taille maximale du fil.
-const kMaxMergeRounds = 3;
+const kMaxMergeRounds = 4;
 const kMaxIdsPerQuery = 100;
 const kMaxThreadMessages = 500;
 
@@ -98,6 +98,11 @@ async function resolveFullThread(msgHdr) {
     if (existing && existing.glodaMsg) return false;
     byHeaderId.set(hid, { glodaMsg: m, msgHdr: m.folderMessage });
     if (m.conversation) knownConvIds.add(m.conversation.id);
+    // Pont BIDIRECTIONNEL : les References ne pointent que vers les ancêtres,
+    // mais le fil local du dossier relie aussi les descendants. L'absorber
+    // pour CHAQUE message (et pas seulement le message cliqué) rend le
+    // résultat indépendant du point d'entrée dans le fil.
+    if (!existing) absorbLocalThread(m.folderMessage);
     return !existing;
   }
 
@@ -159,10 +164,7 @@ async function resolveFullThread(msgHdr) {
         for (let conv of newConvs) {
           let members = await getConversationMessages(conv);
           for (let m of members) {
-            if (addGloda(m)) {
-              grew = true;
-              absorbLocalThread(m.folderMessage);
-            }
+            if (addGloda(m)) grew = true;
           }
         }
       } catch (e) {
@@ -199,10 +201,7 @@ async function resolveFullThread(msgHdr) {
         for (let conv of newConvs) {
           let members = await getConversationMessages(conv);
           for (let m of members) {
-            if (addGloda(m)) {
-              grew = true;
-              absorbLocalThread(m.folderMessage);
-            }
+            if (addGloda(m)) grew = true;
           }
         }
       } catch (e) {
