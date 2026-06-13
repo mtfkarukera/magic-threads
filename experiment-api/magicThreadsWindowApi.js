@@ -22,233 +22,14 @@ const SIDEBAR_MIN_WIDTH = 150;
 const SIDEBAR_MAX_WIDTH = 600;
 // Pas de redimensionnement au clavier (flèches sur la poignée)
 const KEYBOARD_RESIZE_STEP = 16;
+// Tailles par défaut des panneaux (px) et z-index d'empilement.
+const SIDEBAR_DEFAULT_WIDTH = 300;
+const BOTTOM_DEFAULT_HEIGHT = 250;
+const PANEL_Z_INDEX = 100;
 
-/**
- * Nettoie les styles appliqués par injectSide3Pane (position:absolute + margin).
- * Cette fonction est au niveau du module pour être accessible par getAPI() et onShutdown().
- */
-function cleanupSidebar3PaneContainer(container, contentDoc) {
-  // Restaurer les marges du messageBrowser
-  let msgBrowserId = container.dataset.msgBrowserId;
-  let msgBrowser = msgBrowserId ? contentDoc.getElementById(msgBrowserId) : contentDoc.getElementById("messageBrowser");
-  if (msgBrowser) {
-    msgBrowser.style.marginLeft = "";
-    msgBrowser.style.marginRight = "";
-  }
-}
-
-/**
- * Retire le conteneur Magic Threads d'un document de contenu (about:3pane ou
- * about:message) et restaure tous les styles natifs modifiés.
- * Utilisé par onShutdown pour tous les types de fenêtres.
- */
-function cleanupInjectedDoc(contentDoc) {
-  let container = contentDoc.getElementById("magic-threads-container");
-  if (!container) return;
-  // Sidebar onglet message : restaurer les paddings du body
-  if (container.dataset.layoutContext === "messageTab") {
-    let body = contentDoc.body || contentDoc.documentElement;
-    if (body) {
-      body.style.paddingLeft = "";
-      body.style.paddingRight = "";
-      body.style.boxSizing = "";
-    }
-  }
-  // Sidebar 3-pane : restaurer marges du messageBrowser et position du messagePane
-  if (container.dataset.layoutMode === "sidebar3pane") {
-    cleanupSidebar3PaneContainer(container, contentDoc);
-    let messagePane = contentDoc.getElementById("messagePane");
-    if (messagePane) {
-      messagePane.style.position = "";
-    }
-  }
-  container.remove();
-}
-
-/**
- * Attache le comportement de redimensionnement à une poignée, en Pointer Events
- * avec capture : les événements suivent la poignée même hors de la fenêtre, et
- * aucun listener n'est posé sur le document (pas de listener orphelin si le
- * panneau est reconstruit pendant un glisser).
- * @param {Element} handle - La poignée de redimensionnement.
- * @param {string} axis - "y" (panneau bottom) ou "x" (sidebar).
- * @param {ShadowRoot} shadowRoot - Le shadow root du panneau.
- * @param {string} sidebarPosition - "left" ou "right" (axe x uniquement).
- */
-function attachResizeBehavior(handle, axis, shadowRoot, sidebarPosition) {
-  let hostEl = shadowRoot.host;
-
-  /**
-   * Applique une taille bornée au panneau et répercute la largeur sur le
-   * document hôte (padding du body ou marge du messageBrowser).
-   * Partagé entre le glisser (pointer) et le clavier (flèches).
-   */
-  function applySize(size) {
-    if (axis === "y") {
-      let newHeight = Math.max(BOTTOM_MIN_HEIGHT, Math.min(size, BOTTOM_MAX_HEIGHT));
-      hostEl.style.height = newHeight + "px";
-      return;
-    }
-
-    let newWidth = Math.max(SIDEBAR_MIN_WIDTH, Math.min(size, SIDEBAR_MAX_WIDTH));
-    hostEl.style.width = newWidth + "px";
-
-    let contentDoc = hostEl.ownerDocument;
-    if (hostEl.dataset.layoutContext === "messageTab") {
-      let body = contentDoc.body || contentDoc.documentElement;
-      if (sidebarPosition === "left") {
-        body.style.paddingLeft = newWidth + "px";
-      } else {
-        body.style.paddingRight = newWidth + "px";
-      }
-    } else if (hostEl.dataset.layoutMode === "sidebar3pane") {
-      let msgBrowserId = hostEl.dataset.msgBrowserId;
-      let msgBrowser = msgBrowserId ? contentDoc.getElementById(msgBrowserId) : null;
-      if (msgBrowser) {
-        if (sidebarPosition === "left") {
-          msgBrowser.style.marginLeft = newWidth + "px";
-        } else {
-          msgBrowser.style.marginRight = newWidth + "px";
-        }
-      }
-    }
-  }
-
-  // Accessibilité : poignée focusable et pilotable aux flèches du clavier
-  handle.tabIndex = 0;
-  handle.setAttribute("role", "separator");
-  handle.setAttribute("aria-orientation", axis === "y" ? "horizontal" : "vertical");
-  handle.addEventListener("keydown", (e) => {
-    let delta = 0;
-    if (axis === "y") {
-      // Panneau bottom : flèche haut = agrandir
-      if (e.key === "ArrowUp") delta = KEYBOARD_RESIZE_STEP;
-      else if (e.key === "ArrowDown") delta = -KEYBOARD_RESIZE_STEP;
-      if (delta) {
-        e.preventDefault();
-        applySize(hostEl.offsetHeight + delta);
-      }
-    } else {
-      // Sidebar : la flèche qui « pousse » vers le message agrandit
-      let growKey = sidebarPosition === "right" ? "ArrowLeft" : "ArrowRight";
-      let shrinkKey = sidebarPosition === "right" ? "ArrowRight" : "ArrowLeft";
-      if (e.key === growKey) delta = KEYBOARD_RESIZE_STEP;
-      else if (e.key === shrinkKey) delta = -KEYBOARD_RESIZE_STEP;
-      if (delta) {
-        e.preventDefault();
-        applySize(hostEl.offsetWidth + delta);
-      }
-    }
-  });
-
-  handle.addEventListener("pointerdown", (e) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    let startPos = axis === "y" ? e.screenY : e.screenX;
-    let startSize = axis === "y" ? hostEl.offsetHeight : hostEl.offsetWidth;
-    handle.setPointerCapture(e.pointerId);
-
-    function onPointerMove(ev) {
-      let delta;
-      if (axis === "y") {
-        // Panneau bottom : glisser vers le haut = agrandir
-        delta = startPos - ev.screenY;
-      } else {
-        // Sidebar : le sens dépend du côté
-        delta = sidebarPosition === "right" ? startPos - ev.screenX : ev.screenX - startPos;
-      }
-      applySize(startSize + delta);
-    }
-
-    function onPointerEnd(ev) {
-      handle.removeEventListener("pointermove", onPointerMove);
-      handle.removeEventListener("pointerup", onPointerEnd);
-      handle.removeEventListener("pointercancel", onPointerEnd);
-      try {
-        handle.releasePointerCapture(ev.pointerId);
-      } catch (err) {
-        // Capture déjà relâchée (ex. poignée retirée du DOM pendant le glisser)
-      }
-    }
-
-    handle.addEventListener("pointermove", onPointerMove);
-    handle.addEventListener("pointerup", onPointerEnd);
-    handle.addEventListener("pointercancel", onPointerEnd);
-  });
-}
-
-/* exported magicThreadsWindow */
-var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
-  getAPI(context) {
-    let itemClickFire = null;
-
-    // Labels par défaut (fallback en anglais si non fournis, alignés sur _locales/en)
-    const DEFAULT_LABELS = {
-      panelTitle: "🧵 Thread ($COUNT$)",
-      modeCurrentTab: "Current tab 🔁",
-      modeNewTab: "New tab ↗️",
-      tooltipCurrentTab: "Click switches the message in the active tab",
-      tooltipNewTab: "Click opens the message in a new tab",
-      tooltipToggleMode: "Change navigation mode",
-      tooltipCollapseExpand: "Collapse/Expand panel",
-      tooltipResize: "Drag to resize",
-      tooltipAttachment: "Attachment(s)",
-      folderInbox: "Inbox",
-      folderSent: "Sent",
-      folderArchive: "Archives",
-      folderDrafts: "Drafts",
-      folderTrash: "Trash",
-      unknownAuthor: "Unknown",
-      unreadLabel: "Unread"
-    };
-
-    // =================================================================
-    // Tab Info
-    // =================================================================
-
-    function getTabInfo(tabId) {
-      try {
-        let tabObject = context.extension.tabManager.get(tabId);
-        if (!tabObject || !tabObject.nativeTab) return null;
-        let modeName = tabObject.nativeTab.mode?.name || "";
-        let chromeBrowser = tabObject.nativeTab.chromeBrowser;
-        if (!chromeBrowser || !chromeBrowser.contentWindow) return null;
-        return {
-          contentWin: chromeBrowser.contentWindow,
-          isMessageTab: modeName === "mailMessageTab",
-          is3PaneTab: modeName === "mail3PaneTab",
-          modeName
-        };
-      } catch (e) {
-        console.error("Magic Threads: getTabInfo error:", e);
-        return null;
-      }
-    }
-
-    // =================================================================
-    // DOM Helpers
-    // =================================================================
-
-    function findMessagePaneParent(contentDoc) {
-      // TB 128+ : messagePane est un custom element <message-pane>
-      let messagePane = contentDoc.getElementById("messagePane");
-      if (messagePane) return messagePane;
-      // Fallback : chercher le parent du messageBrowser
-      let messageBrowser = contentDoc.getElementById("messageBrowser");
-      if (messageBrowser && messageBrowser.parentElement) return messageBrowser.parentElement;
-      let multiMsgBrowser = contentDoc.getElementById("multiMessageBrowser");
-      if (multiMsgBrowser && multiMsgBrowser.parentElement) return multiMsgBrowser.parentElement;
-      return null;
-    }
-
-    // =================================================================
-    // CSS — Shared
-    // =================================================================
-
-    function getSharedCSS() {
-      return `
+// Feuilles de style du Shadow DOM, en constantes de module (aucune dépendance
+// au contexte : hissées hors de getAPI pour alléger la fermeture).
+const SHARED_CSS = `
         :host {
           display: flex;
           flex-direction: column;
@@ -495,14 +276,8 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           vertical-align: middle;
         }
       `;
-    }
 
-    // =================================================================
-    // CSS — Bottom mode (3-pane) with vertical resize handle
-    // =================================================================
-
-    function getBottomCSS() {
-      return `
+const BOTTOM_CSS = `
         :host {
           width: 100%;
           overflow: hidden;
@@ -533,15 +308,8 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           min-height: 0;
         }
       `;
-    }
 
-    // =================================================================
-    // CSS — Sidebar mode (message tab + 3-pane sidebar)
-    // with horizontal resize handle
-    // =================================================================
-
-    function getSidebarCSS() {
-      return `
+const SIDEBAR_CSS = `
         :host {
           height: 100%;
           overflow: hidden;
@@ -590,7 +358,229 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           margin-left: 0;
         }
       `;
+
+/**
+ * Nettoie les styles appliqués par injectSide3Pane (position:absolute + margin).
+ * Cette fonction est au niveau du module pour être accessible par getAPI() et onShutdown().
+ */
+function cleanupSidebar3PaneContainer(container, contentDoc) {
+  // Restaurer les marges du messageBrowser
+  let msgBrowserId = container.dataset.msgBrowserId;
+  let msgBrowser = msgBrowserId ? contentDoc.getElementById(msgBrowserId) : contentDoc.getElementById("messageBrowser");
+  if (msgBrowser) {
+    msgBrowser.style.marginLeft = "";
+    msgBrowser.style.marginRight = "";
+  }
+}
+
+/**
+ * Retire le conteneur Magic Threads d'un document de contenu (about:3pane ou
+ * about:message) et restaure tous les styles natifs modifiés.
+ * Utilisé par onShutdown pour tous les types de fenêtres.
+ */
+function cleanupInjectedDoc(contentDoc) {
+  let container = contentDoc.getElementById("magic-threads-container");
+  if (!container) return;
+  // Sidebar onglet message : restaurer les paddings du body
+  if (container.dataset.layoutContext === "messageTab") {
+    let body = contentDoc.body || contentDoc.documentElement;
+    if (body) {
+      body.style.paddingLeft = "";
+      body.style.paddingRight = "";
+      body.style.boxSizing = "";
     }
+  }
+  // Sidebar 3-pane : restaurer marges du messageBrowser et position du messagePane
+  if (container.dataset.layoutMode === "sidebar3pane") {
+    cleanupSidebar3PaneContainer(container, contentDoc);
+    let messagePane = contentDoc.getElementById("messagePane");
+    if (messagePane) {
+      messagePane.style.position = "";
+    }
+  }
+  container.remove();
+}
+
+/**
+ * Attache le comportement de redimensionnement à une poignée, en Pointer Events
+ * avec capture : les événements suivent la poignée même hors de la fenêtre, et
+ * aucun listener n'est posé sur le document (pas de listener orphelin si le
+ * panneau est reconstruit pendant un glisser).
+ * @param {Element} handle - La poignée de redimensionnement.
+ * @param {string} axis - "y" (panneau bottom) ou "x" (sidebar).
+ * @param {ShadowRoot} shadowRoot - Le shadow root du panneau.
+ * @param {string} sidebarPosition - "left" ou "right" (axe x uniquement).
+ */
+function attachResizeBehavior(handle, axis, shadowRoot, sidebarPosition) {
+  let hostEl = shadowRoot.host;
+
+  /**
+   * Applique une taille bornée au panneau et répercute la largeur sur le
+   * document hôte (padding du body ou marge du messageBrowser).
+   * Partagé entre le glisser (pointer) et le clavier (flèches).
+   */
+  function applySize(size) {
+    if (axis === "y") {
+      let newHeight = Math.max(BOTTOM_MIN_HEIGHT, Math.min(size, BOTTOM_MAX_HEIGHT));
+      hostEl.style.height = newHeight + "px";
+      return;
+    }
+
+    let newWidth = Math.max(SIDEBAR_MIN_WIDTH, Math.min(size, SIDEBAR_MAX_WIDTH));
+    hostEl.style.width = newWidth + "px";
+
+    let contentDoc = hostEl.ownerDocument;
+    if (hostEl.dataset.layoutContext === "messageTab") {
+      let body = contentDoc.body || contentDoc.documentElement;
+      if (sidebarPosition === "left") {
+        body.style.paddingLeft = newWidth + "px";
+      } else {
+        body.style.paddingRight = newWidth + "px";
+      }
+    } else if (hostEl.dataset.layoutMode === "sidebar3pane") {
+      let msgBrowserId = hostEl.dataset.msgBrowserId;
+      let msgBrowser = msgBrowserId ? contentDoc.getElementById(msgBrowserId) : null;
+      if (msgBrowser) {
+        if (sidebarPosition === "left") {
+          msgBrowser.style.marginLeft = newWidth + "px";
+        } else {
+          msgBrowser.style.marginRight = newWidth + "px";
+        }
+      }
+    }
+  }
+
+  // Accessibilité : poignée focusable et pilotable aux flèches du clavier
+  handle.tabIndex = 0;
+  handle.setAttribute("role", "separator");
+  handle.setAttribute("aria-orientation", axis === "y" ? "horizontal" : "vertical");
+  handle.addEventListener("keydown", (e) => {
+    let delta = 0;
+    if (axis === "y") {
+      // Panneau bottom : flèche haut = agrandir
+      if (e.key === "ArrowUp") delta = KEYBOARD_RESIZE_STEP;
+      else if (e.key === "ArrowDown") delta = -KEYBOARD_RESIZE_STEP;
+      if (delta) {
+        e.preventDefault();
+        applySize(hostEl.offsetHeight + delta);
+      }
+    } else {
+      // Sidebar : la flèche qui « pousse » vers le message agrandit
+      let growKey = sidebarPosition === "right" ? "ArrowLeft" : "ArrowRight";
+      let shrinkKey = sidebarPosition === "right" ? "ArrowRight" : "ArrowLeft";
+      if (e.key === growKey) delta = KEYBOARD_RESIZE_STEP;
+      else if (e.key === shrinkKey) delta = -KEYBOARD_RESIZE_STEP;
+      if (delta) {
+        e.preventDefault();
+        applySize(hostEl.offsetWidth + delta);
+      }
+    }
+  });
+
+  handle.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    let startPos = axis === "y" ? e.screenY : e.screenX;
+    let startSize = axis === "y" ? hostEl.offsetHeight : hostEl.offsetWidth;
+    handle.setPointerCapture(e.pointerId);
+
+    function onPointerMove(ev) {
+      let delta;
+      if (axis === "y") {
+        // Panneau bottom : glisser vers le haut = agrandir
+        delta = startPos - ev.screenY;
+      } else {
+        // Sidebar : le sens dépend du côté
+        delta = sidebarPosition === "right" ? startPos - ev.screenX : ev.screenX - startPos;
+      }
+      applySize(startSize + delta);
+    }
+
+    function onPointerEnd(ev) {
+      handle.removeEventListener("pointermove", onPointerMove);
+      handle.removeEventListener("pointerup", onPointerEnd);
+      handle.removeEventListener("pointercancel", onPointerEnd);
+      try {
+        handle.releasePointerCapture(ev.pointerId);
+      } catch (err) {
+        // Capture déjà relâchée (ex. poignée retirée du DOM pendant le glisser)
+      }
+    }
+
+    handle.addEventListener("pointermove", onPointerMove);
+    handle.addEventListener("pointerup", onPointerEnd);
+    handle.addEventListener("pointercancel", onPointerEnd);
+  });
+}
+
+/* exported magicThreadsWindow */
+var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
+  getAPI(context) {
+    let itemClickFire = null;
+
+    // Labels par défaut (fallback en anglais si non fournis, alignés sur _locales/en)
+    const DEFAULT_LABELS = {
+      panelTitle: "🧵 Thread ($COUNT$)",
+      modeCurrentTab: "Current tab 🔁",
+      modeNewTab: "New tab ↗️",
+      tooltipCurrentTab: "Click switches the message in the active tab",
+      tooltipNewTab: "Click opens the message in a new tab",
+      tooltipToggleMode: "Change navigation mode",
+      tooltipCollapseExpand: "Collapse/Expand panel",
+      tooltipResize: "Drag to resize",
+      tooltipAttachment: "Attachment(s)",
+      folderInbox: "Inbox",
+      folderSent: "Sent",
+      folderArchive: "Archives",
+      folderDrafts: "Drafts",
+      folderTrash: "Trash",
+      unknownAuthor: "Unknown",
+      unreadLabel: "Unread"
+    };
+
+    // =================================================================
+    // Tab Info
+    // =================================================================
+
+    function getTabInfo(tabId) {
+      try {
+        let tabObject = context.extension.tabManager.get(tabId);
+        if (!tabObject || !tabObject.nativeTab) return null;
+        let modeName = tabObject.nativeTab.mode?.name || "";
+        let chromeBrowser = tabObject.nativeTab.chromeBrowser;
+        if (!chromeBrowser || !chromeBrowser.contentWindow) return null;
+        return {
+          contentWin: chromeBrowser.contentWindow,
+          isMessageTab: modeName === "mailMessageTab",
+          is3PaneTab: modeName === "mail3PaneTab",
+          modeName
+        };
+      } catch (e) {
+        console.error("Magic Threads: getTabInfo error:", e);
+        return null;
+      }
+    }
+
+    // =================================================================
+    // DOM Helpers
+    // =================================================================
+
+    function findMessagePaneParent(contentDoc) {
+      // TB 128+ : messagePane est un custom element <message-pane>
+      let messagePane = contentDoc.getElementById("messagePane");
+      if (messagePane) return messagePane;
+      // Fallback : chercher le parent du messageBrowser
+      let messageBrowser = contentDoc.getElementById("messageBrowser");
+      if (messageBrowser && messageBrowser.parentElement) return messageBrowser.parentElement;
+      let multiMsgBrowser = contentDoc.getElementById("multiMessageBrowser");
+      if (multiMsgBrowser && multiMsgBrowser.parentElement) return multiMsgBrowser.parentElement;
+      return null;
+    }
+
+
+
 
     // =================================================================
     // Helpers (i18n-aware)
@@ -637,6 +627,92 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
     // =================================================================
 
     /**
+     * Construit un élément de fil (listitem > item cliquable) pour un message.
+     * Le mode de navigation est lu via navState au moment du clic.
+     * @returns {Element} le wrapper listitem prêt à insérer dans la liste
+     */
+    function buildThreadItem(doc, msg, currentMessageId, labels, navState) {
+      // Wrapper listitem : conserve la sémantique de liste, car l'item
+      // cliquable porte lui-même role="button" (un élément = un seul rôle)
+      let listItem = doc.createElement("div");
+      listItem.setAttribute("role", "listitem");
+
+      let item = doc.createElement("div");
+      item.className = "thread-item";
+      if (msg.id === currentMessageId) {
+        item.classList.add("current");
+        item.setAttribute("aria-current", "true");
+      }
+      if (!msg.isRead) item.classList.add("unread");
+
+      let meta = doc.createElement("div");
+      meta.className = "thread-meta";
+
+      let author = doc.createElement("span");
+      author.className = "thread-author";
+      author.textContent = cleanAuthor(msg.author, labels);
+      meta.appendChild(author);
+
+      if (!msg.isRead) {
+        // Libellé « non lu » masqué visuellement : le point rouge (CSS ::after)
+        // n'est plus la seule information pour les lecteurs d'écran
+        let unread = doc.createElement("span");
+        unread.className = "visually-hidden";
+        unread.textContent = labels.unreadLabel;
+        meta.appendChild(unread);
+      }
+
+      let date = doc.createElement("span");
+      date.className = "thread-date";
+      date.textContent = formatDate(msg.date);
+      meta.appendChild(date);
+
+      let folderBadge = doc.createElement("span");
+      folderBadge.className = "thread-folder " + (msg.folder.type || "normal");
+      folderBadge.textContent = getFolderLabel(msg.folder, labels);
+      meta.appendChild(folderBadge);
+
+      if (msg.hasAttachments) {
+        let clip = doc.createElement("span");
+        clip.className = "thread-attachment";
+        clip.textContent = "\uD83D\uDCCE";
+        clip.title = labels.tooltipAttachment;
+        meta.appendChild(clip);
+      }
+
+      item.appendChild(meta);
+
+      let snippet = doc.createElement("div");
+      snippet.className = "thread-snippet";
+      snippet.textContent = msg.snippet;
+      item.appendChild(snippet);
+
+      if (msg.id !== currentMessageId) {
+        // Item actionnable : focusable au clavier, activable par Entrée/Espace
+        // comme un vrai bouton (constat 3.1 de l'audit)
+        item.setAttribute("role", "button");
+        item.tabIndex = 0;
+        let activate = () => {
+          if (itemClickFire) {
+            itemClickFire.async(msg.id, navState.mode);
+          }
+        };
+        item.addEventListener("click", activate);
+        item.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            // Espace : empêcher le défilement de la liste
+            e.preventDefault();
+            activate();
+          }
+        });
+      }
+
+      listItem.appendChild(item);
+
+      return listItem;
+    }
+
+    /**
      * Construit le DOM du panneau dans le Shadow DOM.
      * @param {string} layoutMode - "bottom" ou "sidebar"
      * @param {string} sidebarPosition - "left" ou "right"
@@ -656,7 +732,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
 
       // Styles
       let style = doc.createElement("style");
-      style.textContent = getSharedCSS() + (layoutMode === "sidebar" ? getSidebarCSS() : getBottomCSS());
+      style.textContent = SHARED_CSS + (layoutMode === "sidebar" ? SIDEBAR_CSS : BOTTOM_CSS);
       shadowRoot.appendChild(style);
 
       // Resize handle
@@ -733,12 +809,14 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       list.className = "threads-list";
       list.setAttribute("role", "list");
 
-      let currentNavMode = navigationMode;
+      // Mode de navigation courant porté par un objet : buildThreadItem en lit
+      // la valeur AU MOMENT du clic (liaison vivante après bascule du bouton).
+      let navState = { mode: navigationMode };
 
       toggleBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        currentNavMode = currentNavMode === "currentTab" ? "newTab" : "currentTab";
-        updateModeIndicator(modeIndicator, currentNavMode, labels);
+        navState.mode = navState.mode === "currentTab" ? "newTab" : "currentTab";
+        updateModeIndicator(modeIndicator, navState.mode, labels);
       });
 
       collapseBtn.addEventListener("click", (e) => {
@@ -752,92 +830,16 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           let hostEl = shadowRoot.host;
           if (isCollapsed) {
             hostEl.dataset.expandedHeight = hostEl.style.height || hostEl.offsetHeight + "px";
-            hostEl.style.height = "44px";
+            hostEl.style.height = BOTTOM_MIN_HEIGHT + "px";
           } else {
-            let savedHeight = hostEl.dataset.expandedHeight || "250px";
+            let savedHeight = hostEl.dataset.expandedHeight || (BOTTOM_DEFAULT_HEIGHT + "px");
             hostEl.style.height = savedHeight;
           }
         }
       });
 
       for (let msg of threadData) {
-        // Wrapper listitem : conserve la sémantique de liste, car l'item
-        // cliquable porte lui-même role="button" (un élément = un seul rôle)
-        let listItem = doc.createElement("div");
-        listItem.setAttribute("role", "listitem");
-
-        let item = doc.createElement("div");
-        item.className = "thread-item";
-        if (msg.id === currentMessageId) {
-          item.classList.add("current");
-          item.setAttribute("aria-current", "true");
-        }
-        if (!msg.isRead) item.classList.add("unread");
-
-        let meta = doc.createElement("div");
-        meta.className = "thread-meta";
-
-        let author = doc.createElement("span");
-        author.className = "thread-author";
-        author.textContent = cleanAuthor(msg.author, labels);
-        meta.appendChild(author);
-
-        if (!msg.isRead) {
-          // Libellé « non lu » masqué visuellement : le point rouge (CSS ::after)
-          // n'est plus la seule information pour les lecteurs d'écran
-          let unread = doc.createElement("span");
-          unread.className = "visually-hidden";
-          unread.textContent = labels.unreadLabel;
-          meta.appendChild(unread);
-        }
-
-        let date = doc.createElement("span");
-        date.className = "thread-date";
-        date.textContent = formatDate(msg.date);
-        meta.appendChild(date);
-
-        let folderBadge = doc.createElement("span");
-        folderBadge.className = "thread-folder " + (msg.folder.type || "normal");
-        folderBadge.textContent = getFolderLabel(msg.folder, labels);
-        meta.appendChild(folderBadge);
-
-        if (msg.hasAttachments) {
-          let clip = doc.createElement("span");
-          clip.className = "thread-attachment";
-          clip.textContent = "\uD83D\uDCCE";
-          clip.title = labels.tooltipAttachment;
-          meta.appendChild(clip);
-        }
-
-        item.appendChild(meta);
-
-        let snippet = doc.createElement("div");
-        snippet.className = "thread-snippet";
-        snippet.textContent = msg.snippet;
-        item.appendChild(snippet);
-
-        if (msg.id !== currentMessageId) {
-          // Item actionnable : focusable au clavier, activable par Entrée/Espace
-          // comme un vrai bouton (constat 3.1 de l'audit)
-          item.setAttribute("role", "button");
-          item.tabIndex = 0;
-          let activate = () => {
-            if (itemClickFire) {
-              itemClickFire.async(msg.id, currentNavMode);
-            }
-          };
-          item.addEventListener("click", activate);
-          item.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              // Espace : empêcher le défilement de la liste
-              e.preventDefault();
-              activate();
-            }
-          });
-        }
-
-        listItem.appendChild(item);
-        list.appendChild(listItem);
+        list.appendChild(buildThreadItem(doc, msg, currentMessageId, labels, navState));
       }
 
       wrapper.appendChild(list);
@@ -879,7 +881,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         }
         container = contentDoc.createElement("div");
         container.id = "magic-threads-container";
-        container.style.cssText = "width: 100%; flex-shrink: 0; height: 250px;";
+        container.style.cssText = `width: 100%; flex-shrink: 0; height: ${BOTTOM_DEFAULT_HEIGHT}px;`;
         container.dataset.layoutMode = "bottom";
         parent.appendChild(container);
         container.attachShadow({ mode: "open" });
@@ -921,7 +923,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       }
 
       if (!container) {
-        let sideWidth = 300;
+        let sideWidth = SIDEBAR_DEFAULT_WIDTH;
 
         container = contentDoc.createElement("div");
         container.id = "magic-threads-container";
@@ -937,7 +939,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           overflow: hidden;
           display: flex;
           flex-direction: row;
-          z-index: 100;
+          z-index: ${PANEL_Z_INDEX};
           box-sizing: border-box;
         `;
 
@@ -962,7 +964,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       // car Thunderbird peut réinitialiser les styles du messageBrowser lors du chargement de nouveaux messages.
       let msgBrowser = contentDoc.getElementById("messageBrowser");
       if (msgBrowser) {
-        let currentWidth = container.style.width || "300px";
+        let currentWidth = container.style.width || (SIDEBAR_DEFAULT_WIDTH + "px");
         if (sidePosition === "left") {
           msgBrowser.style.marginLeft = currentWidth;
           msgBrowser.style.marginRight = "";
@@ -1002,14 +1004,14 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         container.dataset.layoutContext = "messageTab";
 
         let topOffset = 0;
-        let sideCSS = `position: fixed; top: ${topOffset}px; width: 300px; height: calc(100% - ${topOffset}px); z-index: 100;`;
+        let sideCSS = `position: fixed; top: ${topOffset}px; width: ${SIDEBAR_DEFAULT_WIDTH}px; height: calc(100% - ${topOffset}px); z-index: ${PANEL_Z_INDEX};`;
         if (sidebarPosition === "left") {
           sideCSS += " left: 0;";
-          body.style.paddingLeft = "300px";
+          body.style.paddingLeft = SIDEBAR_DEFAULT_WIDTH + "px";
           body.style.boxSizing = "border-box";
         } else {
           sideCSS += " right: 0;";
-          body.style.paddingRight = "300px";
+          body.style.paddingRight = SIDEBAR_DEFAULT_WIDTH + "px";
           body.style.boxSizing = "border-box";
         }
         container.style.cssText = sideCSS;
@@ -1021,7 +1023,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
 
       // S'assurer que le body a le padding correct par rapport à la taille actuelle du conteneur
       if (body) {
-        let currentWidth = container.style.width || "300px";
+        let currentWidth = container.style.width || (SIDEBAR_DEFAULT_WIDTH + "px");
         if (sidebarPosition === "left") {
           body.style.paddingLeft = currentWidth;
           body.style.paddingRight = "";

@@ -5,6 +5,21 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.4.0] - 2026-06-13
+
+Phase 4 du [plan d'action](PLAN_ACTION.md) (pérennité & publication). **Aucun changement de comportement utilisateur** : refactoring interne, outillage, documentation et préparation de soumission.
+
+### Ajouté
+- **Conception de l'après-Gloda** (`CONCEPTION_POST-GLODA.md`) : résolveur de fil à trois étages derrière `threadResolver.js` (Gloda → Experiment API sans Gloda via `nsIMsgThread`/`References` → filet 100 % WebExtension prêt MV3). Module de référence non câblé `background/threadResolverFallback.js`. Veille Panorama : pas de retrait imminent de Gloda.
+- **Justification ATN** (`JUSTIFICATION_ATN.md`) : argumentaire des deux Experiment APIs pour le relecteur Mozilla (pourquoi elles ne sont pas remplaçables par le SDK standard), avec résumé anglais prêt à coller.
+- **Veille de compatibilité** (`VEILLE_COMPATIBILITE.md`) : checklist par beta/ESR (points d'appui DOM, Gloda, 3 modes), anticipation MV3.
+- **Config ESLint « flat »** (`eslint.config.js`) + `package.json` de dev (outillage uniquement, exclu du XPI) : prêt pour ESLint 9, coexiste avec `.eslintrc.json`.
+
+### Modifié
+- **Refactoring de `magicThreadsWindowApi.js`** : feuilles de style hissées en constantes de module (`SHARED_CSS`/`BOTTOM_CSS`/`SIDEBAR_CSS`), construction d'un item de fil factorisée en `buildThreadItem()`, magic numbers nommés (`SIDEBAR_DEFAULT_WIDTH`, `BOTTOM_DEFAULT_HEIGHT`, `PANEL_Z_INDEX`). Lisibilité accrue, risque de récidive du bug de portée réduit.
+- **`build.sh`** : extraction de version robuste (parsing JSON via node, repli grep/sed ne confondant plus `version` et `manifest_version`).
+- **Documentation alignée sur le code** : `ARCHITECTURE.md` (Gloda `getMessageCollectionForHeaders` au lieu de `GlodaMsgSearcher`, deux écouteurs réels, trois chemins de navigation, retrait de l'option « gauche » 3-pane), `AGENTS.md` (`onMessagesDisplayOff` inexistant corrigé), `CHANGELOG` (« beside » corrigé).
+
 ## [2.3.0] - 2026-06-13
 
 Accessibilité et i18n issus de la phase 3 du [plan d'action](PLAN_ACTION.md).
@@ -87,7 +102,7 @@ Correctifs issus de la phase 1 du [plan d'action](PLAN_ACTION.md) (audit du 12 j
 ### Ajouté
 - **Internationalisation (i18n)** : support de 7 langues (fr, en, de, ja, es, pt, vi)
 - **Fichiers de structure projet** : LICENSE, README, CHANGELOG, AGENTS.md, ARCHITECTURE.md, build.sh, .gitignore, .eslintrc.json
-- **Position configurable en 3-pane** : choix entre panneau inférieur (bottom) et latéral (beside)
+- **Position configurable en 3-pane** : choix entre panneau inférieur (bas) et panneau latéral (côté)
 - **Poignée horizontale** pour redimensionner le panneau sidebar
 
 ## [2.0.0] - 2026-06-11

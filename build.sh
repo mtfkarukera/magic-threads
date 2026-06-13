@@ -10,10 +10,20 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Extraire la version depuis manifest.json
-VERSION=$(grep '"version"' manifest.json | head -1 | sed 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+# Extraire la version depuis manifest.json.
+# Parsing JSON via node (robuste : insensible à l'ordre des clés et au formatage,
+# ne confond pas "version" avec "manifest_version") ; repli grep/sed si node absent.
+if command -v node >/dev/null 2>&1; then
+    VERSION=$(node -e 'process.stdout.write(require("./manifest.json").version || "")' 2>/dev/null)
+fi
+if [ -z "${VERSION:-}" ]; then
+    VERSION=$(grep -E '"version"[[:space:]]*:' manifest.json \
+        | grep -v 'manifest_version' \
+        | head -1 \
+        | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
+fi
 
-if [ -z "$VERSION" ]; then
+if [ -z "${VERSION:-}" ]; then
     echo "❌ Erreur : impossible d'extraire la version depuis manifest.json"
     exit 1
 fi

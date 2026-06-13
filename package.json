@@ -1,0 +1,15 @@
+{
+  "name": "magic-threads",
+  "version": "2.4.0",
+  "description": "Outillage de développement (lint) pour l'extension Thunderbird Magic Threads. N'est PAS embarqué dans le XPI — voir build.sh.",
+  "private": true,
+  "scripts": {
+    "lint": "eslint background/ experiment-api/ options/",
+    "lint:webext": "web-ext lint --source-dir . --ignore-files \"dist/**\" \"*.md\" \"LICENSE\" \"build.sh\" \".eslintrc.json\" \"eslint.config.js\" \"package.json\" \"package-lock.json\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "globals": "^15.0.0"
+  }
+}

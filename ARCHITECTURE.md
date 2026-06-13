@@ -6,12 +6,14 @@ Ce document décrit l'architecture technique de l'extension Magic Threads pour T
 
 ```mermaid
 flowchart TD
-    A["Utilisateur sélectionne un message"] --> B["messageDisplay.onMessageDisplayed"]
-    B --> C["background.js"]
+    A["Utilisateur sélectionne un message"] --> B1["mailTabs.onSelectedMessagesChanged (vue 3-pane)"]
+    A --> B2["messageDisplay.onMessageDisplayed (onglet message)"]
+    B1 --> C["background.js"]
+    B2 --> C
     C --> D["threadResolver.js"]
     D --> E["browser.convGloda.getThreadMessages()"]
     E --> F["glodaApi.js (Experiment API)"]
-    F --> G["XPCOM / Gloda / GlodaMsgSearcher"]
+    F --> G["XPCOM : Gloda.getMessageCollectionForHeaders + headerMessageID + nsIMsgThread"]
     G --> H["Données du fil (JSON)"]
     H --> D
     D --> C
@@ -24,6 +26,10 @@ flowchart TD
     style G fill:#ff6b6b,color:#fff
     style L fill:#51cf66,color:#fff
 ```
+
+Deux écouteurs alimentent le même pipeline : `mailTabs.onSelectedMessagesChanged`
+pour la vue 3-pane (avec masquage du panneau en cas de multi-sélection ou de
+désélection) et `messageDisplay.onMessageDisplayed` pour les onglets message.
 
 ## Composants
 
@@ -57,8 +63,8 @@ Experiment API pour l'accès à Gloda :
 ```mermaid
 flowchart LR
     A["background.js"] -->|"browser.convGloda.getThreadMessages(msgId)"| B["glodaApi.js"]
-    B --> C["GlodaMsgSearcher"]
-    C --> D["Base Gloda (SQLite)"]
+    B --> C["Gloda.getMessageCollectionForHeaders + requête headerMessageID + nsIMsgThread"]
+    C --> D["Base Gloda (SQLite) + bases locales des dossiers"]
     D --> C
     C --> B
     B -->|"JSON: messages du fil"| A
@@ -68,7 +74,11 @@ flowchart LR
 ```
 
 - S'exécute dans le contexte chrome avec accès XPCOM complet
-- Utilise `GlodaMsgSearcher` pour rechercher les messages par conversation
+- `resolveFullThread` réunit trois sources : la conversation Gloda du message
+  (`getMessageCollectionForHeaders`), le fil local du dossier (`nsIMsgThread`,
+  ce qu'affiche la liste de messages) et les conversations sœurs retrouvées en
+  suivant les en-têtes `References` (requête Gloda `headerMessageID`), avec
+  dédoublonnage par `Message-ID` et expansion bornée
 - Retourne un tableau JSON sérialisable de métadonnées de messages
 - Expose aussi `isGlodaAvailable()` (v2.3.0) : vérifie la préférence `mailnews.database.global.indexer.enabled` et le chargement du module Gloda — utilisé par la page d'options pour avertir si l'index est désactivé
 - Schéma défini dans `glodaSchema.json`
@@ -146,11 +156,10 @@ Les styles communs aux trois modes (bottom, sidebar 3-pane et sidebar onglet mes
 
 ```mermaid
 flowchart TD
-    A["Événement messageDisplay.onMessageDisplayed"] --> B{"mailTab ?"}
+    A["Sélection / affichage d'un message"] --> B{"mailTab ?"}
      B -->|"Oui (vue 3-pane)"| C["Lire préférence mainViewPosition"]
      C --> D{"Position ?"}
      D -->|"bottom"| E["Injecter panneau bottom"]
-     D -->|"left"| F1["Injecter sidebar gauche"]
      D -->|"right"| F2["Injecter sidebar droite"]
      B -->|"Non (onglet message)"| G["Lire préférence sidebarPosition"]
      G --> G1{"Position ?"}
@@ -158,8 +167,7 @@ flowchart TD
      G1 -->|"right"| G3["Injecter sidebar droite"]
 
      E --> H["Poignée redimensionnement vertical"]
-     F1 --> I["Poignée redimensionnement horizontal"]
-     F2 --> I
+     F2 --> I["Poignée redimensionnement horizontal"]
      G2 --> I
      G3 --> I
 
@@ -167,14 +175,24 @@ flowchart TD
     style D fill:#ffa94d,color:#fff
 ```
 
+> **Note.** En vue 3-pane, `mainViewPosition` ne prend que `bottom` ou `right` :
+> l'option « gauche » a été retirée en v2.2.0 (valeur stockée migrée vers
+> `right`). La position gauche reste disponible en **onglet message**
+> (`sidebarPosition`).
+
 ### Clic sur un message du fil
 
-Quand l'utilisateur clique sur un message dans le panneau :
+Quand l'utilisateur clique sur un message dans le panneau, `handleOpenMessage`
+suit l'un de **trois chemins** selon le contexte et le mode de navigation :
 
-1. Le background script reçoit l'événement (via message passé depuis l'Experiment API)
-2. Selon le mode de navigation configuré :
-   - **Intra-onglet** : `browser.messageDisplay.open()` dans le même onglet
-   - **Nouvel onglet** : `browser.messageDisplay.open()` dans un nouvel onglet
+1. **Onglet message** (`activeTab` non `mailTab`) : navigation dans le même
+   onglet via `magicThreadsWindow.navigateMessageTab` (Experiment API) ; repli
+   sur `browser.messageDisplay.open()` en nouvel onglet si l'appel échoue.
+2. **Vue 3-pane, mode « nouvel onglet »** : `browser.messageDisplay.open()`
+   ouvre le message dans un nouvel onglet.
+3. **Vue 3-pane, mode « onglet courant »** : `mailTabs.update` change le dossier
+   affiché puis `mailTabs.setSelectedMessages` sélectionne le message ciblé
+   (repli sur `messageDisplay.open()` si aucun `mailTab` n'est disponible).
 
 ## Contraintes et problèmes connus
 
