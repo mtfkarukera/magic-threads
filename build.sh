@@ -55,7 +55,11 @@ zip -r -q "${DIST_DIR}/${XPI_NAME}" \
     -x "*~" \
     -x "*/node_modules/*" \
     -x "*/dist/*" \
-    -x "*/.DS_Store"
+    -x "*/.DS_Store" \
+    -x "background/threadResolverFallback.js"
+# threadResolverFallback.js est un module de CONCEPTION (résolveur après-Gloda,
+# action 4.1) : conservé dans le dépôt mais NON câblé et NON expédié — l'embarquer
+# n'ajouterait que du code mort et des faux positifs UNSUPPORTED_API au validateur.
 
 # Créer un lien symbolique de commodité
 ln -sf "$XPI_NAME" "${DIST_DIR}/${XPI_LATEST}"
