@@ -113,7 +113,8 @@
               "folderArchive": { "type": "string", "optional": true },
               "folderDrafts": { "type": "string", "optional": true },
               "folderTrash": { "type": "string", "optional": true },
-              "unknownAuthor": { "type": "string", "optional": true }
+              "unknownAuthor": { "type": "string", "optional": true },
+              "unreadLabel": { "type": "string", "optional": true }
             }
           }
         ]

@@ -70,6 +70,7 @@ flowchart LR
 - S'exécute dans le contexte chrome avec accès XPCOM complet
 - Utilise `GlodaMsgSearcher` pour rechercher les messages par conversation
 - Retourne un tableau JSON sérialisable de métadonnées de messages
+- Expose aussi `isGlodaAvailable()` (v2.3.0) : vérifie la préférence `mailnews.database.global.indexer.enabled` et le chargement du module Gloda — utilisé par la page d'options pour avertir si l'index est désactivé
 - Schéma défini dans `glodaSchema.json`
 
 #### `experiment-api/magicThreadsWindowApi.js`

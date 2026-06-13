@@ -90,7 +90,7 @@
     "description": "Description for current tab navigation option"
   },
   "optNavNewTabLabel": {
-    "message": "Mở trong thẻ gốc mới",
+    "message": "Mở trong thẻ tin nhắn mới",
     "description": "Label for new tab navigation option"
   },
   "optNavNewTabDesc": {
@@ -142,11 +142,11 @@
     "description": "Status message shown after saving preferences"
   },
   "optThreadOrderTitle": {
-    "message": "Thứ tự sắp xếp tin nhắn trong luồng:",
+    "message": "Thứ tự sắp xếp tin nhắn trong chuỗi:",
     "description": "Options group title for sorting order of the thread messages"
   },
   "optThreadOrderDesc": {
-    "message": "Xác định xem các tin nhắn gần đây nhất được hiển thị ở trên cùng hay dưới cùng của luồng.",
+    "message": "Xác định xem các tin nhắn gần đây nhất được hiển thị ở trên cùng hay dưới cùng của chuỗi.",
     "description": "Description for antichronological sorting option"
   },
   "optThreadOrderAntichrono": {
@@ -156,5 +156,13 @@
   "optThreadOrderChrono": {
     "message": "Cũ nhất ở trên cùng (theo thời gian)",
     "description": "Label for chronological sorting option"
+  },
+  "unreadLabel": {
+    "message": "Chưa đọc",
+    "description": "Accessible label for unread messages in the thread panel"
+  },
+  "optGlodaDisabledWarning": {
+    "message": "Tìm kiếm toàn cục (Gloda) đang bị tắt trong Thunderbird. Magic Threads không thể dựng lại chuỗi thư. Hãy bật “Bật tìm kiếm toàn cục và lập chỉ mục thư” trong cài đặt Thunderbird.",
+    "description": "Warning shown in options when the Gloda indexer is disabled"
   }
 }

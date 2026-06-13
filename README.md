@@ -15,6 +15,7 @@ Extension Thunderbird qui affiche le fil chronologique des e-mails (métadonnée
 - 🌙 **Mode sombre** : adaptation automatique au thème de Thunderbird
 - 🔒 **Isolation CSS** : Shadow DOM pour éviter les conflits avec l'interface native
 - 🌍 **Multilingue** : interface traduite en 7 langues
+- ♿ **Accessible** : navigation complète au clavier (liste du fil, bouton réduire, poignées de redimensionnement aux flèches), contrastes WCAG AA, états annoncés aux lecteurs d'écran (non lu, panneau replié)
 - 🧭 **Navigation intra-onglet** : clic sur un message ouvre celui-ci sans quitter l'onglet courant
 
 ## Installation
@@ -43,6 +44,9 @@ Accéder aux options via **Modules complémentaires** → **Magic Threads** → 
 | Position du sidebar (onglet message) | Position du panneau latéral dans les onglets de message | Gauche / Droite |
 | Position en vue principale (3-pane) | Position du panneau en vue 3-pane | Bottom / Droite |
 | Ordre de tri | Sens d'affichage des messages du fil | Antichronologique (plus récent en haut) [Défaut] / Chronologique (plus ancien en haut) |
+
+> [!NOTE]
+> **Recherche globale requise :** Magic Threads repose sur l'index Gloda de Thunderbird. Si la recherche globale est désactivée, la page d'options affiche un avertissement (depuis la v2.3.0) — activez « Activer la recherche globale et l'indexation des messages » dans les paramètres de Thunderbird.
 
 > [!NOTE]
 > **Comportement des onglets ouverts :** Un changement de préférence est appliqué au prochain affichage de message — y compris dans les onglets déjà ouverts (depuis la v2.2.0, le panneau se repositionne du bon côté au message suivant).

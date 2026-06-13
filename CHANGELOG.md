@@ -5,6 +5,23 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.3.0] - 2026-06-13
+
+Accessibilité et i18n issus de la phase 3 du [plan d'action](PLAN_ACTION.md).
+
+### Ajouté
+- **Navigation clavier du panneau** : les messages du fil sont focusables (Tab) et activables à Entrée/Espace (`role="list"`/`listitem`/`button`, `aria-current` sur le message affiché), anneau de focus visible (`:focus-visible`) sur les items, les boutons d'en-tête et la poignée — qui se pilote désormais aussi aux flèches du clavier (`role="separator"`, pas de 16 px).
+- **Avertissement Gloda** : si la recherche globale est désactivée dans Thunderbird, la page d'options affiche un bandeau d'alerte (`role="alert"`, nouvelle fonction `convGloda.isGlodaAvailable`) au lieu de laisser l'extension silencieusement inerte.
+- **État « non lu » accessible** : libellé annoncé aux lecteurs d'écran (clé i18n `unreadLabel`, 7 locales) en complément du point rouge ; `aria-expanded` sur le bouton réduire/déplier.
+
+### Corrigé
+- **Contrastes WCAG AA** : palette du panneau adossée aux variables de thème Thunderbird (`--layout-*`, `--color-accent-primary`) avec fallbacks relevés à ≥ 4,5:1 (`--text-muted` : `#5a6675` clair / `#8a93a3` sombre).
+- **Traductions** : es/pt « anticroonológico » → « anticronológico », « Archivos »/« Arquivos » (faux-sens) → « Archivados »/« Arquivadas » ; vi : « luồng » unifié en « chuỗi », « thẻ gốc mới » reformulé ; libellés de secours (`DEFAULT_LABELS`) passés en anglais.
+- **Page d'options** : groupes de radios en `<fieldset>`/`<legend>`, confirmation d'enregistrement annoncée (`role="status"`), couleurs codées en dur remplacées par les couleurs système (lisible en thème sombre).
+
+### Modifié
+- **Manifest** : déclaration `data_collection_permissions: ["none"]` (aucune collecte de données) requise par les linters récents.
+
 ## [2.2.2] - 2026-06-13
 
 ### Corrigé

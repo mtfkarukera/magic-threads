@@ -4,11 +4,16 @@
   <meta charset="utf-8">
   <title data-i18n="optionsTitle">Préférences de Magic Threads</title>
   <style>
+    /* Suivre le thème de Thunderbird : les couleurs système (Canvas/CanvasText)
+       s'adaptent automatiquement au mode clair comme au mode sombre. */
+    :root {
+      color-scheme: light dark;
+    }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       font-size: 14px;
-      color: var(--in-content-page-color, #222);
-      background-color: var(--in-content-page-background, #fff);
+      color: var(--in-content-page-color, CanvasText);
+      background-color: var(--in-content-page-background, Canvas);
       padding: 20px;
       max-width: 600px;
       margin: 0 auto;
@@ -18,15 +23,21 @@
       font-weight: 600;
       margin-top: 0;
       margin-bottom: 20px;
-      border-bottom: 1px solid var(--in-content-border-color, #ccc);
+      border-bottom: 1px solid var(--in-content-border-color, color-mix(in srgb, CanvasText 25%, Canvas));
       padding-bottom: 10px;
     }
-    .option-group {
-      margin-bottom: 25px;
+    /* Les groupes de radios sont des <fieldset> (sémantique a11y) : neutraliser
+       le rendu natif pour conserver la mise en page d'origine. */
+    fieldset.option-group {
+      border: none;
+      padding: 0;
+      margin: 0 0 25px;
+      min-width: 0;
     }
-    .option-group-title {
+    legend.option-group-title {
       font-weight: bold;
       margin-bottom: 10px;
+      padding: 0;
     }
     .option-row {
       margin-bottom: 12px;
@@ -42,28 +53,52 @@
     }
     .description {
       margin-top: 4px;
-      color: #666;
+      /* Gris dérivé du thème : lisible sur fond clair comme sombre */
+      color: color-mix(in srgb, CanvasText 65%, Canvas);
       font-size: 12px;
       padding-left: 24px;
     }
     .status-msg {
       margin-top: 15px;
       font-weight: 600;
-      color: #007a3d;
+      color: #00702f;
       opacity: 0;
       transition: opacity 0.3s ease;
     }
     .status-msg.show {
       opacity: 1;
     }
+    /* Bandeau d'alerte quand Gloda est indisponible (3.5) */
+    .warning-banner {
+      margin-bottom: 20px;
+      padding: 10px 14px;
+      border: 1px solid #c08a00;
+      border-inline-start-width: 4px;
+      border-radius: 4px;
+      background-color: #fff3cd;
+      color: #5c4400;
+    }
+    @media (prefers-color-scheme: dark) {
+      .status-msg {
+        color: #54d196;
+      }
+      .warning-banner {
+        background-color: #46350a;
+        color: #ffd97a;
+        border-color: #8a6d1f;
+      }
+    }
   </style>
 </head>
 <body>
   <h1 data-i18n="optionsTitle"></h1>
-  
-  <div class="option-group">
-    <div class="option-group-title" data-i18n="optNavGroupTitle"></div>
-    
+
+  <!-- Alerte affichée si l'index Gloda est désactivé ou absent (rempli par options.js) -->
+  <div id="gloda-warning" class="warning-banner" role="alert" hidden></div>
+
+  <fieldset class="option-group">
+    <legend class="option-group-title" data-i18n="optNavGroupTitle"></legend>
+
     <div class="option-row">
       <label>
         <input type="radio" name="navigationMode" value="currentTab" checked>
@@ -79,11 +114,11 @@
       </label>
       <div class="description" data-i18n="optNavNewTabDesc"></div>
     </div>
-  </div>
+  </fieldset>
 
-  <div class="option-group">
-    <div class="option-group-title" data-i18n="optSidebarGroupTitle"></div>
-    
+  <fieldset class="option-group">
+    <legend class="option-group-title" data-i18n="optSidebarGroupTitle"></legend>
+
     <div class="option-row">
       <label>
         <input type="radio" name="sidebarPosition" value="right" checked>
@@ -99,11 +134,11 @@
       </label>
       <div class="description" data-i18n="optSidebarLeftDesc"></div>
     </div>
-  </div>
+  </fieldset>
 
-  <div class="option-group">
-    <div class="option-group-title" data-i18n="optMainViewGroupTitle"></div>
-    
+  <fieldset class="option-group">
+    <legend class="option-group-title" data-i18n="optMainViewGroupTitle"></legend>
+
     <div class="option-row">
       <label>
         <input type="radio" name="mainViewPosition" value="bottom" checked>
@@ -119,12 +154,12 @@
       </label>
       <div class="description" data-i18n="optMainViewRightDesc"></div>
     </div>
-    
-  </div>
 
-  <div class="option-group">
-    <div class="option-group-title" data-i18n="optThreadOrderTitle"></div>
-    
+  </fieldset>
+
+  <fieldset class="option-group">
+    <legend class="option-group-title" data-i18n="optThreadOrderTitle"></legend>
+
     <div class="option-row">
       <label>
         <input type="radio" name="threadOrder" value="antichronological" checked>
@@ -139,9 +174,11 @@
         <strong data-i18n="optThreadOrderChrono"></strong>
       </label>
     </div>
-  </div>
+  </fieldset>
 
-  <div id="status" class="status-msg" data-i18n="optStatusSaved"></div>
+  <!-- Zone de feedback « préférences enregistrées » : role="status" (aria-live
+       implicite) ; le texte est inséré à l'enregistrement pour être annoncé. -->
+  <div id="status" class="status-msg" role="status"></div>
 
   <script src="options.js"></script>
 </body>

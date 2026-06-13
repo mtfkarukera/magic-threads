@@ -156,5 +156,13 @@
   "optThreadOrderChrono": {
     "message": "Oldest at the top (chronological)",
     "description": "Label for chronological sorting option"
+  },
+  "unreadLabel": {
+    "message": "Unread",
+    "description": "Accessible label for unread messages in the thread panel"
+  },
+  "optGlodaDisabledWarning": {
+    "message": "Global search (Gloda) is disabled in Thunderbird. Magic Threads cannot build conversation threads. Enable “Enable Global Search and Indexer” in Thunderbird's settings.",
+    "description": "Warning shown in options when the Gloda indexer is disabled"
   }
 }

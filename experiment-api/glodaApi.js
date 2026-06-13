@@ -19,11 +19,47 @@ const kMaxMergeRounds = 4;
 const kMaxIdsPerQuery = 100;
 const kMaxThreadMessages = 500;
 
+// Préférence Thunderbird pilotant l'indexeur de recherche globale (Gloda).
+const kGlodaIndexerPref = "mailnews.database.global.indexer.enabled";
+
+/**
+ * Détecte si Gloda est utilisable (3.5) : l'indexeur doit être activé dans les
+ * préférences ET le module Gloda doit se charger. Sans cela, l'extension reste
+ * fonctionnelle en mode dégradé (fil local seul) mais l'utilisateur doit être
+ * prévenu plutôt que de constater un panneau silencieusement incomplet.
+ *
+ * @returns {boolean}
+ */
+function checkGlodaAvailability() {
+  let indexerEnabled = false;
+  try {
+    indexerEnabled = Services.prefs.getBoolPref(kGlodaIndexerPref, false);
+  } catch (e) {
+    indexerEnabled = false;
+  }
+  if (!indexerEnabled) {
+    return false;
+  }
+  // Le getter paresseux déclenche le chargement réel du module : une version
+  // de Thunderbird sans Gloda (retrait annoncé, profil cassé…) lèverait ici.
+  try {
+    return !!Gloda;
+  } catch (e) {
+    console.warn("Magic Threads: Gloda module unavailable:", e);
+    return false;
+  }
+}
+
 /* exported convGloda */
 var convGloda = class extends ExtensionCommon.ExtensionAPI {
   getAPI(context) {
     return {
       convGloda: {
+        // État de disponibilité de Gloda, consommé par la page d'options (3.5).
+        async isGlodaAvailable() {
+          return checkGlodaAvailability();
+        },
+
         async getThreadMessages(messageId) {
           try {
             let msgHdr = context.extension.messageManager.get(messageId);

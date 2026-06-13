@@ -20,6 +20,8 @@ const BOTTOM_MIN_HEIGHT = 44;
 const BOTTOM_MAX_HEIGHT = 600;
 const SIDEBAR_MIN_WIDTH = 150;
 const SIDEBAR_MAX_WIDTH = 600;
+// Pas de redimensionnement au clavier (flèches sur la poignée)
+const KEYBOARD_RESIZE_STEP = 16;
 
 /**
  * Nettoie les styles appliqués par injectSide3Pane (position:absolute + margin).
@@ -76,6 +78,69 @@ function cleanupInjectedDoc(contentDoc) {
 function attachResizeBehavior(handle, axis, shadowRoot, sidebarPosition) {
   let hostEl = shadowRoot.host;
 
+  /**
+   * Applique une taille bornée au panneau et répercute la largeur sur le
+   * document hôte (padding du body ou marge du messageBrowser).
+   * Partagé entre le glisser (pointer) et le clavier (flèches).
+   */
+  function applySize(size) {
+    if (axis === "y") {
+      let newHeight = Math.max(BOTTOM_MIN_HEIGHT, Math.min(size, BOTTOM_MAX_HEIGHT));
+      hostEl.style.height = newHeight + "px";
+      return;
+    }
+
+    let newWidth = Math.max(SIDEBAR_MIN_WIDTH, Math.min(size, SIDEBAR_MAX_WIDTH));
+    hostEl.style.width = newWidth + "px";
+
+    let contentDoc = hostEl.ownerDocument;
+    if (hostEl.dataset.layoutContext === "messageTab") {
+      let body = contentDoc.body || contentDoc.documentElement;
+      if (sidebarPosition === "left") {
+        body.style.paddingLeft = newWidth + "px";
+      } else {
+        body.style.paddingRight = newWidth + "px";
+      }
+    } else if (hostEl.dataset.layoutMode === "sidebar3pane") {
+      let msgBrowserId = hostEl.dataset.msgBrowserId;
+      let msgBrowser = msgBrowserId ? contentDoc.getElementById(msgBrowserId) : null;
+      if (msgBrowser) {
+        if (sidebarPosition === "left") {
+          msgBrowser.style.marginLeft = newWidth + "px";
+        } else {
+          msgBrowser.style.marginRight = newWidth + "px";
+        }
+      }
+    }
+  }
+
+  // Accessibilité : poignée focusable et pilotable aux flèches du clavier
+  handle.tabIndex = 0;
+  handle.setAttribute("role", "separator");
+  handle.setAttribute("aria-orientation", axis === "y" ? "horizontal" : "vertical");
+  handle.addEventListener("keydown", (e) => {
+    let delta = 0;
+    if (axis === "y") {
+      // Panneau bottom : flèche haut = agrandir
+      if (e.key === "ArrowUp") delta = KEYBOARD_RESIZE_STEP;
+      else if (e.key === "ArrowDown") delta = -KEYBOARD_RESIZE_STEP;
+      if (delta) {
+        e.preventDefault();
+        applySize(hostEl.offsetHeight + delta);
+      }
+    } else {
+      // Sidebar : la flèche qui « pousse » vers le message agrandit
+      let growKey = sidebarPosition === "right" ? "ArrowLeft" : "ArrowRight";
+      let shrinkKey = sidebarPosition === "right" ? "ArrowRight" : "ArrowLeft";
+      if (e.key === growKey) delta = KEYBOARD_RESIZE_STEP;
+      else if (e.key === shrinkKey) delta = -KEYBOARD_RESIZE_STEP;
+      if (delta) {
+        e.preventDefault();
+        applySize(hostEl.offsetWidth + delta);
+      }
+    }
+  });
+
   handle.addEventListener("pointerdown", (e) => {
     if (e.button !== 0) return;
     e.preventDefault();
@@ -86,39 +151,15 @@ function attachResizeBehavior(handle, axis, shadowRoot, sidebarPosition) {
     handle.setPointerCapture(e.pointerId);
 
     function onPointerMove(ev) {
+      let delta;
       if (axis === "y") {
         // Panneau bottom : glisser vers le haut = agrandir
-        let delta = startPos - ev.screenY;
-        let newHeight = Math.max(BOTTOM_MIN_HEIGHT, Math.min(startSize + delta, BOTTOM_MAX_HEIGHT));
-        hostEl.style.height = newHeight + "px";
-        return;
+        delta = startPos - ev.screenY;
+      } else {
+        // Sidebar : le sens dépend du côté
+        delta = sidebarPosition === "right" ? startPos - ev.screenX : ev.screenX - startPos;
       }
-
-      // Sidebar : le sens dépend du côté
-      let delta = sidebarPosition === "right" ? startPos - ev.screenX : ev.screenX - startPos;
-      let newWidth = Math.max(SIDEBAR_MIN_WIDTH, Math.min(startSize + delta, SIDEBAR_MAX_WIDTH));
-      hostEl.style.width = newWidth + "px";
-
-      // Répercuter la largeur sur le document hôte (padding du body ou marge du messageBrowser)
-      let contentDoc = hostEl.ownerDocument;
-      if (hostEl.dataset.layoutContext === "messageTab") {
-        let body = contentDoc.body || contentDoc.documentElement;
-        if (sidebarPosition === "left") {
-          body.style.paddingLeft = newWidth + "px";
-        } else {
-          body.style.paddingRight = newWidth + "px";
-        }
-      } else if (hostEl.dataset.layoutMode === "sidebar3pane") {
-        let msgBrowserId = hostEl.dataset.msgBrowserId;
-        let msgBrowser = msgBrowserId ? contentDoc.getElementById(msgBrowserId) : null;
-        if (msgBrowser) {
-          if (sidebarPosition === "left") {
-            msgBrowser.style.marginLeft = newWidth + "px";
-          } else {
-            msgBrowser.style.marginRight = newWidth + "px";
-          }
-        }
-      }
+      applySize(startSize + delta);
     }
 
     function onPointerEnd(ev) {
@@ -143,23 +184,24 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
   getAPI(context) {
     let itemClickFire = null;
 
-    // Labels par défaut (fallback si non fournis)
+    // Labels par défaut (fallback en anglais si non fournis, alignés sur _locales/en)
     const DEFAULT_LABELS = {
-      panelTitle: "🧵 Fil ($COUNT$)",
-      modeCurrentTab: "Onglet courant 🔁",
-      modeNewTab: "Nouvel onglet ↗️",
-      tooltipCurrentTab: "Clic bascule le message dans l'onglet actif",
-      tooltipNewTab: "Clic ouvre le message dans un nouvel onglet",
-      tooltipToggleMode: "Changer le mode de navigation",
-      tooltipCollapseExpand: "Réduire/Déplier le panneau",
-      tooltipResize: "Glisser pour redimensionner",
-      tooltipAttachment: "Pièce(s) jointe(s)",
-      folderInbox: "Boîte de réception",
-      folderSent: "Envoyés",
+      panelTitle: "🧵 Thread ($COUNT$)",
+      modeCurrentTab: "Current tab 🔁",
+      modeNewTab: "New tab ↗️",
+      tooltipCurrentTab: "Click switches the message in the active tab",
+      tooltipNewTab: "Click opens the message in a new tab",
+      tooltipToggleMode: "Change navigation mode",
+      tooltipCollapseExpand: "Collapse/Expand panel",
+      tooltipResize: "Drag to resize",
+      tooltipAttachment: "Attachment(s)",
+      folderInbox: "Inbox",
+      folderSent: "Sent",
       folderArchive: "Archives",
-      folderDrafts: "Brouillons",
-      folderTrash: "Corbeille",
-      unknownAuthor: "Inconnu"
+      folderDrafts: "Drafts",
+      folderTrash: "Trash",
+      unknownAuthor: "Unknown",
+      unreadLabel: "Unread"
     };
 
     // =================================================================
@@ -211,20 +253,21 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           display: flex;
           flex-direction: column;
           box-sizing: border-box;
-        }
-        :host([hidden]) {
-          display: none !important;
-        }
 
-        .threads-wrapper {
-          --banner-bg: #f5f7f8;
-          --banner-border: #e1e4e6;
-          --card-bg: #ffffff;
-          --card-hover-bg: #edf2f7;
-          --text-main: #1a202c;
-          --text-muted: #718096;
-          --accent-border: #3182ce;
+          /* Palette adossée aux variables de thème Thunderbird (--layout-*, --color-*,
+             --focus-outline-color) héritées du document hôte, avec fallbacks
+             conformes WCAG AA (texte secondaire ≥ 4,5:1 sur les fonds utilisés).
+             Déclarée sur :host pour être visible de tout le shadow tree
+             (y compris la poignée de redimensionnement, hors .threads-wrapper). */
+          --banner-bg: var(--layout-background-1, #f5f7f8);
+          --banner-border: var(--layout-border-0, #e1e4e6);
+          --card-bg: var(--layout-background-0, #ffffff);
+          --card-hover-bg: var(--layout-background-2, #edf2f7);
+          --text-main: var(--layout-color-1, #1a202c);
+          --text-muted: var(--layout-color-2, #5a6675);
+          --accent-border: var(--color-accent-primary, #3182ce);
           --accent-bg: #ebf8ff;
+          --focus-color: var(--focus-outline-color, var(--accent-border));
           --folder-bg: #edf2f7;
           --folder-text: #4a5568;
           --inbox-bg: #ebf8ff;
@@ -233,7 +276,12 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           --sent-text: #2f855a;
           --archive-bg: #fefcbf;
           --archive-text: #b7791f;
+        }
+        :host([hidden]) {
+          display: none !important;
+        }
 
+        .threads-wrapper {
           background-color: var(--banner-bg);
           padding: 0 16px;
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -244,14 +292,16 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         }
 
         @media (prefers-color-scheme: dark) {
-          .threads-wrapper {
-            --banner-bg: #1e222b;
-            --banner-border: #3e4451;
-            --card-bg: #282c34;
-            --card-hover-bg: #353b45;
-            --text-main: #abb2bf;
-            --text-muted: #5c6370;
-            --accent-border: #528bff;
+          :host {
+            /* Mêmes variables de thème TB ; seuls les fallbacks changent
+               (--text-muted relevé à #8a93a3 pour ≥ 4,5:1 sur --card-bg). */
+            --banner-bg: var(--layout-background-1, #1e222b);
+            --banner-border: var(--layout-border-0, #3e4451);
+            --card-bg: var(--layout-background-0, #282c34);
+            --card-hover-bg: var(--layout-background-2, #353b45);
+            --text-main: var(--layout-color-1, #abb2bf);
+            --text-muted: var(--layout-color-2, #8a93a3);
+            --accent-border: var(--color-accent-primary, #528bff);
             --accent-bg: #223147;
             --folder-bg: #2d3139;
             --folder-text: #abb2bf;
@@ -346,6 +396,30 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           background-color: var(--accent-bg);
           cursor: default;
           box-shadow: none;
+        }
+
+        /* Focus clavier nettement visible (items du fil, boutons, poignée).
+           Offset négatif : l'anneau reste visible dans la liste défilante. */
+        .thread-item:focus-visible,
+        .threads-toggle-btn:focus-visible,
+        .threads-collapse-btn:focus-visible,
+        .resize-handle:focus-visible {
+          outline: 2px solid var(--focus-color);
+          outline-offset: -2px;
+        }
+
+        /* Texte masqué visuellement mais annoncé par les lecteurs d'écran
+           (technique de rognage, équivalent .sr-only) */
+        .visually-hidden {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          margin: -1px;
+          padding: 0;
+          border: 0;
+          clip-path: inset(50%);
+          overflow: hidden;
+          white-space: nowrap;
         }
 
         .thread-meta {
@@ -625,7 +699,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
 
       let title = doc.createElement("span");
       title.className = "threads-title";
-      let titleText = labels.panelTitle || "\u{1F9F5} Fil ($COUNT$)";
+      let titleText = labels.panelTitle || "\u{1F9F5} Thread ($COUNT$)";
       title.textContent = titleText.replace("$COUNT$", threadData.length);
       header.appendChild(title);
 
@@ -647,14 +721,17 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       collapseBtn.className = "threads-collapse-btn";
       collapseBtn.textContent = "\u25BC";
       collapseBtn.title = labels.tooltipCollapseExpand;
+      // \u00C9tat d\u00E9pli\u00E9 annonc\u00E9 aux technologies d'assistance, tenu \u00E0 jour \u00E0 chaque bascule
+      collapseBtn.setAttribute("aria-expanded", "true");
       actionsDiv.appendChild(collapseBtn);
 
       header.appendChild(actionsDiv);
       wrapper.appendChild(header);
 
-      // Liste
+      // Liste (sémantique ARIA : list > listitem, voir construction des items)
       let list = doc.createElement("div");
       list.className = "threads-list";
+      list.setAttribute("role", "list");
 
       let currentNavMode = navigationMode;
 
@@ -668,6 +745,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         e.stopPropagation();
         let isCollapsed = list.classList.toggle("collapsed");
         collapseBtn.textContent = isCollapsed ? "\u25B6" : "\u25BC";
+        collapseBtn.setAttribute("aria-expanded", String(!isCollapsed));
 
         // En mode bottom : ajuster la hauteur du conteneur
         if (layoutMode === "bottom") {
@@ -683,9 +761,17 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       });
 
       for (let msg of threadData) {
+        // Wrapper listitem : conserve la sémantique de liste, car l'item
+        // cliquable porte lui-même role="button" (un élément = un seul rôle)
+        let listItem = doc.createElement("div");
+        listItem.setAttribute("role", "listitem");
+
         let item = doc.createElement("div");
         item.className = "thread-item";
-        if (msg.id === currentMessageId) item.classList.add("current");
+        if (msg.id === currentMessageId) {
+          item.classList.add("current");
+          item.setAttribute("aria-current", "true");
+        }
         if (!msg.isRead) item.classList.add("unread");
 
         let meta = doc.createElement("div");
@@ -695,6 +781,15 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         author.className = "thread-author";
         author.textContent = cleanAuthor(msg.author, labels);
         meta.appendChild(author);
+
+        if (!msg.isRead) {
+          // Libellé « non lu » masqué visuellement : le point rouge (CSS ::after)
+          // n'est plus la seule information pour les lecteurs d'écran
+          let unread = doc.createElement("span");
+          unread.className = "visually-hidden";
+          unread.textContent = labels.unreadLabel;
+          meta.appendChild(unread);
+        }
 
         let date = doc.createElement("span");
         date.className = "thread-date";
@@ -722,14 +817,27 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         item.appendChild(snippet);
 
         if (msg.id !== currentMessageId) {
-          item.addEventListener("click", () => {
+          // Item actionnable : focusable au clavier, activable par Entrée/Espace
+          // comme un vrai bouton (constat 3.1 de l'audit)
+          item.setAttribute("role", "button");
+          item.tabIndex = 0;
+          let activate = () => {
             if (itemClickFire) {
               itemClickFire.async(msg.id, currentNavMode);
+            }
+          };
+          item.addEventListener("click", activate);
+          item.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              // Espace : empêcher le défilement de la liste
+              e.preventDefault();
+              activate();
             }
           });
         }
 
-        list.appendChild(item);
+        listItem.appendChild(item);
+        list.appendChild(listItem);
       }
 
       wrapper.appendChild(list);

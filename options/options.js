@@ -72,16 +72,43 @@ function saveOptions() {
     threadOrder: threadOrderEl ? threadOrderEl.value : "antichronological"
   }).then(() => {
     const status = document.getElementById("status");
+    // Insérer le texte au moment de l'enregistrement : la zone role="status"
+    // (aria-live) annonce le changement de contenu aux lecteurs d'écran.
+    status.textContent = browser.i18n.getMessage("optStatusSaved");
     status.classList.add("show");
     setTimeout(() => {
       status.classList.remove("show");
+      status.textContent = "";
     }, 2000);
   }).catch(console.error);
+}
+
+/**
+ * Vérifie la disponibilité de Gloda (3.5) et affiche un bandeau d'alerte si
+ * l'indexeur est désactivé ou le module absent. L'API Experiment convGloda est
+ * déclarée en scope addon_parent : elle est donc accessible directement depuis
+ * cette page d'options, sans passer par le background.
+ */
+async function checkGlodaStatus() {
+  try {
+    if (typeof browser.convGloda === "undefined" || !browser.convGloda.isGlodaAvailable) {
+      return;
+    }
+    const available = await browser.convGloda.isGlodaAvailable();
+    if (!available) {
+      const warning = document.getElementById("gloda-warning");
+      warning.textContent = browser.i18n.getMessage("optGlodaDisabledWarning");
+      warning.hidden = false;
+    }
+  } catch (e) {
+    console.warn("Magic Threads: could not query Gloda availability:", e);
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   localizeDocument();
   loadOptions();
+  checkGlodaStatus();
 
   document.querySelectorAll('input[name="navigationMode"]').forEach((radio) => {
     radio.addEventListener("change", saveOptions);

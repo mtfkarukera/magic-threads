@@ -156,5 +156,13 @@
   "optThreadOrderChrono": {
     "message": "最古を上部に表示 (時系列)",
     "description": "Label for chronological sorting option"
+  },
+  "unreadLabel": {
+    "message": "未読",
+    "description": "Accessible label for unread messages in the thread panel"
+  },
+  "optGlodaDisabledWarning": {
+    "message": "Thunderbird のグローバル検索 (Gloda) が無効になっています。Magic Threads はスレッドを構築できません。Thunderbird の設定で「グローバル検索と索引データベースを有効にする」を有効にしてください。",
+    "description": "Warning shown in options when the Gloda indexer is disabled"
   }
 }

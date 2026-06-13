@@ -66,7 +66,7 @@ function getLabels(count) {
     "tooltipResize", "tooltipAttachment",
     "folderInbox", "folderSent", "folderArchive",
     "folderDrafts", "folderTrash",
-    "unknownAuthor"
+    "unknownAuthor", "unreadLabel"
   ];
   let labels = {};
   for (let key of keys) {

@@ -3,6 +3,13 @@
     "namespace": "convGloda",
     "functions": [
       {
+        "name": "isGlodaAvailable",
+        "type": "function",
+        "description": "Indique si Gloda est utilisable : module present et indexeur de recherche globale (mailnews.database.global.indexer.enabled) active. Resout a un booleen.",
+        "async": true,
+        "parameters": []
+      },
+      {
         "name": "getThreadMessages",
         "type": "function",
         "description": "Interroge Gloda pour recuperer tous les messages du fil de discussion lie a l'identifiant de message fourni.",

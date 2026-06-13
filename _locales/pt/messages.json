@@ -58,7 +58,7 @@
     "description": "Label for sent folder type"
   },
   "folderArchive": {
-    "message": "Arquivos",
+    "message": "Arquivadas",
     "description": "Label for archive folder type"
   },
   "folderDrafts": {
@@ -150,11 +150,19 @@
     "description": "Description for antichronological sorting option"
   },
   "optThreadOrderAntichrono": {
-    "message": "Mais recentes no topo (anticroonológico) [Padrão]",
+    "message": "Mais recentes no topo (anticronológico) [Padrão]",
     "description": "Label for antichronological sorting option"
   },
   "optThreadOrderChrono": {
     "message": "Mais antigas no topo (cronológico)",
     "description": "Label for chronological sorting option"
+  },
+  "unreadLabel": {
+    "message": "Não lida",
+    "description": "Accessible label for unread messages in the thread panel"
+  },
+  "optGlodaDisabledWarning": {
+    "message": "A pesquisa global (Gloda) está desativada no Thunderbird. O Magic Threads não consegue reconstruir os tópicos. Ative «Ativar pesquisa global e indexação» nas definições do Thunderbird.",
+    "description": "Warning shown in options when the Gloda indexer is disabled"
   }
 }
