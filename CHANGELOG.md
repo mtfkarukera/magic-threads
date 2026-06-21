@@ -5,6 +5,11 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.4.1] - 2026-06-22
+
+### Modifié
+- **Compatibilité Thunderbird 152** : Relevé de `strict_max_version` de `151.*` à `152.*` dans `manifest.json` suite à la sortie de Thunderbird 152.
+
 ## [2.4.0] - 2026-06-13
 
 Phase 4 du [plan d'action](PLAN_ACTION.md) (pérennité & publication). **Aucun changement de comportement utilisateur** : refactoring interne, outillage, documentation et préparation de soumission.
