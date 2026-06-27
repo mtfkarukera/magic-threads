@@ -10,6 +10,10 @@ et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 ### Corrigé
 - **Sélection intra-dossier robuste (background.js)** : Application systématique du délai de sécurité de 250 ms et de la boucle de retry de sélection pour les e-mails envoyés récents, y compris lorsque la navigation s'effectue au sein du même dossier (ex : clics successifs dans "Messages envoyés"), résolvant définitivement les cas de page blanche lors du premier clic.
 
+### Modifié
+- **Documentation** : Mise à jour de `README.md` (fonctionnalité de dédoublonnage intelligent) et de `ARCHITECTURE.md` (section Résilience de la sélection, dédoublonnage Gmail, correction des diagrammes Mermaid).
+- **Dépôt** : Retrait de `JUSTIFICATION_ATN.md` du suivi Git (fichier conservé localement, ajouté au `.gitignore`).
+
 ## [2.5.1] - 2026-06-27
 
 ### Corrigé
