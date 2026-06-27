@@ -22,6 +22,28 @@ const kMaxThreadMessages = 500;
 // Préférence Thunderbird pilotant l'indexeur de recherche globale (Gloda).
 const kGlodaIndexerPref = "mailnews.database.global.indexer.enabled";
 
+function normalizeMessageId(id) {
+  if (!id) return "";
+  return id.trim().toLowerCase().replace(/^</, "").replace(/>$/, "");
+}
+
+function isAllMailFolder(nsFolder) {
+  if (!nsFolder) return false;
+  try {
+    let uri = nsFolder.URI || "";
+    let decodedUri = decodeURIComponent(uri);
+    let isGmail = decodedUri.includes("[Gmail]") || decodedUri.includes("[Google Mail]");
+    if (!isGmail) return false;
+    return decodedUri.endsWith("/All Mail") || 
+           decodedUri.endsWith("/Tous les messages") || 
+           decodedUri.endsWith("/Todos los mensajes") ||
+           decodedUri.endsWith("/Todos os e-mails") ||
+           decodedUri.endsWith("/Alle E-Mails");
+  } catch (e) {
+    return false;
+  }
+}
+
 /**
  * Détecte si Gloda est utilisable (3.5) : l'indexeur doit être activé dans les
  * préférences ET le module Gloda doit se charger. Sans cela, l'extension reste
@@ -129,23 +151,58 @@ async function resolveFullThread(msgHdr) {
 
   function addGloda(m) {
     if (!m.folderMessage || byHeaderId.size >= kMaxThreadMessages) return false;
-    let hid = m.headerMessageID || m.folderMessage.messageId;
+    let hid = normalizeMessageId(m.headerMessageID || m.folderMessage.messageId);
     let existing = byHeaderId.get(hid);
-    if (existing && existing.glodaMsg) return false;
+
+    if (existing) {
+      let currentIsAllMail = isAllMailFolder(m.folderMessage.folder);
+      let existingIsAllMail = existing.msgHdr && isAllMailFolder(existing.msgHdr.folder);
+
+      if (!existingIsAllMail && currentIsAllMail) {
+        // L'existant est dans un dossier spécifique, on ignore la copie "All Mail"
+        // mais on rattache la version Gloda pour ne pas perdre le snippet
+        if (!existing.glodaMsg && m.indexedBodyText) {
+          existing.glodaMsg = m;
+        }
+        return false;
+      }
+      if (existingIsAllMail && !currentIsAllMail) {
+        // Le nouveau est dans un dossier spécifique, on écrase la copie "All Mail"
+        // tout en conservant l'objet Gloda s'il a un snippet indexé
+        let mergedGloda = existing.glodaMsg || m;
+        byHeaderId.set(hid, { glodaMsg: mergedGloda, msgHdr: m.folderMessage });
+        absorbLocalThread(m.folderMessage);
+        return true;
+      }
+
+      if (existing.glodaMsg) return false;
+    }
+
     byHeaderId.set(hid, { glodaMsg: m, msgHdr: m.folderMessage });
     if (m.conversation) knownConvIds.add(m.conversation.id);
-    // Pont BIDIRECTIONNEL : les References ne pointent que vers les ancêtres,
-    // mais le fil local du dossier relie aussi les descendants. L'absorber
-    // pour CHAQUE message (et pas seulement le message cliqué) rend le
-    // résultat indépendant du point d'entrée dans le fil.
     if (!existing) absorbLocalThread(m.folderMessage);
     return !existing;
   }
 
   function addHdr(hdr) {
     if (!hdr || byHeaderId.size >= kMaxThreadMessages) return false;
-    let hid = hdr.messageId;
-    if (!hid || byHeaderId.has(hid)) return false;
+    let hid = normalizeMessageId(hdr.messageId);
+    let existing = byHeaderId.get(hid);
+
+    if (existing) {
+      let currentIsAllMail = isAllMailFolder(hdr.folder);
+      let existingIsAllMail = existing.msgHdr && isAllMailFolder(existing.msgHdr.folder);
+
+      if (!existingIsAllMail && currentIsAllMail) {
+        return false;
+      }
+      if (existingIsAllMail && !currentIsAllMail) {
+        existing.msgHdr = hdr;
+        return true;
+      }
+      return false;
+    }
+
     byHeaderId.set(hid, { msgHdr: hdr });
     pendingHdrs.push(hdr);
     return true;

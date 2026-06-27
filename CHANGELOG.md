@@ -5,6 +5,23 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.5.0] - 2026-06-27
+
+### Ajouté
+- **Accessibilité & Sémantique** :
+  - Rehausse du contraste du badge Archive en mode clair (valeur `#8f5700` sur fond `#fefcbf` conforme WCAG AA à 5,1:1).
+  - Ajout des rôles structurels de titre `role="heading"` et `aria-level="2"` au titre du fil de discussion.
+  - Ajout d'attributs `aria-label` descriptifs sur les boutons emoji d'en-tête (Configuration et Réduction).
+  - Intégration des attributs de séparation ARIA (`role="separator"`, `aria-orientation`, `aria-valuemin`, `aria-valuemax` et `aria-valuenow` dynamique) sur la poignée de redimensionnement pour l'accessibilité au clavier.
+  - Liaison des boutons radio de configuration à leurs descriptions textuelles respectives via `aria-describedby` dans la page d'options.
+
+### Corrigé
+- **Discussions groupées (vue 3-pane)** : Élargissement de l'écouteur `messageDisplay.onMessageDisplayed` à tous les onglets pour résoudre l'absence d'affichage du panneau lors de l'expansion d'une discussion groupée dans la vue principale.
+- **Robustesse & Dédoublonnage Gmail** :
+  - Implémentation du dédoublonnage intelligent dans `glodaApi.js` : normalisation des Message-IDs (chevrons et espaces) et filtrage prioritaire des dossiers Gmail (les dossiers spécifiques comme *Envoyés* ou *Boîte de réception* priment sur le dossier virtuel global *Tous les messages*).
+  - Protection contre la faille d'injection de sélecteurs CSS dans `options.js` par validation des préférences par rapport à une liste blanche (`ALLOWED_VALUES`).
+  - Résolution de la race condition inter-dossiers (page blanche sous Linux ESR) : le délai de sécurité de 250 ms n'est désormais appliqué qu'aux e-mails envoyés de moins de 5 minutes.
+
 ## [2.4.1] - 2026-06-22
 
 ### Modifié

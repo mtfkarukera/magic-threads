@@ -89,6 +89,7 @@ function getLabels(count) {
 // Compteur de requêtes PAR ONGLET : une requête n'est invalidée que par une
 // requête plus récente (ou un masquage) concernant le même onglet.
 const tabRequestIds = new Map();
+const tabLastMessageId = new Map();
 
 function nextRequestId(tabId) {
   const id = (tabRequestIds.get(tabId) || 0) + 1;
@@ -101,12 +102,19 @@ function invalidateRequests(tabId) {
   nextRequestId(tabId);
 }
 
-// Éviter que la Map ne grossisse indéfiniment
+// Éviter que les Maps ne grossissent indéfiniment
 browser.tabs.onRemoved.addListener((tabId) => {
   tabRequestIds.delete(tabId);
+  tabLastMessageId.delete(tabId);
 });
 
 async function showThreadForMessage(tab, message) {
+  // Éviter les requêtes redondantes pour le même message
+  if (tabLastMessageId.get(tab.id) === message.id) {
+    return;
+  }
+  tabLastMessageId.set(tab.id, message.id);
+
   // S'assurer que la migration des préférences est terminée avant toute lecture
   // (le schéma de showBanner n'accepte plus la valeur héritée "left").
   await prefsMigrated;
@@ -161,11 +169,13 @@ browser.mailTabs.onSelectedMessagesChanged.addListener(async (tab, messageList) 
       // Invalider les requêtes en vol : sinon un fil parti avant la
       // désélection pourrait réafficher le panneau après le masquage.
       invalidateRequests(tab.id);
+      tabLastMessageId.delete(tab.id);
       await browser.magicThreadsWindow.hideBanner(tab.id).catch(() => {});
       return;
     }
     if (messageList.messages.length > 1) {
       invalidateRequests(tab.id);
+      tabLastMessageId.delete(tab.id);
       await browser.magicThreadsWindow.hideBanner(tab.id).catch(() => {});
       return;
     }
@@ -178,10 +188,6 @@ browser.mailTabs.onSelectedMessagesChanged.addListener(async (tab, messageList) 
 // ---- Écouteur onglet message : message affiché dans un onglet dédié ----
 browser.messageDisplay.onMessageDisplayed.addListener(async (tab, message) => {
   try {
-    // Ne traiter que les onglets message (pas les 3-pane, déjà gérés ci-dessus)
-    if (tab.mailTab) {
-      return;
-    }
     await showThreadForMessage(tab, message);
   } catch (e) {
     console.error("Magic Threads: error in onMessageDisplayed:", e);
@@ -234,10 +240,29 @@ async function handleOpenMessage(messageId, mode) {
     throw new Error("Target message not found.");
   }
 
+  let currentFolderId = mailTab.displayedFolder.id || mailTab.displayedFolder;
   let folderId = targetMsg.folder.id || targetMsg.folder;
-  await browser.mailTabs.update(mailTab.id, {
-    displayedFolder: folderId
-  });
-  await browser.mailTabs.setSelectedMessages(mailTab.id, [messageId]);
+
+  // Détection d'un message envoyé de moins de 5 minutes
+  const FIVE_MINUTES_MS = 5 * 60 * 1000;
+  let msgDate = new Date(targetMsg.date).getTime();
+  let isRecentSent = targetMsg.folder && 
+                     targetMsg.folder.type === "sent" && 
+                     (Date.now() - msgDate) < FIVE_MINUTES_MS;
+
+  if (currentFolderId === folderId) {
+    // Même dossier : sélection directe et instantanée
+    await browser.mailTabs.setSelectedMessages(mailTab.id, [messageId]);
+  } else {
+    // Dossier différent : changement de dossier
+    await browser.mailTabs.update(mailTab.id, {
+      displayedFolder: folderId
+    });
+    // Pause de sécurité uniquement pour les e-mails envoyés récents (250 ms)
+    if (isRecentSent) {
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    await browser.mailTabs.setSelectedMessages(mailTab.id, [messageId]);
+  }
 }
 

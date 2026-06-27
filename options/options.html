@@ -101,18 +101,18 @@
 
     <div class="option-row">
       <label>
-        <input type="radio" name="navigationMode" value="currentTab" checked>
+        <input type="radio" id="nav-mode-current" name="navigationMode" value="currentTab" aria-describedby="nav-mode-current-desc" checked>
         <strong data-i18n="optNavCurrentTabLabel"></strong>
       </label>
-      <div class="description" data-i18n="optNavCurrentTabDesc"></div>
+      <div id="nav-mode-current-desc" class="description" data-i18n="optNavCurrentTabDesc"></div>
     </div>
     
     <div class="option-row">
       <label>
-        <input type="radio" name="navigationMode" value="newTab">
+        <input type="radio" id="nav-mode-new" name="navigationMode" value="newTab" aria-describedby="nav-mode-new-desc">
         <strong data-i18n="optNavNewTabLabel"></strong>
       </label>
-      <div class="description" data-i18n="optNavNewTabDesc"></div>
+      <div id="nav-mode-new-desc" class="description" data-i18n="optNavNewTabDesc"></div>
     </div>
   </fieldset>
 
@@ -121,18 +121,18 @@
 
     <div class="option-row">
       <label>
-        <input type="radio" name="sidebarPosition" value="right" checked>
+        <input type="radio" id="sidebar-pos-right" name="sidebarPosition" value="right" aria-describedby="sidebar-pos-right-desc" checked>
         <strong data-i18n="optSidebarRight"></strong>
       </label>
-      <div class="description" data-i18n="optSidebarRightDesc"></div>
+      <div id="sidebar-pos-right-desc" class="description" data-i18n="optSidebarRightDesc"></div>
     </div>
     
     <div class="option-row">
       <label>
-        <input type="radio" name="sidebarPosition" value="left">
+        <input type="radio" id="sidebar-pos-left" name="sidebarPosition" value="left" aria-describedby="sidebar-pos-left-desc">
         <strong data-i18n="optSidebarLeft"></strong>
       </label>
-      <div class="description" data-i18n="optSidebarLeftDesc"></div>
+      <div id="sidebar-pos-left-desc" class="description" data-i18n="optSidebarLeftDesc"></div>
     </div>
   </fieldset>
 
@@ -141,18 +141,18 @@
 
     <div class="option-row">
       <label>
-        <input type="radio" name="mainViewPosition" value="bottom" checked>
+        <input type="radio" id="main-view-pos-bottom" name="mainViewPosition" value="bottom" aria-describedby="main-view-pos-bottom-desc" checked>
         <strong data-i18n="optMainViewBottom"></strong>
       </label>
-      <div class="description" data-i18n="optMainViewBottomDesc"></div>
+      <div id="main-view-pos-bottom-desc" class="description" data-i18n="optMainViewBottomDesc"></div>
     </div>
     
     <div class="option-row">
       <label>
-        <input type="radio" name="mainViewPosition" value="right">
+        <input type="radio" id="main-view-pos-right" name="mainViewPosition" value="right" aria-describedby="main-view-pos-right-desc">
         <strong data-i18n="optMainViewRight"></strong>
       </label>
-      <div class="description" data-i18n="optMainViewRightDesc"></div>
+      <div id="main-view-pos-right-desc" class="description" data-i18n="optMainViewRightDesc"></div>
     </div>
 
   </fieldset>
@@ -162,15 +162,15 @@
 
     <div class="option-row">
       <label>
-        <input type="radio" name="threadOrder" value="antichronological" checked>
+        <input type="radio" id="thread-order-antichrono" name="threadOrder" value="antichronological" aria-describedby="thread-order-antichrono-desc" checked>
         <strong data-i18n="optThreadOrderAntichrono"></strong>
       </label>
-      <div class="description" data-i18n="optThreadOrderDesc"></div>
+      <div id="thread-order-antichrono-desc" class="description" data-i18n="optThreadOrderDesc"></div>
     </div>
     
     <div class="option-row">
       <label>
-        <input type="radio" name="threadOrder" value="chronological">
+        <input type="radio" id="thread-order-chrono" name="threadOrder" value="chronological">
         <strong data-i18n="optThreadOrderChrono"></strong>
       </label>
     </div>

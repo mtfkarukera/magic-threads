@@ -56,7 +56,7 @@ const SHARED_CSS = `
           --sent-bg: #f0fff4;
           --sent-text: #2f855a;
           --archive-bg: #fefcbf;
-          --archive-text: #b7791f;
+          --archive-text: #8f5700;
         }
         :host([hidden]) {
           display: none !important;
@@ -420,14 +420,19 @@ function attachResizeBehavior(handle, axis, shadowRoot, sidebarPosition) {
    * Partagé entre le glisser (pointer) et le clavier (flèches).
    */
   function applySize(size) {
+    let boundedSize;
     if (axis === "y") {
       let newHeight = Math.max(BOTTOM_MIN_HEIGHT, Math.min(size, BOTTOM_MAX_HEIGHT));
       hostEl.style.height = newHeight + "px";
+      boundedSize = newHeight;
+      handle.setAttribute("aria-valuenow", boundedSize);
       return;
     }
 
     let newWidth = Math.max(SIDEBAR_MIN_WIDTH, Math.min(size, SIDEBAR_MAX_WIDTH));
     hostEl.style.width = newWidth + "px";
+    boundedSize = newWidth;
+    handle.setAttribute("aria-valuenow", boundedSize);
 
     let contentDoc = hostEl.ownerDocument;
     if (hostEl.dataset.layoutContext === "messageTab") {
@@ -454,6 +459,10 @@ function attachResizeBehavior(handle, axis, shadowRoot, sidebarPosition) {
   handle.tabIndex = 0;
   handle.setAttribute("role", "separator");
   handle.setAttribute("aria-orientation", axis === "y" ? "horizontal" : "vertical");
+  handle.setAttribute("aria-valuemin", axis === "y" ? BOTTOM_MIN_HEIGHT : SIDEBAR_MIN_WIDTH);
+  handle.setAttribute("aria-valuemax", axis === "y" ? BOTTOM_MAX_HEIGHT : SIDEBAR_MAX_WIDTH);
+  let initialSize = axis === "y" ? BOTTOM_DEFAULT_HEIGHT : SIDEBAR_DEFAULT_WIDTH;
+  handle.setAttribute("aria-valuenow", initialSize);
   handle.addEventListener("keydown", (e) => {
     let delta = 0;
     if (axis === "y") {
@@ -775,6 +784,8 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
 
       let title = doc.createElement("span");
       title.className = "threads-title";
+      title.setAttribute("role", "heading");
+      title.setAttribute("aria-level", "2");
       let titleText = labels.panelTitle || "\u{1F9F5} Thread ($COUNT$)";
       title.textContent = titleText.replace("$COUNT$", threadData.length);
       header.appendChild(title);
@@ -790,6 +801,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       let toggleBtn = doc.createElement("button");
       toggleBtn.className = "threads-toggle-btn";
       toggleBtn.title = labels.tooltipToggleMode;
+      toggleBtn.setAttribute("aria-label", labels.tooltipToggleMode);
       toggleBtn.textContent = "\u2699\uFE0F";
       actionsDiv.appendChild(toggleBtn);
 
@@ -797,6 +809,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       collapseBtn.className = "threads-collapse-btn";
       collapseBtn.textContent = "\u25BC";
       collapseBtn.title = labels.tooltipCollapseExpand;
+      collapseBtn.setAttribute("aria-label", labels.tooltipCollapseExpand);
       // \u00C9tat d\u00E9pli\u00E9 annonc\u00E9 aux technologies d'assistance, tenu \u00E0 jour \u00E0 chaque bascule
       collapseBtn.setAttribute("aria-expanded", "true");
       actionsDiv.appendChild(collapseBtn);

@@ -23,6 +23,13 @@ function localizeDocument() {
   }
 }
 
+const ALLOWED_VALUES = {
+  navigationMode: ["currentTab", "newTab"],
+  sidebarPosition: ["left", "right"],
+  mainViewPosition: ["bottom", "right"],
+  threadOrder: ["antichronological", "chronological"]
+};
+
 // Charge les options enregistrées
 function loadOptions() {
   storage.get({
@@ -36,23 +43,39 @@ function loadOptions() {
       items.mainViewPosition = "right";
       storage.set({ mainViewPosition: "right" }).catch(console.error);
     }
+    
     // Navigation mode
-    const navRadio = document.querySelector(`input[name="navigationMode"][value="${items.navigationMode}"]`);
+    const navMode = ALLOWED_VALUES.navigationMode.includes(items.navigationMode)
+      ? items.navigationMode
+      : "currentTab";
+    const navRadio = document.querySelector(`input[name="navigationMode"][value="${navMode}"]`);
     if (navRadio) {
       navRadio.checked = true;
     }
+
     // Sidebar position
-    const sidebarRadio = document.querySelector(`input[name="sidebarPosition"][value="${items.sidebarPosition}"]`);
+    const sidebarPos = ALLOWED_VALUES.sidebarPosition.includes(items.sidebarPosition)
+      ? items.sidebarPosition
+      : "right";
+    const sidebarRadio = document.querySelector(`input[name="sidebarPosition"][value="${sidebarPos}"]`);
     if (sidebarRadio) {
       sidebarRadio.checked = true;
     }
+
     // Main view position
-    const mainViewRadio = document.querySelector(`input[name="mainViewPosition"][value="${items.mainViewPosition}"]`);
+    const mainViewPos = ALLOWED_VALUES.mainViewPosition.includes(items.mainViewPosition)
+      ? items.mainViewPosition
+      : "bottom";
+    const mainViewRadio = document.querySelector(`input[name="mainViewPosition"][value="${mainViewPos}"]`);
     if (mainViewRadio) {
       mainViewRadio.checked = true;
     }
+
     // Thread order
-    const threadRadio = document.querySelector(`input[name="threadOrder"][value="${items.threadOrder}"]`);
+    const threadOrder = ALLOWED_VALUES.threadOrder.includes(items.threadOrder)
+      ? items.threadOrder
+      : "antichronological";
+    const threadRadio = document.querySelector(`input[name="threadOrder"][value="${threadOrder}"]`);
     if (threadRadio) {
       threadRadio.checked = true;
     }
