@@ -203,6 +203,23 @@ browser.magicThreadsWindow.onBannerItemClicked.addListener(async (messageId, mod
   }
 });
 
+// Sélectionne un message avec retry si le dossier n'est pas encore prêt
+async function setSelectedMessagesWithRetry(tabId, messageId) {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    try {
+      await browser.mailTabs.setSelectedMessages(tabId, [messageId]);
+      let selection = await browser.mailTabs.getSelectedMessages(tabId).catch(() => null);
+      if (selection && selection.messages && selection.messages.some(m => m.id === messageId)) {
+        return true;
+      }
+    } catch (e) {
+      // Ignorer l'erreur et réessayer
+    }
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  return false;
+}
+
 // ---- Navigation vers un message ----
 async function handleOpenMessage(messageId, mode) {
   // Détecter si on est dans un onglet message (pas un 3-pane)
@@ -262,7 +279,8 @@ async function handleOpenMessage(messageId, mode) {
     if (isRecentSent) {
       await new Promise(resolve => setTimeout(resolve, 250));
     }
-    await browser.mailTabs.setSelectedMessages(mailTab.id, [messageId]);
+    // Sélection avec tolérance de chargement du dossier
+    await setSelectedMessagesWithRetry(mailTab.id, messageId);
   }
 }
 

@@ -32,13 +32,42 @@ function isAllMailFolder(nsFolder) {
   try {
     let uri = nsFolder.URI || "";
     let decodedUri = decodeURIComponent(uri);
-    let isGmail = decodedUri.includes("[Gmail]") || decodedUri.includes("[Google Mail]");
+    let path = decodedUri.split("?")[0];
+    
+    let isGmail = path.includes("[Gmail]") || path.includes("[Google Mail]");
     if (!isGmail) return false;
-    return decodedUri.endsWith("/All Mail") || 
-           decodedUri.endsWith("/Tous les messages") || 
-           decodedUri.endsWith("/Todos los mensajes") ||
-           decodedUri.endsWith("/Todos os e-mails") ||
-           decodedUri.endsWith("/Alle E-Mails");
+
+    if (path.endsWith("/")) {
+      path = path.slice(0, -1);
+    }
+    
+    let lowerPath = path.toLowerCase();
+    const allMailNames = [
+      "/all mail",
+      "/tous les messages",
+      "/todos",
+      "/todos los mensajes",
+      "/todos os e-mails",
+      "/todos os emails",
+      "/todo o correio",
+      "/alle e-mails",
+      "/alle emails",
+      "/alle nachrichten",
+      "/tutti i messaggi",
+      "/wszystkie",
+      "/wszystkie e-maile",
+      "/wszystkie emaile",
+      "/alle berichten",
+      "/tüm postalar",
+      "/вся почта",
+      "/所有邮件",
+      "/所有郵件",
+      "/전체 보관함",
+      "/すべてのメール",
+      "/すべてメール"
+    ];
+
+    return allMailNames.some(name => lowerPath.endsWith(name));
   } catch (e) {
     return false;
   }
@@ -160,8 +189,10 @@ async function resolveFullThread(msgHdr) {
 
       if (!existingIsAllMail && currentIsAllMail) {
         // L'existant est dans un dossier spécifique, on ignore la copie "All Mail"
-        // mais on rattache la version Gloda pour ne pas perdre le snippet
-        if (!existing.glodaMsg && m.indexedBodyText) {
+        // mais on rattache ou met à jour la version Gloda pour ne pas perdre le snippet
+        if (!existing.glodaMsg) {
+          existing.glodaMsg = m;
+        } else if (!existing.glodaMsg.indexedBodyText && m.indexedBodyText) {
           existing.glodaMsg = m;
         }
         return false;
@@ -169,13 +200,22 @@ async function resolveFullThread(msgHdr) {
       if (existingIsAllMail && !currentIsAllMail) {
         // Le nouveau est dans un dossier spécifique, on écrase la copie "All Mail"
         // tout en conservant l'objet Gloda s'il a un snippet indexé
-        let mergedGloda = existing.glodaMsg || m;
+        let mergedGloda = m;
+        if (existing.glodaMsg && (existing.glodaMsg.indexedBodyText || !m.indexedBodyText)) {
+          mergedGloda = existing.glodaMsg;
+        }
         byHeaderId.set(hid, { glodaMsg: mergedGloda, msgHdr: m.folderMessage });
         absorbLocalThread(m.folderMessage);
         return true;
       }
 
-      if (existing.glodaMsg) return false;
+      if (existing.glodaMsg) {
+        // Si l'existant n'a pas de snippet indexé mais que la nouvelle copie en a un, on met à jour
+        if (!existing.glodaMsg.indexedBodyText && m.indexedBodyText) {
+          existing.glodaMsg = m;
+        }
+        return false;
+      }
     }
 
     byHeaderId.set(hid, { glodaMsg: m, msgHdr: m.folderMessage });

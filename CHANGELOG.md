@@ -8,6 +8,10 @@ et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 ## [2.5.1] - 2026-06-27
 
 ### Corrigé
+- **Robustesse & Dédoublonnage Gmail** :
+  - Dédoublonnage robuste : normalisation de la détection du dossier virtuel *Tous les messages* (Gmail All Mail) indépendamment de la casse, avec support étendu de plus de 20 langues (dont l'espagnol, l'allemand, l'italien, etc.) et traitement correct des paramètres de requête et slashs terminaux dans [glodaApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/glodaApi.js).
+  - Préservation du snippet : fiabilisation de la logique de fusion de messages de [glodaApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/glodaApi.js) pour conserver le snippet indexé de l'email quelle que soit la copie analysée.
+  - Sélection résiliente : implémentation d'une boucle de retry avec tolérance temporelle (jusqu'à 10 essais sur 500 ms) dans [background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js) pour garantir la sélection effective du message après changement de dossier dans la vue 3-pane.
 - **Accessibilité & Contraste WCAG AA** :
   - Rehausse du contraste de la couleur du dossier *Envoyé* (`--sent-text`) en mode clair (de `#2f855a` à `#276f4a` sur fond `#f0fff4`, atteignant un contraste conforme de 6,1:1).
   - Rehausse du contraste du texte secondaire (`--text-muted`) en mode sombre (de `#8a93a3` à `#8d98a9` sur fond `#282c34`, atteignant un contraste conforme de 4,7:1).
