@@ -114,11 +114,11 @@ Le panneau injecté utilise un Shadow DOM pour l'isolation CSS complète :
 flowchart TD
     A["Document Thunderbird (XUL/HTML)"] --> B["Conteneur hôte (div/vbox)"]
     B --> C["Shadow Root (mode: open)"]
-    C --> D["<style> — Styles du panneau"]
+    C --> D["Feuille de style CSS du panneau"]
     C --> E["Conteneur principal"]
     E --> F["En-tête (titre, compteur)"]
     E --> G["Liste des messages"]
-    G --> H["Message 1 : expéditeur, date, snippet, dossier, 📎"]
+    G --> H["Message 1 : expéditeur, date, snippet, dossier, pièce jointe"]
     G --> I["Message 2 : expéditeur, date, snippet, dossier"]
     G --> J["Message N : ..."]
     E --> K["Poignée de redimensionnement"]
@@ -210,7 +210,7 @@ La sélection programmée de messages (en particulier après un envoi récent) f
 |-----------|--------|----------|
 | Experiment APIs en contexte chrome | Pas d'accès à `browser.i18n` | Passer les traductions depuis le background |
 | Dates cross-compartment XPCOM | `instanceof Date` échoue | Convertir en timestamp avant transmission |
-| DOM en vue 3-pane | `messagePane` est un custom element HTML dans un grid CSS, `messageBrowser` est un `<browser>` XUL | Sidebar 3-pane utilise `position:absolute` dans le `messagePane` + marge sur `messageBrowser` |
+| DOM en vue 3-pane | `messagePane` est un custom element HTML dans un grid CSS, `messageBrowser` est un élément XUL `browser` | Sidebar 3-pane utilise `position:absolute` dans le `messagePane` + marge sur `messageBrowser` |
 | Shadow DOM ouvert | Accès possible au DOM interne pour le debugging | Toute la logique DOM dans l'Experiment API |
 | Timer.sys.mjs obligatoire | `setTimeout`/`clearTimeout` non disponibles dans le contexte chrome | Import explicite depuis `resource://gre/modules/Timer.sys.mjs` |
 
