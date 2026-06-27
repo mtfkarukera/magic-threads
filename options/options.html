@@ -51,6 +51,10 @@
       margin-right: 10px;
       margin-top: 3px;
     }
+    input[type="radio"]:focus-visible {
+      outline: 2px solid var(--in-content-focus-outline-color, #0060df);
+      outline-offset: 2px;
+    }
     .description {
       margin-top: 4px;
       /* Gris dérivé du thème : lisible sur fond clair comme sombre */
@@ -100,7 +104,7 @@
     <legend class="option-group-title" data-i18n="optNavGroupTitle"></legend>
 
     <div class="option-row">
-      <label>
+      <label for="nav-mode-current">
         <input type="radio" id="nav-mode-current" name="navigationMode" value="currentTab" aria-describedby="nav-mode-current-desc" checked>
         <strong data-i18n="optNavCurrentTabLabel"></strong>
       </label>
@@ -108,7 +112,7 @@
     </div>
     
     <div class="option-row">
-      <label>
+      <label for="nav-mode-new">
         <input type="radio" id="nav-mode-new" name="navigationMode" value="newTab" aria-describedby="nav-mode-new-desc">
         <strong data-i18n="optNavNewTabLabel"></strong>
       </label>
@@ -120,7 +124,7 @@
     <legend class="option-group-title" data-i18n="optSidebarGroupTitle"></legend>
 
     <div class="option-row">
-      <label>
+      <label for="sidebar-pos-right">
         <input type="radio" id="sidebar-pos-right" name="sidebarPosition" value="right" aria-describedby="sidebar-pos-right-desc" checked>
         <strong data-i18n="optSidebarRight"></strong>
       </label>
@@ -128,7 +132,7 @@
     </div>
     
     <div class="option-row">
-      <label>
+      <label for="sidebar-pos-left">
         <input type="radio" id="sidebar-pos-left" name="sidebarPosition" value="left" aria-describedby="sidebar-pos-left-desc">
         <strong data-i18n="optSidebarLeft"></strong>
       </label>
@@ -140,7 +144,7 @@
     <legend class="option-group-title" data-i18n="optMainViewGroupTitle"></legend>
 
     <div class="option-row">
-      <label>
+      <label for="main-view-pos-bottom">
         <input type="radio" id="main-view-pos-bottom" name="mainViewPosition" value="bottom" aria-describedby="main-view-pos-bottom-desc" checked>
         <strong data-i18n="optMainViewBottom"></strong>
       </label>
@@ -148,7 +152,7 @@
     </div>
     
     <div class="option-row">
-      <label>
+      <label for="main-view-pos-right">
         <input type="radio" id="main-view-pos-right" name="mainViewPosition" value="right" aria-describedby="main-view-pos-right-desc">
         <strong data-i18n="optMainViewRight"></strong>
       </label>
@@ -157,19 +161,19 @@
 
   </fieldset>
 
-  <fieldset class="option-group">
+  <fieldset class="option-group" aria-describedby="thread-order-desc">
     <legend class="option-group-title" data-i18n="optThreadOrderTitle"></legend>
+    <div id="thread-order-desc" class="description" style="padding-left: 0; margin-bottom: 12px;" data-i18n="optThreadOrderDesc"></div>
 
     <div class="option-row">
-      <label>
-        <input type="radio" id="thread-order-antichrono" name="threadOrder" value="antichronological" aria-describedby="thread-order-antichrono-desc" checked>
+      <label for="thread-order-antichrono">
+        <input type="radio" id="thread-order-antichrono" name="threadOrder" value="antichronological" checked>
         <strong data-i18n="optThreadOrderAntichrono"></strong>
       </label>
-      <div id="thread-order-antichrono-desc" class="description" data-i18n="optThreadOrderDesc"></div>
     </div>
     
     <div class="option-row">
-      <label>
+      <label for="thread-order-chrono">
         <input type="radio" id="thread-order-chrono" name="threadOrder" value="chronological">
         <strong data-i18n="optThreadOrderChrono"></strong>
       </label>

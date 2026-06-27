@@ -54,7 +54,7 @@ const SHARED_CSS = `
           --inbox-bg: #ebf8ff;
           --inbox-text: #2b6cb0;
           --sent-bg: #f0fff4;
-          --sent-text: #2f855a;
+          --sent-text: #276f4a;
           --archive-bg: #fefcbf;
           --archive-text: #8f5700;
         }
@@ -81,7 +81,7 @@ const SHARED_CSS = `
             --card-bg: var(--layout-background-0, #282c34);
             --card-hover-bg: var(--layout-background-2, #353b45);
             --text-main: var(--layout-color-1, #abb2bf);
-            --text-muted: var(--layout-color-2, #8a93a3);
+            --text-muted: var(--layout-color-2, #8d98a9);
             --accent-border: var(--color-accent-primary, #528bff);
             --accent-bg: #223147;
             --folder-bg: #2d3139;
@@ -648,9 +648,15 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
 
       let item = doc.createElement("div");
       item.className = "thread-item";
+      // Each item in the list represents a button for keyboard navigability and screen readers.
+      // For the current message, it is a disabled button (aria-disabled="true") representing the current state (aria-current="true").
+      item.setAttribute("role", "button");
+      item.tabIndex = 0;
+
       if (msg.id === currentMessageId) {
         item.classList.add("current");
         item.setAttribute("aria-current", "true");
+        item.setAttribute("aria-disabled", "true");
       }
       if (!msg.isRead) item.classList.add("unread");
 
@@ -697,10 +703,6 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       item.appendChild(snippet);
 
       if (msg.id !== currentMessageId) {
-        // Item actionnable : focusable au clavier, activable par Entrée/Espace
-        // comme un vrai bouton (constat 3.1 de l'audit)
-        item.setAttribute("role", "button");
-        item.tabIndex = 0;
         let activate = () => {
           if (itemClickFire) {
             itemClickFire.async(msg.id, navState.mode);
@@ -794,7 +796,9 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       actionsDiv.className = "threads-actions";
 
       let modeIndicator = doc.createElement("span");
+      modeIndicator.id = "threads-mode-indicator";
       modeIndicator.className = "threads-mode-indicator";
+      modeIndicator.setAttribute("aria-live", "polite");
       updateModeIndicator(modeIndicator, navigationMode, labels);
       actionsDiv.appendChild(modeIndicator);
 
@@ -802,6 +806,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       toggleBtn.className = "threads-toggle-btn";
       toggleBtn.title = labels.tooltipToggleMode;
       toggleBtn.setAttribute("aria-label", labels.tooltipToggleMode);
+      toggleBtn.setAttribute("aria-describedby", "threads-mode-indicator");
       toggleBtn.textContent = "\u2699\uFE0F";
       actionsDiv.appendChild(toggleBtn);
 
@@ -810,7 +815,8 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       collapseBtn.textContent = "\u25BC";
       collapseBtn.title = labels.tooltipCollapseExpand;
       collapseBtn.setAttribute("aria-label", labels.tooltipCollapseExpand);
-      // \u00C9tat d\u00E9pli\u00E9 annonc\u00E9 aux technologies d'assistance, tenu \u00E0 jour \u00E0 chaque bascule
+      collapseBtn.setAttribute("aria-controls", "threads-list");
+      // État déplié annoncé aux technologies d'assistance, tenu à jour à chaque bascule
       collapseBtn.setAttribute("aria-expanded", "true");
       actionsDiv.appendChild(collapseBtn);
 
@@ -819,6 +825,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
 
       // Liste (sémantique ARIA : list > listitem, voir construction des items)
       let list = doc.createElement("div");
+      list.id = "threads-list";
       list.className = "threads-list";
       list.setAttribute("role", "list");
 

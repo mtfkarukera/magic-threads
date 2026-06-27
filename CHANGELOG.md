@@ -5,6 +5,18 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.5.1] - 2026-06-27
+
+### Corrigé
+- **Accessibilité & Contraste WCAG AA** :
+  - Rehausse du contraste de la couleur du dossier *Envoyé* (`--sent-text`) en mode clair (de `#2f855a` à `#276f4a` sur fond `#f0fff4`, atteignant un contraste conforme de 6,1:1).
+  - Rehausse du contraste du texte secondaire (`--text-muted`) en mode sombre (de `#8a93a3` à `#8d98a9` sur fond `#282c34`, atteignant un contraste conforme de 4,7:1).
+  - Rétablissement de la continuité de navigation au clavier : le message courant est désormais focusable (`tabIndex="0"`) et déclaré comme un bouton inactif (`role="button"`, `aria-disabled="true"`), supprimant la rupture de tabulation au sein de la liste.
+  - Amélioration des options : ajout d'associations explicites `<label for="...">` pour tous les boutons radio de la page de préférences.
+  - Sémantique du tri : association de la description globale de tri au groupe d'options (`aria-describedby` sur le `<fieldset>` parent).
+  - Retour vocal sur l'en-tête du fil : ajout d'une zone `aria-live="polite"` sur l'indicateur de mode et liaison via `aria-describedby` sur le bouton de configuration ⚙️.
+  - Ajout de la liaison `aria-controls` reliant le bouton de repli (▼) à la liste de discussion.
+
 ## [2.5.0] - 2026-06-27
 
 ### Ajouté
