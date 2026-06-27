@@ -17,6 +17,7 @@ Extension Thunderbird qui affiche le fil chronologique des e-mails (métadonnée
 - 🌍 **Multilingue** : interface traduite en 7 langues
 - ♿ **Accessible** : navigation complète au clavier (liste du fil, bouton réduire, poignées de redimensionnement aux flèches), contrastes WCAG AA, états annoncés aux lecteurs d'écran (non lu, panneau replié)
 - 🧭 **Navigation intra-onglet** : clic sur un message ouvre celui-ci sans quitter l'onglet courant
+- 📧 **Dédoublonnage intelligent** : fusionne automatiquement les doublons d'e-mails (par exemple, les copies stockées dans le dossier *Tous les messages* de Gmail) pour n'afficher qu'une seule entrée propre avec son extrait (snippet) de texte préservé.
 
 ## Installation
 

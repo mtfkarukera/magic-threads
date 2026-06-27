@@ -78,7 +78,8 @@ flowchart LR
   (`getMessageCollectionForHeaders`), le fil local du dossier (`nsIMsgThread`,
   ce qu'affiche la liste de messages) et les conversations sœurs retrouvées en
   suivant les en-têtes `References` (requête Gloda `headerMessageID`), avec
-  dédoublonnage par `Message-ID` et expansion bornée
+  dédoublonnage par `Message-ID` et expansion bornée.
+- **Dédoublonnage intelligent Gmail** : La détection `isAllMailFolder` normalise les URIs IMAP (nettoyage des paramètres et slashs terminaux) et identifie le dossier virtuel *Tous les messages* de Gmail de manière insensible à la casse dans 22 langues. La logique fusionne les doublons en privilégiant les e-mails dans des dossiers précis (Boîte de réception, Envoyés) tout en préservant le snippet indexé de Gloda.
 - Retourne un tableau JSON sérialisable de métadonnées de messages
 - Expose aussi `isGlodaAvailable()` (v2.3.0) : vérifie la préférence `mailnews.database.global.indexer.enabled` et le chargement du module Gloda — utilisé par la page d'options pour avertir si l'index est désactivé
 - Schéma défini dans `glodaSchema.json`
@@ -193,6 +194,13 @@ suit l'un de **trois chemins** selon le contexte et le mode de navigation :
 3. **Vue 3-pane, mode « onglet courant »** : `mailTabs.update` change le dossier
    affiché puis `mailTabs.setSelectedMessages` sélectionne le message ciblé
    (repli sur `messageDisplay.open()` si aucun `mailTab` n'est disponible).
+
+### Résilience de la sélection (Envois récents)
+
+La sélection programmée de messages (en particulier après un envoi récent) fait face aux limites asynchrones de l'indexation de Thunderbird et de l'écriture des fichiers de dossier.
+
+1. **Délai de sécurité des messages récents** : Si l'e-mail a été envoyé depuis moins de 5 minutes, une temporisation fixe de 250 ms est systématiquement appliquée. Cela évite d'ouvrir le dossier et de forcer la sélection alors que le fichier physique de dossier/index est verrouillé ou en cours d'écriture locale.
+2. **Boucle de validation de sélection (Retry Loop)** : La fonction `setSelectedMessagesWithRetry` tente la sélection et interroge immédiatement Thunderbird via `getSelectedMessages`. Si le dossier n'est pas encore prêt, l'appel échoue silencieusement. L'extension réessaye alors l'opération toutes les 50 ms (jusqu'à 10 fois maximum) et s'arrête dès que la sélection effective est confirmée.
 
 ## Contraintes et problèmes connus
 
