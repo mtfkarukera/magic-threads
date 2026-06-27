@@ -267,20 +267,19 @@ async function handleOpenMessage(messageId, mode) {
                      targetMsg.folder.type === "sent" && 
                      (Date.now() - msgDate) < FIVE_MINUTES_MS;
 
-  if (currentFolderId === folderId) {
-    // Même dossier : sélection directe et instantanée
-    await browser.mailTabs.setSelectedMessages(mailTab.id, [messageId]);
-  } else {
+  // Pause de sécurité pour laisser l'écriture locale de l'index se terminer si le message est récent
+  if (isRecentSent) {
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
+
+  if (currentFolderId !== folderId) {
     // Dossier différent : changement de dossier
     await browser.mailTabs.update(mailTab.id, {
       displayedFolder: folderId
     });
-    // Pause de sécurité uniquement pour les e-mails envoyés récents (250 ms)
-    if (isRecentSent) {
-      await new Promise(resolve => setTimeout(resolve, 250));
-    }
-    // Sélection avec tolérance de chargement du dossier
-    await setSelectedMessagesWithRetry(mailTab.id, messageId);
   }
+
+  // Sélection avec tolérance de chargement du dossier
+  await setSelectedMessagesWithRetry(mailTab.id, messageId);
 }
 

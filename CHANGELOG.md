@@ -5,6 +5,11 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.5.2] - 2026-06-27
+
+### Corrigé
+- **Sélection intra-dossier robuste (background.js)** : Application systématique du délai de sécurité de 250 ms et de la boucle de retry de sélection pour les e-mails envoyés récents, y compris lorsque la navigation s'effectue au sein du même dossier (ex : clics successifs dans "Messages envoyés"), résolvant définitivement les cas de page blanche lors du premier clic.
+
 ## [2.5.1] - 2026-06-27
 
 ### Corrigé
