@@ -96,7 +96,7 @@ var convGloda = class extends ExtensionCommon.ExtensionAPI {
             let results = [];
             for (let entry of entries) {
               let webMsg = entry.glodaMsg
-                ? translateGlodaMessage(context, entry.glodaMsg)
+                ? translateGlodaMessage(context, entry.glodaMsg, entry.msgHdr)
                 : translateStandardMessage(context, entry.msgHdr);
               if (webMsg) {
                 results.push(webMsg);
@@ -403,19 +403,20 @@ function normalizeDate(msgHdr) {
   return 0;
 }
 
-function translateGlodaMessage(context, msg) {
-  if (!msg.folderMessage) {
+function translateGlodaMessage(context, msg, preferredMsgHdr) {
+  let targetHdr = preferredMsgHdr || msg.folderMessage;
+  if (!targetHdr) {
     return null;
   }
-  let message = context.extension.messageManager.convert(msg.folderMessage);
+  let message = context.extension.messageManager.convert(targetHdr);
   if (!message) {
     return null;
   }
   return {
     id: message.id,
-    headerMessageId: message.headerMessageId || message.messageId || msg.folderMessage.messageId,
+    headerMessageId: message.headerMessageId || message.messageId || targetHdr.messageId,
     author: message.author,
-    date: normalizeDate(msg.folderMessage),
+    date: normalizeDate(targetHdr),
     folder: message.folder ? {
       accountId: message.folder.accountId,
       path: message.folder.path,
@@ -423,7 +424,7 @@ function translateGlodaMessage(context, msg) {
     } : { accountId: "", path: "?", type: "" },
     snippet: msg.indexedBodyText?.substring(0, kSnippetLength) || "...",
     isRead: message.read,
-    hasAttachments: !!(msg.folderMessage.flags & Ci.nsMsgMessageFlags.Attachment),
+    hasAttachments: !!(targetHdr.flags & Ci.nsMsgMessageFlags.Attachment),
     tags: message.tags || []
   };
 }
