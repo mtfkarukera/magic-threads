@@ -135,3 +135,7 @@ npx eslint background/ experiment-api/ options/
 ## Licence
 
 Ce projet est sous licence [Mozilla Public License 2.0](LICENSE).
+
+---
+*Développé par **MTF Karukera**. Découvre toutes les solutions logicielles et outils de productivité de la suite **magic-softs** sur [magic-clipper.mtfk.fr](https://magic-clipper.mtfk.fr/).*
+
