@@ -203,9 +203,14 @@ browser.magicThreadsWindow.onBannerItemClicked.addListener(async (messageId, mod
   }
 });
 
-// Sélectionne un message avec retry si le dossier n'est pas encore prêt
-async function setSelectedMessagesWithRetry(tabId, messageId) {
-  for (let attempt = 0; attempt < 10; attempt++) {
+// Sélectionne un message avec retry adapté selon le contexte (même dossier vs changement de dossier)
+async function setSelectedMessagesWithRetry(tabId, messageId, isFolderChange = false) {
+  // Dans le même dossier, la liste est déjà chargée et stable : une seule tentative suffit.
+  // Lors d'un changement de dossier, Thunderbird doit ouvrir la base : 6 tentatives rapides de 30 ms (180 ms max).
+  const maxAttempts = isFolderChange ? 6 : 1;
+  const delayMs = 30;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       await browser.mailTabs.setSelectedMessages(tabId, [messageId]);
       let selection = await browser.mailTabs.getSelectedMessages(tabId).catch(() => null);
@@ -215,13 +220,20 @@ async function setSelectedMessagesWithRetry(tabId, messageId) {
     } catch (e) {
       // Ignorer l'erreur et réessayer
     }
-    await new Promise(resolve => setTimeout(resolve, 50));
+    if (attempt < maxAttempts - 1) {
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
   }
   return false;
 }
 
 // ---- Navigation vers un message ----
 async function handleOpenMessage(messageId, mode) {
+  if (mode === "newTab") {
+    await browser.messageDisplay.open({ messageId, active: true });
+    return;
+  }
+
   // Détecter si on est dans un onglet message (pas un 3-pane)
   let [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
   let isInMessageTab = activeTab && !activeTab.mailTab;
@@ -234,12 +246,7 @@ async function handleOpenMessage(messageId, mode) {
     } catch (e) {
       console.warn("Magic Threads: falling back to a new tab:", e);
     }
-    // Fallback
-    await browser.messageDisplay.open({ messageId, active: true });
-    return;
-  }
-
-  if (mode === "newTab") {
+    // Fallback de sécurité si l'onglet est inaccessible
     await browser.messageDisplay.open({ messageId, active: true });
     return;
   }
@@ -272,14 +279,28 @@ async function handleOpenMessage(messageId, mode) {
     await new Promise(resolve => setTimeout(resolve, 250));
   }
 
-  if (currentFolderId !== folderId) {
+  let isFolderChange = currentFolderId !== folderId;
+  if (isFolderChange) {
     // Dossier différent : changement de dossier
     await browser.mailTabs.update(mailTab.id, {
       displayedFolder: folderId
     });
   }
 
-  // Sélection avec tolérance de chargement du dossier
-  await setSelectedMessagesWithRetry(mailTab.id, messageId);
+  // Sélection avec tolérance différenciée (immédiate si même dossier, retry si changement de dossier)
+  let selected = await setSelectedMessagesWithRetry(mailTab.id, messageId, isFolderChange);
+  if (!selected) {
+    // Le message n'a pas pu être sélectionné dans la liste (ex: masqué par un filtre rapide actif)
+    // Fallback d'affichage direct dans le visualiseur sans toucher au filtre
+    let directOk = await browser.magicThreadsWindow.displayMessageDirectly(mailTab.id, messageId).catch(() => false);
+    if (directOk) {
+      // Invalider le cache de sélection d'onglet pour forcer la mise à jour de la bannière
+      tabLastMessageId.delete(mailTab.id);
+      await showThreadForMessage(mailTab, targetMsg);
+    } else {
+      // Fallback de dernier recours si l'affichage direct échoue
+      await browser.messageDisplay.open({ messageId, active: true });
+    }
+  }
 }
 

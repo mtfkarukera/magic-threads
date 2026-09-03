@@ -5,6 +5,42 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.5.9] - 2026-09-04
+
+### Optimisé
+- **Transition ultra-rapide et tolérance de sélection différenciée ([background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js))** :
+  - Élimination des 10 tentatives de sélection successives (~800 ms de latence) lorsque le message cible se situe dans le même dossier : bascule instantanée (0 ms d'attente) vers le fallback direct si le message est masqué par le filtre rapide.
+  - Resserrage de la boucle de retry lors d'un changement réel de dossier (6 tentatives de 30 ms = 180 ms max au lieu de 500 ms) pour une navigation réactive à 60 fps.
+  - Temps de transition réduit de ~1 000 ms à ~200 ms lors de la navigation dans les fils filtrés.
+
+## [2.5.8] - 2026-09-04
+
+### Ajouté
+- **Fallback d'affichage direct en cas de filtre rapide actif ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js), [background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js))** :
+  - Détection automatique lorsqu'un message ciblé dans le fil ne peut pas être sélectionné dans la liste 3-pane en raison d'un filtre rapide actif de l'utilisateur (ex: recherche par expéditeur).
+  - Invocation prioritaire de l'API de haut niveau `messagePane.displayMessage(msgURI)` de Thunderbird 128+ avec démasquage inconditionnel du visualiseur natif (`messageBrowser.hidden = false`) et masquage de la multi-sélection.
+  - Préservation intégrale du filtre rapide de l'utilisateur sans remise à zéro intempestive ni désynchronisation visuelle.
+  - Mise à jour immédiate du panneau Magic Threads pour synchroniser le fil de discussion sans écran noir ni interruption du travail en cours.
+
+## [2.5.6] - 2026-08-19
+
+### Corrigé
+- **Éradication du panneau fantôme et nettoyage robuste des marges ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - Sanctuarisation de `dataset.layoutMode` et utilisation des attributs dédiés `bannerLayout` et `bannerSide` pour le Shadow DOM, éliminant toute collision de métadonnées.
+  - Nettoyage inconditionnel et immédiat des marges (`marginLeft`/`marginRight` du `messageBrowser`) et des paddings du `body` dans `hideBanner`. Les e-mails orphelins (sans fil) et les désélections réinitialisent instantanément l'affichage sur 100 % de la largeur sans laisser de couloir blanc vide.
+
+## [2.5.5] - 2026-08-19
+
+### Optimisé
+- **Zéro scintillement & DOM Patching in-place ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** : Implémentation de la fonction `tryUpdateBannerDOM` effectuant une mise à jour chirurgicale in-place des nœuds DOM du fil sans destruction du Shadow DOM lors de la navigation au sein d'une même conversation. Élimination totale des micro-flashs visuels et préservation des états de scroll.
+- **Retour tactile instantané (Optimistic UI)** : Application immédiate de l'état sélectionné (`.current` / `aria-current`) dès l'événement `click`/`keydown` au sein du fil pour une réactivité instantanée à 60 fps.
+
+## [2.5.4] - 2026-08-19
+
+### Corrigé
+- **Navigation intra-onglet (onglets de message)** : Remplacement de l'ancienne logique d'ouverture/fermeture d'onglets (`openTab`/`closeTab`) par l'appel direct à la fonction native `contentWin.displayMessage(msgURI)` dans `navigateMessageTab` ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js)). La navigation au clic au sein d'un fil s'effectue désormais instantanément sur place sans duplication ni empilement d'onglets dans la barre supérieure.
+- **Routage de navigation (background.js)** : Prise en compte prioritaire du mode `newTab` (configuré ou basculé à la volée via le bouton ⚙️) quel que soit le type d'onglet, avec repli de secours sécurisé en cas d'onglet inaccessible.
+
 ## [2.5.3] - 2026-07-31
 
 ### Modifié

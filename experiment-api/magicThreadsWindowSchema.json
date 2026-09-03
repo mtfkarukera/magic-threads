@@ -149,6 +149,24 @@
             "description": "ID WebExtension du message à afficher."
           }
         ]
+      },
+      {
+        "name": "displayMessageDirectly",
+        "type": "function",
+        "async": true,
+        "description": "Affiche directement un message dans le visualiseur d'un onglet (vue 3-pane ou onglet message) sans dépendre de la sélection dans la liste.",
+        "parameters": [
+          {
+            "name": "tabId",
+            "type": "integer",
+            "description": "ID de l'onglet cible."
+          },
+          {
+            "name": "messageId",
+            "type": "integer",
+            "description": "ID WebExtension du message à afficher."
+          }
+        ]
       }
     ],
     "events": [

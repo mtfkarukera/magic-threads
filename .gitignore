@@ -19,7 +19,9 @@ Thumbs.db
 *.bak
 *.tmp
 
-# Private files
+# Private files & keys
+.env
+*.env
 AGENTS.md
 PLAN_ACTION.md
 RAPPORT_AUDIT.md
@@ -27,3 +29,9 @@ CONCEPTION_POST-GLODA.md
 VEILLE_COMPATIBILITE.md
 JUSTIFICATION_ATN.md
 submission_kit.md
+task.md
+tasks.md
+
+# Travaux de publication
+publication/
+

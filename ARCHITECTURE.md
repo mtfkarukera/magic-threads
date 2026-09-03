@@ -200,7 +200,23 @@ suit l'un de **trois chemins** selon le contexte et le mode de navigation :
 La sélection programmée de messages (en particulier après un envoi récent) fait face aux limites asynchrones de l'indexation de Thunderbird et de l'écriture des fichiers de dossier.
 
 1. **Délai de sécurité des messages récents** : Si l'e-mail a été envoyé depuis moins de 5 minutes, une temporisation fixe de 250 ms est systématiquement appliquée. Cela évite d'ouvrir le dossier et de forcer la sélection alors que le fichier physique de dossier/index est verrouillé ou en cours d'écriture locale.
-2. **Boucle de validation de sélection (Retry Loop)** : La fonction `setSelectedMessagesWithRetry` tente la sélection et interroge immédiatement Thunderbird via `getSelectedMessages`. Si le dossier n'est pas encore prêt, l'appel échoue silencieusement. L'extension réessaye alors l'opération toutes les 50 ms (jusqu'à 10 fois maximum) et s'arrête dès que la sélection effective est confirmée.
+2. **Boucle de validation de sélection différenciée (Adaptive Retry Loop)** : La fonction `setSelectedMessagesWithRetry` adapte sa stratégie selon le contexte de navigation :
+   - **Même dossier (`isFolderChange === false`)** : Une seule tentative immédiate (0 ms d'attente). Si le message est masqué par un filtre rapide actif, l'échec est constaté instantanément, déclenchant le fallback d'affichage direct sans délai perceptible (~200 ms au total).
+   - **Changement de dossier (`isFolderChange === true`)** : 6 tentatives rapides espacées de 30 ms (180 ms max au lieu des 500 ms d'origine) pour laisser à Thunderbird le temps de charger la base du dossier.
+
+### Zéro scintillement & DOM Patching in-place
+
+Pour garantir une expérience 60 fps et éliminer tout clignotement lors de la navigation intra-fil :
+
+1. **DOM Patching in-place (`tryUpdateBannerDOM`)** : Lors de la navigation au sein d'une même conversation, le panneau compare la signature des identifiants du fil (`threadSignature`). Si le fil est identique, le Shadow DOM n'est pas détruit : seuls les états actifs (`.current`, `aria-current`, `aria-disabled`) et les pastilles de lecture (`unread`) sont mis à jour chirurgicalement.
+2. **UI Optimiste (Instant Feedback)** : Dès l'événement utilisateur (`click`/`keydown`), la pastille de sélection active bascule immédiatement sur l'item cliqué avant même que Thunderbird ne traite le chargement effectif du corps du message.
+
+### Fallback d'Affichage Direct (Quick Filter & Messages Filtrés)
+
+Lorsqu'une recherche ou un filtre rapide est actif dans la vue 3-pane de Thunderbird (ex: filtrage sur un expéditeur spécifique) :
+- Un message appartenant au même fil mais ne répondant pas aux critères du filtre est absent de la liste affichée dans l'arbre des messages (`treeView`).
+- `mailTabs.setSelectedMessages` échoue à sélectionner ce message hors vue.
+- **Résolution** : `handleOpenMessage` déclenche automatiquement le fallback `browser.magicThreadsWindow.displayMessageDirectly(mailTab.id, messageId)`. Celui-ci accède directement au visualiseur via le composant de haut niveau `messagePane.displayMessage(msgURI)` (ou `msgBrowser.contentWindow.displayMessage`), tout en restaurant impérativement la visibilité du visualiseur natif (`messageBrowser.hidden = false`) masqué par Thunderbird lors d'un résultat de filtre vide. Le filtre rapide de l'utilisateur n'est ni altéré ni réinitialisé, préservant son contexte de recherche tout en affichant instantanément l'e-mail désiré.
 
 ## Contraintes et problèmes connus
 

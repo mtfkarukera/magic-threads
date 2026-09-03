@@ -648,6 +648,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
 
       let item = doc.createElement("div");
       item.className = "thread-item";
+      item.dataset.messageId = String(msg.id);
       // Each item in the list represents a button for keyboard navigability and screen readers.
       // For the current message, it is a disabled button (aria-disabled="true") representing the current state (aria-current="true").
       item.setAttribute("role", "button");
@@ -702,25 +703,119 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       snippet.textContent = msg.snippet;
       item.appendChild(snippet);
 
-      if (msg.id !== currentMessageId) {
-        let activate = () => {
-          if (itemClickFire) {
-            itemClickFire.async(msg.id, navState.mode);
+      let activate = () => {
+        // Retour visuel immédiat (Optimistic UI) sur l'item cliqué
+        let root = item.closest("#threads-list");
+        if (root) {
+          let allItems = root.querySelectorAll(".thread-item");
+          for (let it of allItems) {
+            it.classList.remove("current");
+            it.removeAttribute("aria-current");
+            it.removeAttribute("aria-disabled");
           }
-        };
-        item.addEventListener("click", activate);
-        item.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            // Espace : empêcher le défilement de la liste
-            e.preventDefault();
-            activate();
-          }
-        });
-      }
+        }
+        item.classList.add("current");
+        item.setAttribute("aria-current", "true");
+        item.setAttribute("aria-disabled", "true");
+
+        if (itemClickFire) {
+          itemClickFire.async(msg.id, navState.mode);
+        }
+      };
+
+      item.addEventListener("click", () => {
+        if (item.classList.contains("current")) return;
+        activate();
+      });
+      item.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          // Espace : empêcher le défilement de la liste
+          e.preventDefault();
+          if (item.classList.contains("current")) return;
+          activate();
+        }
+      });
 
       listItem.appendChild(item);
 
       return listItem;
+    }
+
+    /**
+     * Tente une mise à jour chirurgicale in-place du Shadow DOM sans destruction.
+     * Évite le scintillement (flash) lorsque le fil affiché est identique.
+     * @returns {boolean} true si le DOM a été mis à jour in-place, false si une reconstruction est requise.
+     */
+    function tryUpdateBannerDOM(shadowRoot, threadData, currentMessageId, navigationMode, layoutMode, sidebarPosition, labels) {
+      let hostEl = shadowRoot.host;
+      if (!hostEl) return false;
+
+      let wrapper = shadowRoot.querySelector(".threads-wrapper");
+      let list = shadowRoot.querySelector("#threads-list");
+      if (!wrapper || !list) return false;
+
+      // Vérifier si la disposition et l'orientation ont changé
+      if (hostEl.dataset.bannerLayout !== layoutMode || hostEl.dataset.bannerSide !== sidebarPosition) {
+        return false;
+      }
+
+      // Vérifier si la composition du fil a changé (signature basée sur les IDs ordonnés)
+      let newSignature = threadData.map(m => m.id).join(",");
+      if (hostEl.dataset.threadSignature !== newSignature) {
+        return false;
+      }
+
+      // Mise à jour in-place des éléments du fil
+      let items = list.querySelectorAll(".thread-item");
+      for (let item of items) {
+        let msgId = Number(item.dataset.messageId);
+        let msgData = threadData.find(m => m.id === msgId);
+        let isCurrent = msgId === currentMessageId;
+
+        if (isCurrent) {
+          item.classList.add("current");
+          item.setAttribute("aria-current", "true");
+          item.setAttribute("aria-disabled", "true");
+        } else {
+          item.classList.remove("current");
+          item.removeAttribute("aria-current");
+          item.removeAttribute("aria-disabled");
+        }
+
+        // Mise à jour de l'état non-lu si le message est passé de non-lu à lu
+        if (msgData) {
+          if (msgData.isRead) {
+            item.classList.remove("unread");
+            let hiddenUnread = item.querySelector(".visually-hidden");
+            if (hiddenUnread) hiddenUnread.remove();
+          } else if (!item.classList.contains("unread")) {
+            item.classList.add("unread");
+          }
+        }
+      }
+
+      // Mise à jour du titre
+      let title = shadowRoot.querySelector(".threads-title");
+      if (title) {
+        let titleText = labels.panelTitle || "\u{1F9F5} Thread ($COUNT$)";
+        title.textContent = titleText.replace("$COUNT$", threadData.length);
+      }
+
+      // Mise à jour du mode
+      let modeIndicator = shadowRoot.querySelector("#threads-mode-indicator");
+      if (modeIndicator) {
+        updateModeIndicator(modeIndicator, navigationMode, labels);
+      }
+
+      // Scroll doux vers l'élément sélectionné si nécessaire
+      let currentItem = list.querySelector(".thread-item.current");
+      if (currentItem && currentItem.ownerDocument?.defaultView) {
+        currentItem.ownerDocument.defaultView.requestAnimationFrame(() => {
+          currentItem.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        });
+      }
+
+      return true;
     }
 
     /**
@@ -730,11 +825,21 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
      * @param {object} labels - Chaînes i18n
      */
     function buildBannerDOM(shadowRoot, threadData, currentMessageId, navigationMode, layoutMode, sidebarPosition, labels) {
+      if (tryUpdateBannerDOM(shadowRoot, threadData, currentMessageId, navigationMode, layoutMode, sidebarPosition, labels)) {
+        return;
+      }
+
       // Nettoyage DOM itératif (évite innerHTML dans le contexte chrome privilégié — flag AMO)
       while (shadowRoot.firstChild) {
         shadowRoot.firstChild.remove();
       }
       let doc = shadowRoot.ownerDocument;
+      let hostEl = shadowRoot.host;
+      if (hostEl) {
+        hostEl.dataset.bannerLayout = layoutMode;
+        hostEl.dataset.bannerSide = sidebarPosition;
+        hostEl.dataset.threadSignature = threadData.map(m => m.id).join(",");
+      }
 
       // Poignée de redimensionnement à insérer APRÈS le wrapper (cas sidebar gauche).
       // Déclarée au niveau de la fonction : une déclaration dans le bloc `if` ci-dessous
@@ -1061,6 +1166,102 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
     }
 
     // =================================================================
+    // Navigation directe intra-onglet & Fallback 3-pane
+    // =================================================================
+
+    function displayMessageInTab(tabId, messageId) {
+      try {
+        let tabInfo = getTabInfo(tabId);
+        if (!tabInfo) return false;
+
+        let msgHdr = context.extension.messageManager.get(messageId);
+        if (!msgHdr) {
+          console.warn("Magic Threads: message not found:", messageId);
+          return false;
+        }
+
+        let msgURI = msgHdr.folder?.getUriForMsg(msgHdr);
+        if (!msgURI) {
+          console.warn("Magic Threads: invalid message URI for messageId:", messageId);
+          return false;
+        }
+
+        let contentWin = tabInfo.contentWin;
+        if (!contentWin) return false;
+
+        // Cas 1 : Onglet de message (about:message directement hébergé dans chromeBrowser)
+        if (typeof contentWin.displayMessage === "function") {
+          contentWin.displayMessage(msgURI);
+          return true;
+        }
+
+        // Cas 2 : Vue 3-pane (about:3pane.xhtml héberge le visualiseur <browser id="messageBrowser">)
+        let contentDoc = contentWin.document;
+        if (contentDoc) {
+          let messagePane = contentDoc.getElementById("messagePane") || contentWin.messagePane;
+          let msgBrowser = contentDoc.getElementById("messageBrowser");
+          let multiBrowser = contentDoc.getElementById("multiMessageBrowser");
+
+          // S'assurer que le conteneur messagePane n'est ni masqué ni replié
+          if (messagePane) {
+            if (messagePane.hidden) {
+              messagePane.hidden = false;
+              messagePane.removeAttribute("hidden");
+            }
+            if (messagePane.collapsed) {
+              messagePane.collapsed = false;
+              messagePane.removeAttribute("collapsed");
+            }
+          }
+
+          // 1. Tenter via le composant de haut niveau <message-pane> de Thunderbird 128+
+          if (messagePane && typeof messagePane.displayMessage === "function") {
+            try {
+              messagePane.displayMessage(msgURI);
+            } catch (e) {
+              console.warn("Magic Threads: messagePane.displayMessage failed:", e);
+            }
+          }
+
+          // 2. Vérification / Fallback direct : si aboutMessage n'a pas chargé l'URI, appeler directement displayMessage
+          if (msgBrowser && msgBrowser.contentWindow && typeof msgBrowser.contentWindow.displayMessage === "function") {
+            try {
+              if (msgBrowser.contentWindow.gMessageURI !== msgURI) {
+                msgBrowser.contentWindow.displayMessage(msgURI);
+              }
+            } catch (e) {
+              try {
+                msgBrowser.contentWindow.displayMessage(msgURI);
+              } catch (err) {
+                console.warn("Magic Threads: msgBrowser.contentWindow.displayMessage failed:", err);
+              }
+            }
+          }
+
+          // 3. CRITIQUE : Restaurer la visibilité du visualiseur et masquer la multi-sélection.
+          // Quand la vue 3-pane est filtrée sans résultat, Thunderbird passe messageBrowser en hidden = true.
+          if (msgBrowser) {
+            msgBrowser.hidden = false;
+            msgBrowser.removeAttribute("hidden");
+            msgBrowser.style.display = "";
+          }
+          if (multiBrowser) {
+            multiBrowser.hidden = true;
+            multiBrowser.setAttribute("hidden", "true");
+          }
+
+          return true;
+        }
+
+        console.warn("Magic Threads: displayMessage not available for tabId:", tabId);
+        return false;
+      } catch (e) {
+        console.error("Magic Threads: displayMessageInTab error:", e);
+        return false;
+      }
+    }
+
+    // =================================================================
     // API publique
     // =================================================================
 
@@ -1108,78 +1309,40 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
             let tabInfo = getTabInfo(tabId);
             if (!tabInfo) return;
 
-            let contentDoc = tabInfo.contentWin.document;
+            let contentDoc = tabInfo.contentWin?.document;
+            if (!contentDoc) return;
+
             let container = contentDoc.getElementById("magic-threads-container");
             if (container) {
               container.style.display = "none";
               container.setAttribute("hidden", "");
+            }
 
-              // Restaurer les paddings du body si c'était un sidebar onglet message
-              if (container.dataset.layoutContext === "messageTab" && container.dataset.sidebarPosition) {
-                let body = contentDoc.body || contentDoc.documentElement;
-                if (container.dataset.sidebarPosition === "left") {
-                  body.style.paddingLeft = "";
-                } else {
-                  body.style.paddingRight = "";
-                }
-              }
+            // Nettoyage inconditionnel des paddings (onglet de message)
+            let body = contentDoc.body || contentDoc.documentElement;
+            if (body) {
+              body.style.paddingLeft = "";
+              body.style.paddingRight = "";
+              body.style.boxSizing = "";
+            }
 
-              // Restaurer les marges si c'était un sidebar 3-pane
-              if (container.dataset.layoutMode === "sidebar3pane") {
-                cleanupSidebar3PaneContainer(container, contentDoc);
-              }
+            // Nettoyage inconditionnel des marges (vue 3-pane)
+            let msgBrowser = contentDoc.getElementById("messageBrowser");
+            if (msgBrowser) {
+              msgBrowser.style.marginLeft = "";
+              msgBrowser.style.marginRight = "";
             }
           } catch (e) {
             // Ignorer silencieusement
           }
         },
 
+        async displayMessageDirectly(tabId, messageId) {
+          return displayMessageInTab(tabId, messageId);
+        },
+
         async navigateMessageTab(tabId, messageId) {
-          try {
-            let tabObject = context.extension.tabManager.get(tabId);
-            if (!tabObject || !tabObject.nativeTab) {
-              console.warn("Magic Threads: tab not found for navigateMessageTab:", tabId);
-              return false;
-            }
-
-            let msgHdr = context.extension.messageManager.get(messageId);
-            if (!msgHdr) {
-              console.warn("Magic Threads: message not found:", messageId);
-              return false;
-            }
-
-            let chromeBrowser = tabObject.nativeTab.chromeBrowser;
-            if (!chromeBrowser) {
-              console.warn("Magic Threads: no chromeBrowser.");
-              return false;
-            }
-
-            let win = chromeBrowser.ownerGlobal;
-            let tabmail = win.document.getElementById("tabmail");
-            if (!tabmail) {
-              console.warn("Magic Threads: tabmail not found.");
-              return false;
-            }
-
-            let msgURI = msgHdr.folder.getUriForMsg(msgHdr);
-            if (!msgURI) {
-              console.warn("Magic Threads: invalid message URI");
-              return false;
-            }
-            // Ouvrir AVANT de fermer : si openTab échoue, l'onglet de
-            // l'utilisateur n'est pas perdu (l'exception déclenche le fallback).
-            let nativeTab = tabObject.nativeTab;
-            tabmail.openTab("mailMessageTab", {
-              messageURI: msgURI,
-              background: false
-            });
-            tabmail.closeTab(nativeTab);
-
-            return true;
-          } catch (e) {
-            console.error("Magic Threads: navigateMessageTab error:", e);
-            return false;
-          }
+          return displayMessageInTab(tabId, messageId);
         },
 
         onBannerItemClicked: new ExtensionCommon.EventManager({
