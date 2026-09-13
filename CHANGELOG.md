@@ -5,6 +5,15 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.5.10] - 2026-09-14
+
+### Modifié
+- **Suppression du plafond `strict_max_version` ([manifest.json](file:///Users/mtfkarukera/Scripts/magic-threads-b/manifest.json))** :
+  - Suppression de la contrainte `strict_max_version: "154.*"` dans la configuration Gecko du manifest.
+  - Résolution définitive des échecs d'installation et faux positifs d'incompatibilité sur les distributions Linux (Debian, Ubuntu LTS, Fedora, openSUSE) utilisant des paquets Thunderbird ESR spécifiques ou personnalisés.
+  - Pérennisation des mises à jour majeures de Thunderbird sans désactivation intempestive de l'extension ni nécessité de livraisons cosmétiques intermédiaires.
+  - Conservation exclusive de `strict_min_version: "128.0"` pour garantir les prérequis modernes de l'API (custom elements `about:3pane` et Gloda).
+
 ## [2.5.9] - 2026-09-04
 
 ### Optimisé

@@ -21,7 +21,7 @@ echo "✅ ESLint OK."
 echo "👉 2/4 Exécution de web-ext lint..."
 # Nous ignorons la valeur de retour (qui renvoie 1 pour cause d'API non Firefox) 
 # mais nous vérifions si des erreurs bloquantes réelles hors-bruit sont introduites.
-npx web-ext lint --source-dir . --ignore-files "dist/**" "node_modules/**" "*.md" "LICENSE" "build.sh" ".eslintrc.json" "eslint.config.js" "package.json" "package-lock.json" "background/threadResolverFallback.js" || true
+npx web-ext lint --source-dir . --ignore-files "dist/**" "node_modules/**" "*.md" "LICENSE" "build.sh" "release.sh" ".eslintrc.json" "eslint.config.js" "package.json" "package-lock.json" "background/threadResolverFallback.js" || true
 echo "✅ web-ext lint exécuté."
 
 # 2. Sécurité Anti-Leak (Fichiers sensibles suivis par Git)
