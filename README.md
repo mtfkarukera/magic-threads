@@ -15,7 +15,7 @@ Extension Thunderbird qui affiche le fil chronologique des e-mails (métadonnée
 - 🌙 **Mode sombre** : adaptation automatique au thème de Thunderbird
 - 🔒 **Isolation CSS** : Shadow DOM pour éviter les conflits avec l'interface native
 - 🌍 **Multilingue** : interface traduite en 7 langues
-- ♿ **Accessible** : navigation complète au clavier (liste du fil, bouton réduire, poignées de redimensionnement aux flèches), contrastes WCAG AA, états annoncés aux lecteurs d'écran (non lu, panneau replié)
+- ♿ **Accessible** : navigation complète au clavier (touches fléchées, Roving Tabindex sans fatigue de tabulation, poignées de redimensionnement), contrastes WCAG 2.1 AA renforcés en thème sombre, annonces d'états aux lecteurs d'écran (non lu dynamique, panneau replié)
 - 🧭 **Navigation intra-onglet** : clic sur un message ouvre celui-ci sans quitter l'onglet courant
 - 📧 **Dédoublonnage intelligent** : fusionne automatiquement les doublons d'e-mails (par exemple, les copies stockées dans le dossier *Tous les messages* de Gmail) pour n'afficher qu'une seule entrée propre avec son extrait (snippet) de texte préservé.
 - 🔍 **Résilience de recherche & Filtre rapide** : permet de consulter instantanément n'importe quel message du fil même lorsqu'un filtre rapide actif le masque dans la liste des messages, sans jamais altérer ni effacer votre saisie de recherche en cours.

@@ -75,13 +75,13 @@ const SHARED_CSS = `
         @media (prefers-color-scheme: dark) {
           :host {
             /* Mêmes variables de thème TB ; seuls les fallbacks changent
-               (--text-muted relevé à #8a93a3 pour ≥ 4,5:1 sur --card-bg). */
+               (--text-muted relevé à #9fa8b7 pour ≥ 4,5:1 sur --card-hover-bg). */
             --banner-bg: var(--layout-background-1, #1e222b);
             --banner-border: var(--layout-border-0, #3e4451);
             --card-bg: var(--layout-background-0, #282c34);
             --card-hover-bg: var(--layout-background-2, #353b45);
             --text-main: var(--layout-color-1, #abb2bf);
-            --text-muted: var(--layout-color-2, #8d98a9);
+            --text-muted: var(--layout-color-2, #9fa8b7);
             --accent-border: var(--color-accent-primary, #528bff);
             --accent-bg: #223147;
             --folder-bg: #2d3139;
@@ -642,7 +642,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
      * Le mode de navigation est lu via navState au moment du clic.
      * @returns {Element} le wrapper listitem prêt à insérer dans la liste
      */
-    function buildThreadItem(doc, msg, currentMessageId, labels, navState) {
+    function buildThreadItem(doc, msg, currentMessageId, labels, navState, isInitiallyFocusable) {
       // Wrapper listitem : conserve la sémantique de liste, car l'item
       // cliquable porte lui-même role="button" (un élément = un seul rôle)
       let listItem = doc.createElement("div");
@@ -651,10 +651,10 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       let item = doc.createElement("div");
       item.className = "thread-item";
       item.dataset.messageId = String(msg.id);
-      // Each item in the list represents a button for keyboard navigability and screen readers.
-      // For the current message, it is a disabled button (aria-disabled="true") representing the current state (aria-current="true").
+      // Chaque item de la liste est un bouton accessible au clavier et pour les lecteurs d'écran.
+      // Roving tabindex (WCAG AA) : seul l'item actif (ou le premier) est tabIndex=0.
       item.setAttribute("role", "button");
-      item.tabIndex = 0;
+      item.tabIndex = isInitiallyFocusable ? 0 : -1;
 
       if (msg.id === currentMessageId) {
         item.classList.add("current");
@@ -706,17 +706,21 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       item.appendChild(snippet);
 
       let activate = () => {
-        // Retour visuel immédiat (Optimistic UI) uniquement en navigation intra-onglet
-        if (navState.mode === "currentTab") {
-          let root = item.closest("#threads-list");
-          if (root) {
-            let allItems = root.querySelectorAll(".thread-item");
-            for (let it of allItems) {
+        let root = item.closest("#threads-list");
+        if (root) {
+          let allItems = root.querySelectorAll(".thread-item");
+          for (let it of allItems) {
+            it.tabIndex = -1;
+            if (navState.mode === "currentTab") {
               it.classList.remove("current");
               it.removeAttribute("aria-current");
               it.removeAttribute("aria-disabled");
             }
           }
+        }
+        item.tabIndex = 0;
+        // Retour visuel immédiat (Optimistic UI) uniquement en navigation intra-onglet
+        if (navState.mode === "currentTab") {
           item.classList.add("current");
           item.setAttribute("aria-current", "true");
           item.setAttribute("aria-disabled", "true");
@@ -728,15 +732,46 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       };
 
       item.addEventListener("click", () => {
+        let root = item.closest("#threads-list");
+        if (root) {
+          let allItems = root.querySelectorAll(".thread-item");
+          for (let it of allItems) it.tabIndex = -1;
+        }
+        item.tabIndex = 0;
         if (item.classList.contains("current")) return;
         activate();
       });
       item.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.key === " ") {
-          // Espace : empêcher le défilement de la liste
+          // Espace ou Entrée : activer l'item
           e.preventDefault();
           if (item.classList.contains("current")) return;
           activate();
+        } else if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Home" || e.key === "End") {
+          // Navigation au clavier WCAG AA par touches directionnelles (Roving Tabindex)
+          e.preventDefault();
+          let root = item.closest("#threads-list");
+          if (!root) return;
+          let allItems = Array.from(root.querySelectorAll(".thread-item"));
+          let currentIndex = allItems.indexOf(item);
+          if (currentIndex === -1) return;
+          let targetIndex = currentIndex;
+          if (e.key === "ArrowDown") {
+            targetIndex = Math.min(currentIndex + 1, allItems.length - 1);
+          } else if (e.key === "ArrowUp") {
+            targetIndex = Math.max(currentIndex - 1, 0);
+          } else if (e.key === "Home") {
+            targetIndex = 0;
+          } else if (e.key === "End") {
+            targetIndex = allItems.length - 1;
+          }
+          if (targetIndex !== currentIndex) {
+            item.tabIndex = -1;
+            let targetItem = allItems[targetIndex];
+            targetItem.tabIndex = 0;
+            targetItem.focus();
+            targetItem.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          }
         }
       });
 
@@ -770,8 +805,10 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       }
 
       // Mise à jour in-place des éléments du fil
+      let hasCurrentInThread = threadData.some(m => m.id === currentMessageId);
       let items = list.querySelectorAll(".thread-item");
-      for (let item of items) {
+      for (let i = 0; i < items.length; i++) {
+        let item = items[i];
         let msgId = Number(item.dataset.messageId);
         let msgData = threadData.find(m => m.id === msgId);
         let isCurrent = msgId === currentMessageId;
@@ -780,13 +817,15 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           item.classList.add("current");
           item.setAttribute("aria-current", "true");
           item.setAttribute("aria-disabled", "true");
+          item.tabIndex = 0;
         } else {
           item.classList.remove("current");
           item.removeAttribute("aria-current");
           item.removeAttribute("aria-disabled");
+          item.tabIndex = (!hasCurrentInThread && i === 0) ? 0 : -1;
         }
 
-        // Mise à jour de l'état non-lu si le message est passé de non-lu à lu
+        // Mise à jour de l'état non-lu si le message est passé de non-lu à lu (ou réapparition du non-lu)
         if (msgData) {
           if (msgData.isRead) {
             item.classList.remove("unread");
@@ -794,6 +833,18 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
             if (hiddenUnread) hiddenUnread.remove();
           } else if (!item.classList.contains("unread")) {
             item.classList.add("unread");
+            let meta = item.querySelector(".thread-meta");
+            if (meta && !meta.querySelector(".visually-hidden")) {
+              let unread = meta.ownerDocument.createElement("span");
+              unread.className = "visually-hidden";
+              unread.textContent = labels.unreadLabel || "Unread";
+              let author = meta.querySelector(".thread-author");
+              if (author && author.nextSibling) {
+                meta.insertBefore(unread, author.nextSibling);
+              } else {
+                meta.appendChild(unread);
+              }
+            }
           }
         }
       }
@@ -967,8 +1018,11 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         }
       });
 
-      for (let msg of threadData) {
-        list.appendChild(buildThreadItem(doc, msg, currentMessageId, labels, navState));
+      let hasCurrentInThread = threadData.some(m => m.id === currentMessageId);
+      for (let i = 0; i < threadData.length; i++) {
+        let msg = threadData[i];
+        let isInitiallyFocusable = hasCurrentInThread ? (msg.id === currentMessageId) : (i === 0);
+        list.appendChild(buildThreadItem(doc, msg, currentMessageId, labels, navState, isInitiallyFocusable));
       }
 
       wrapper.appendChild(list);

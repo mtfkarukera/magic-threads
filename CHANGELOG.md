@@ -5,6 +5,24 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.5.13] - 2026-09-16
+
+### Ajouté
+- **Navigation au clavier & Roving Tabindex WAI-ARIA ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - Parcours fluide du fil de discussion aux touches fléchées (`↓` / `↑`) ainsi que début/fin (`Home` / `End`) avec défilement automatique doux (`scrollIntoView`).
+  - Élimination de la fatigue de tabulation : un seul appui sur `Tab` permet d'entrer dans la liste sur le message actif, et le prochain appui sur `Tab` en sort directement vers les contrôles d'options ou la poignée de redimensionnement.
+  - Déclenchement au clavier par `Entrée` ou `Espace`.
+- **Défense en profondeur CSP ([manifest.json](file:///Users/mtfkarukera/Scripts/magic-threads-b/manifest.json))** :
+  - Déclaration explicite de `content_security_policy: script-src 'self'; object-src 'none';` verrouillant l'extension contre l'injection d'objets ou de plugins tiers.
+
+### Amélioré
+- **Conformité des contrastes WCAG 2.1 AA ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - Rehaussement de la variable `--text-muted` en thème sombre de `#8d98a9` à `#9fa8b7`, assurant un ratio de contraste de **4.63:1** sur les fonds de survol (`--card-hover-bg`), satisfaisant pleinement le seuil d'accessibilité minimal (≥ 4.5:1).
+- **Accessibilité des lecteurs d'écran & DOM Patching ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - Régénération dynamique de l'élément masqué `<span class="visually-hidden">` si un message redevient non lu lors d'une mise à jour in-place, garantissant que l'état non lu est toujours annoncé vocalement.
+- **Internationalisation de la page d'options ([options.html](file:///Users/mtfkarukera/Scripts/magic-threads-b/options/options.html))** :
+  - Déclaration de l'attribut `lang="fr"` sur la balise `<html>` pour la détection automatique de langue par les technologies d'assistance (critère WCAG 3.1.1).
+
 ## [2.5.12] - 2026-09-16
 
 ### Corrigé

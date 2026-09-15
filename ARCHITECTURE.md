@@ -210,8 +210,9 @@ La sélection programmée de messages (en particulier après un envoi récent) f
 
 Pour garantir une expérience 60 fps et éliminer tout clignotement lors de la navigation intra-fil :
 
-1. **DOM Patching in-place (`tryUpdateBannerDOM`)** : Lors de la navigation au sein d'une même conversation, le panneau compare la signature des identifiants du fil (`threadSignature`). Si le fil est identique, le Shadow DOM n'est pas détruit : seuls les états actifs (`.current`, `aria-current`, `aria-disabled`) et les pastilles de lecture (`unread`) sont mis à jour chirurgicalement.
-2. **UI Optimiste (Instant Feedback)** : Dès l'événement utilisateur (`click`/`keydown`), la pastille de sélection active bascule immédiatement sur l'item cliqué avant même que Thunderbird ne traite le chargement effectif du corps du message.
+1. **DOM Patching in-place (`tryUpdateBannerDOM`)** : Lors de la navigation au sein d'une même conversation, le panneau compare la signature des identifiants du fil (`threadSignature`). Si le fil est identique, le Shadow DOM n'est pas détruit : seuls les états actifs (`.current`, `aria-current`, `aria-disabled`), les points d'entrée de tabulation (`tabIndex`) et les pastilles de lecture (`unread` + libellé vocal `.visually-hidden`) sont mis à jour chirurgicalement.
+2. **UI Optimiste (Instant Feedback)** : Dès l'événement utilisateur (`click`/`keydown`), la pastille de sélection active bascule immédiatement sur l'item cliqué avant même que Thunderbird ne traite le chargement effectif du corps du message (réservé au mode `currentTab`).
+3. **Navigation Clavier & Roving Tabindex (WCAG 2.1 AA)** : La liste `#threads-list` implémente le patron de conception WAI-ARIA *Roving Tabindex*. Seul le message actif (ou le premier message par défaut) est dans l'ordre de tabulation séquentielle (`tabIndex = 0`) ; tous les autres portent `tabIndex = -1`. L'utilisateur navigue d'un élément à l'autre via les touches fléchées `ArrowDown` / `ArrowUp` ou `Home` / `End` avec défilement fluide, et peut quitter la liste au prochain appui sur `Tab` sans traverser individuellement l'ensemble des messages.
 
 ### Fallback d'Affichage Direct (Quick Filter & Messages Filtrés)
 
