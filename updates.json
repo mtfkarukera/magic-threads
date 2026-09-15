@@ -3,9 +3,9 @@
     "magic-threads@mtfkarukera.net": {
       "updates": [
         {
-          "version": "2.5.13",
-          "update_link": "https://github.com/mtfkarukera/magic-threads/releases/download/v2.5.13/magic-threads-2.5.13.xpi",
-          "update_hash": "sha256:e39694b64f9ed9b95b2cd895f41a58be63753ae71a986972909bee168cab3ea4",
+          "version": "2.5.14",
+          "update_link": "https://github.com/mtfkarukera/magic-threads/releases/download/v2.5.14/magic-threads-2.5.14.xpi",
+          "update_hash": "sha256:5cee0df17a122524e5afb03280c305cf7d9cc94c0ee246d49cac1e250665ce98",
           "applications": {
             "gecko": {
               "strict_min_version": "128.0"

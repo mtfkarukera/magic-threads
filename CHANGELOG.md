@@ -5,6 +5,20 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.5.14] - 2026-09-16
+
+### Amélioré
+- **Fluidité 60/120 fps du redimensionnement ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - Cadencement des calculs de dimensionnement par `requestAnimationFrame` sur les événements de pointeur (`pointermove`). Élimination complète du "reflow thrashing" lors du glisser de la poignée, assurant un rendu visuel soyeux et parfaitement réactif même sur les écrans à haute fréquence de rafraîchissement.
+  - Application immédiate et déterministe de la dimension cible finale lors de la fin de manipulation (`pointerup` / `pointercancel`).
+- **Repliement horizontal et libération d'espace en mode Sidebar ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - En mode Sidebar (vue 3-pane et onglet de message autonome), le clic sur le bouton de repli réduit la largeur du volet à un ruban discret de 36 px et restitue l'espace libéré au visualiseur de message (`messageBrowser` ou `body`).
+  - Restauration instantanée de la largeur précédente lors du redéploiement.
+  - Adaptation dynamique des glyphes de repli/dépliement directionnels (`▼`/`▲` en vue inférieure, `▶`/`◀` en vue latérale droite et `◀`/`▶` en vue latérale gauche).
+- **Compacité et hiérarchie visuelle des cartes en Sidebar ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - Réorganisation de l'en-tête de carte `.thread-meta` en grille CSS compacte 2x2 : Auteur et icône trombone 📎 sur la première ligne, Date et badge de dossier sur la deuxième ligne.
+  - Élimination de l'isolement du trombone sur une ligne dédiée et réduction de plus de 40% de l'encombrement vertical des cartes pour un aperçu immédiat d'un plus grand nombre de messages sans défilement.
+
 ## [2.5.13] - 2026-09-16
 
 ### Ajouté

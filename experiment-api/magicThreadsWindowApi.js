@@ -24,6 +24,7 @@ const SIDEBAR_MAX_WIDTH = 600;
 const KEYBOARD_RESIZE_STEP = 16;
 // Tailles par défaut des panneaux (px) et z-index d'empilement.
 const SIDEBAR_DEFAULT_WIDTH = 300;
+const SIDEBAR_COLLAPSED_WIDTH = 36;
 const BOTTOM_DEFAULT_HEIGHT = 250;
 const PANEL_Z_INDEX = 100;
 
@@ -346,15 +347,53 @@ const SIDEBAR_CSS = `
         .threads-wrapper.sidebar-right {
           border-left: none;
         }
+        .threads-wrapper.collapsed {
+          padding: 0 4px;
+        }
+        .threads-wrapper.collapsed .threads-title,
+        .threads-wrapper.collapsed .threads-mode-indicator,
+        .threads-wrapper.collapsed .threads-toggle-btn {
+          display: none;
+        }
+        .threads-wrapper.collapsed .threads-header {
+          justify-content: center;
+          padding: 6px 0;
+        }
+        .threads-wrapper.collapsed .threads-actions {
+          gap: 0;
+        }
         .threads-title {
           font-size: 12px;
         }
+        /* Cartes compactes en mode Sidebar : disposition en grille structurée */
         .thread-meta {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 2px;
+          display: grid;
+          grid-template-columns: 1fr auto;
+          grid-template-rows: auto auto;
+          align-items: center;
+          column-gap: 6px;
+          row-gap: 2px;
+        }
+        .thread-author {
+          grid-column: 1;
+          grid-row: 1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .thread-attachment {
+          grid-column: 2;
+          grid-row: 1;
+          justify-self: end;
+        }
+        .thread-date {
+          grid-column: 1;
+          grid-row: 2;
         }
         .thread-folder {
+          grid-column: 2;
+          grid-row: 2;
+          justify-self: end;
           margin-left: 0;
         }
       `;
@@ -399,6 +438,23 @@ function cleanupInjectedDoc(contentDoc) {
     }
   }
   container.remove();
+}
+
+/**
+ * Retourne le glyphe directionnel approprié pour le bouton de repli selon le mode et le côté.
+ * @param {boolean} isCollapsed - État replié ou déplié
+ * @param {string} layout - "bottom" ou "sidebar"
+ * @param {string} side - "left" ou "right"
+ * @returns {string}
+ */
+function getCollapseIcon(isCollapsed, layout, side) {
+  if (layout === "bottom") {
+    return isCollapsed ? "\u25B2" : "\u25BC";
+  }
+  if (side === "left") {
+    return isCollapsed ? "\u25B6" : "\u25C0";
+  }
+  return isCollapsed ? "\u25C0" : "\u25B6";
 }
 
 /**
@@ -495,6 +551,10 @@ function attachResizeBehavior(handle, axis, shadowRoot, sidebarPosition) {
     let startSize = axis === "y" ? hostEl.offsetHeight : hostEl.offsetWidth;
     handle.setPointerCapture(e.pointerId);
 
+    let latestTargetSize = null;
+    let rafId = null;
+    const win = handle.ownerDocument ? handle.ownerDocument.defaultView : null;
+
     function onPointerMove(ev) {
       let delta;
       if (axis === "y") {
@@ -504,13 +564,34 @@ function attachResizeBehavior(handle, axis, shadowRoot, sidebarPosition) {
         // Sidebar : le sens dépend du côté
         delta = sidebarPosition === "right" ? startPos - ev.screenX : ev.screenX - startPos;
       }
-      applySize(startSize + delta);
+      latestTargetSize = startSize + delta;
+
+      // Cadencement 60/120 fps : regrouper les reflows dans une animation frame
+      if (!rafId && win && typeof win.requestAnimationFrame === "function") {
+        rafId = win.requestAnimationFrame(() => {
+          rafId = null;
+          if (latestTargetSize !== null) {
+            applySize(latestTargetSize);
+          }
+        });
+      } else if (!win || typeof win.requestAnimationFrame !== "function") {
+        applySize(latestTargetSize);
+      }
     }
 
     function onPointerEnd(ev) {
       handle.removeEventListener("pointermove", onPointerMove);
       handle.removeEventListener("pointerup", onPointerEnd);
       handle.removeEventListener("pointercancel", onPointerEnd);
+
+      if (rafId && win && typeof win.cancelAnimationFrame === "function") {
+        win.cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      if (latestTargetSize !== null) {
+        applySize(latestTargetSize);
+      }
+
       try {
         handle.releasePointerCapture(ev.pointerId);
       } catch (err) {
@@ -972,7 +1053,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
 
       let collapseBtn = doc.createElement("button");
       collapseBtn.className = "threads-collapse-btn";
-      collapseBtn.textContent = "\u25BC";
+      collapseBtn.textContent = getCollapseIcon(false, layoutMode, sidebarPosition);
       collapseBtn.title = labels.tooltipCollapseExpand;
       collapseBtn.setAttribute("aria-label", labels.tooltipCollapseExpand);
       collapseBtn.setAttribute("aria-controls", "threads-list");
@@ -1002,18 +1083,67 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       collapseBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         let isCollapsed = list.classList.toggle("collapsed");
-        collapseBtn.textContent = isCollapsed ? "\u25B6" : "\u25BC";
+        wrapper.classList.toggle("collapsed", isCollapsed);
+        let sidePos = sidebarPosition || "right";
+        collapseBtn.textContent = getCollapseIcon(isCollapsed, layoutMode, sidePos);
         collapseBtn.setAttribute("aria-expanded", String(!isCollapsed));
+
+        let hostEl = shadowRoot.host;
+        let contentDoc = hostEl.ownerDocument;
 
         // En mode bottom : ajuster la hauteur du conteneur
         if (layoutMode === "bottom") {
-          let hostEl = shadowRoot.host;
           if (isCollapsed) {
             hostEl.dataset.expandedHeight = hostEl.style.height || hostEl.offsetHeight + "px";
             hostEl.style.height = BOTTOM_MIN_HEIGHT + "px";
           } else {
             let savedHeight = hostEl.dataset.expandedHeight || (BOTTOM_DEFAULT_HEIGHT + "px");
             hostEl.style.height = savedHeight;
+          }
+        } else {
+          // En mode sidebar (3-pane ou onglet message) : ajuster la largeur et restituer l'espace
+          if (isCollapsed) {
+            hostEl.dataset.expandedWidth = hostEl.style.width || (hostEl.offsetWidth + "px");
+            hostEl.style.width = SIDEBAR_COLLAPSED_WIDTH + "px";
+            if (hostEl.dataset.layoutContext === "messageTab") {
+              let body = contentDoc.body || contentDoc.documentElement;
+              if (sidePos === "left") {
+                body.style.paddingLeft = SIDEBAR_COLLAPSED_WIDTH + "px";
+              } else {
+                body.style.paddingRight = SIDEBAR_COLLAPSED_WIDTH + "px";
+              }
+            } else if (hostEl.dataset.layoutMode === "sidebar3pane") {
+              let msgBrowserId = hostEl.dataset.msgBrowserId;
+              let msgBrowser = msgBrowserId ? contentDoc.getElementById(msgBrowserId) : contentDoc.getElementById("messageBrowser");
+              if (msgBrowser) {
+                if (sidePos === "left") {
+                  msgBrowser.style.marginLeft = SIDEBAR_COLLAPSED_WIDTH + "px";
+                } else {
+                  msgBrowser.style.marginRight = SIDEBAR_COLLAPSED_WIDTH + "px";
+                }
+              }
+            }
+          } else {
+            let savedWidth = parseInt(hostEl.dataset.expandedWidth, 10) || SIDEBAR_DEFAULT_WIDTH;
+            hostEl.style.width = savedWidth + "px";
+            if (hostEl.dataset.layoutContext === "messageTab") {
+              let body = contentDoc.body || contentDoc.documentElement;
+              if (sidePos === "left") {
+                body.style.paddingLeft = savedWidth + "px";
+              } else {
+                body.style.paddingRight = savedWidth + "px";
+              }
+            } else if (hostEl.dataset.layoutMode === "sidebar3pane") {
+              let msgBrowserId = hostEl.dataset.msgBrowserId;
+              let msgBrowser = msgBrowserId ? contentDoc.getElementById(msgBrowserId) : contentDoc.getElementById("messageBrowser");
+              if (msgBrowser) {
+                if (sidePos === "left") {
+                  msgBrowser.style.marginLeft = savedWidth + "px";
+                } else {
+                  msgBrowser.style.marginRight = savedWidth + "px";
+                }
+              }
+            }
           }
         }
       });
