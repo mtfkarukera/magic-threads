@@ -5,7 +5,7 @@
         {
           "version": "2.5.14",
           "update_link": "https://github.com/mtfkarukera/magic-threads/releases/download/v2.5.14/magic-threads-2.5.14.xpi",
-          "update_hash": "sha256:5cee0df17a122524e5afb03280c305cf7d9cc94c0ee246d49cac1e250665ce98",
+          "update_hash": "sha256:eaa1f6afaf7983becd258417c79ede7ae3017ec42c06a7486a21a69205ef7527",
           "applications": {
             "gecko": {
               "strict_min_version": "128.0"
