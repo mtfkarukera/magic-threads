@@ -66,7 +66,17 @@ ln -sf "$XPI_NAME" "${DIST_DIR}/${XPI_LATEST}"
 
 # Afficher le résultat
 FILE_SIZE=$(du -h "${DIST_DIR}/${XPI_NAME}" | cut -f1)
+
+if command -v shasum >/dev/null 2>&1; then
+    SHA256_HASH=$(shasum -a 256 "${DIST_DIR}/${XPI_NAME}" | cut -d' ' -f1)
+elif command -v sha256sum >/dev/null 2>&1; then
+    SHA256_HASH=$(sha256sum "${DIST_DIR}/${XPI_NAME}" | cut -d' ' -f1)
+else
+    SHA256_HASH="indisponible"
+fi
+
 echo "✅ ${DIST_DIR}/${XPI_NAME} (${FILE_SIZE})"
+echo "🔒 SHA256: ${SHA256_HASH}"
 echo "🔗 ${DIST_DIR}/${XPI_LATEST} → ${XPI_NAME}"
 echo ""
 echo "📦 Pour installer : Thunderbird → Modules complémentaires → ⚙️ → Installer depuis un fichier…"

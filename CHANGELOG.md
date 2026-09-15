@@ -5,6 +5,19 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.5.11] - 2026-09-15
+
+### Ajouté
+- **Système d'auto-update autonome ([manifest.json](file:///Users/mtfkarukera/Scripts/magic-threads-b/manifest.json), [updates.json](file:///Users/mtfkarukera/Scripts/magic-threads-b/updates.json))** :
+  - Déclaration de la clé `update_url` dans `browser_specific_settings.gecko` pointant vers le manifeste distant sur GitHub.
+  - Création du manifeste Gecko `updates.json` avec intégrité cryptographique SHA256 (`update_hash`) et filtrage de compatibilité Thunderbird.
+  - Prise en charge des mises à jour automatiques transparentes en tâche de fond par Thunderbird (ou via le bouton *Rechercher des mises à jour*).
+- **Outillage de compilation et de release ([build.sh](file:///Users/mtfkarukera/Scripts/magic-threads-b/build.sh), [release.sh](file:///Users/mtfkarukera/Scripts/magic-threads-b/release.sh))** :
+  - Calcul et affichage automatique de l'empreinte SHA256 du `.xpi` généré dans `build.sh`.
+  - Automatisation dans `release.sh` du contrôle et de la mise à jour synchronisée de `updates.json` lors de chaque cycle de release.
+- **Workflow GitHub Actions ([.github/workflows/release.yml](file:///Users/mtfkarukera/Scripts/magic-threads-b/.github/workflows/release.yml))** :
+  - Pipeline automatisé déclenché sur push de tag `v*` pour valider le build, vérifier l'intégrité SHA256 et publier l'archive `.xpi` sur GitHub Releases.
+
 ## [2.5.10] - 2026-09-14
 
 ### Modifié

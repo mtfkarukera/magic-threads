@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "__MSG_extensionName__",
-  "version": "2.5.10",
+  "version": "2.5.11",
   "description": "__MSG_extensionDescription__",
   "default_locale": "fr",
   "author": "MTF Karukera",
@@ -47,6 +47,7 @@
     "gecko": {
       "id": "magic-threads@mtfkarukera.net",
       "strict_min_version": "128.0",
+      "update_url": "https://raw.githubusercontent.com/mtfkarukera/magic-threads/main/updates.json",
       "data_collection_permissions": {
         "required": ["none"]
       }

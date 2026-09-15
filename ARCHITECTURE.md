@@ -218,6 +218,28 @@ Lorsqu'une recherche ou un filtre rapide est actif dans la vue 3-pane de Thunder
 - `mailTabs.setSelectedMessages` échoue à sélectionner ce message hors vue.
 - **Résolution** : `handleOpenMessage` déclenche automatiquement le fallback `browser.magicThreadsWindow.displayMessageDirectly(mailTab.id, messageId)`. Celui-ci accède directement au visualiseur via le composant de haut niveau `messagePane.displayMessage(msgURI)` (ou `msgBrowser.contentWindow.displayMessage`), tout en restaurant impérativement la visibilité du visualiseur natif (`messageBrowser.hidden = false`) masqué par Thunderbird lors d'un résultat de filtre vide. Le filtre rapide de l'utilisateur n'est ni altéré ni réinitialisé, préservant son contexte de recherche tout en affichant instantanément l'e-mail désiré.
 
+## Distribution & Auto-Update Autonome
+
+En raison du refus d'ATN (addons.thunderbird.net) d'accepter les nouveaux add-ons exploitant des Experiment APIs, Magic Threads s'appuie sur le mécanisme natif Mozilla Gecko d'auto-hébergement et de distribution autonome.
+
+### Protocole de mise à jour Gecko
+
+```mermaid
+flowchart TD
+    TB["Thunderbird Client"] -->|"Verification periodique ou manuelle"| URL["update_url (GitHub Raw)"]
+    URL --> MANIFEST["updates.json"]
+    MANIFEST -->|"Comparaison de version"| EVAL{"Nouvelle version disponible ?"}
+    EVAL -->|"Non"| IDLE["Fin de verification"]
+    EVAL -->|"Oui"| DL["Telechargement du XPI (GitHub Releases)"]
+    DL --> HASH{"Verification SHA256 (update_hash)"}
+    HASH -->|"Invalide"| ABORT["Installation annulee"]
+    HASH -->|"Valide"| INSTALL["Mise a jour transparente appliquee"]
+```
+
+1. **Point d'amorce (`manifest.json`)** : Déclare `update_url` dans `browser_specific_settings.gecko` pointant vers `updates.json`.
+2. **Manifeste distant (`updates.json`)** : Renseigne la dernière version stable, l'URL de téléchargement de l'archive `.xpi` dans GitHub Releases et l'empreinte d'intégrité `update_hash: sha256:...`.
+3. **Contrôle d'intégrité cryptographique** : Gecko valide l'empreinte SHA256 avant d'appliquer la mise à jour, garantissant une installation sécurisée et transparente en tâche de fond.
+
 ## Contraintes et problèmes connus
 
 ### Contraintes techniques

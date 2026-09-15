@@ -1,0 +1,18 @@
+{
+  "addons": {
+    "magic-threads@mtfkarukera.net": {
+      "updates": [
+        {
+          "version": "2.5.11",
+          "update_link": "https://github.com/mtfkarukera/magic-threads/releases/download/v2.5.11/magic-threads-2.5.11.xpi",
+          "update_hash": "sha256:1300feb947316818176d271c11392e5a55e9a3cc80cd6b3b3470d81e13b70658",
+          "applications": {
+            "gecko": {
+              "strict_min_version": "128.0"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

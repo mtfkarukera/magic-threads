@@ -20,19 +20,26 @@ Extension Thunderbird qui affiche le fil chronologique des e-mails (métadonnée
 - 📧 **Dédoublonnage intelligent** : fusionne automatiquement les doublons d'e-mails (par exemple, les copies stockées dans le dossier *Tous les messages* de Gmail) pour n'afficher qu'une seule entrée propre avec son extrait (snippet) de texte préservé.
 - 🔍 **Résilience de recherche & Filtre rapide** : permet de consulter instantanément n'importe quel message du fil même lorsqu'un filtre rapide actif le masque dans la liste des messages, sans jamais altérer ni effacer votre saisie de recherche en cours.
 
-## Installation
+## Installation & Mises à jour
 
-### Depuis un fichier XPI
+### Installation initiale
 
-1. Construire l'extension (voir [Développement](#développement))
-2. Dans Thunderbird : **Modules complémentaires** → ⚙️ → **Installer depuis un fichier…**
-3. Sélectionner le fichier `dist/magic-threads.xpi`
+1. Télécharger la dernière version `magic-threads-VERSION.xpi` depuis les [Releases GitHub](https://github.com/mtfkarukera/magic-threads/releases).
+2. Dans Thunderbird : **Modules complémentaires** → ⚙️ (icône engrenage) → **Installer depuis un fichier…**
+3. Sélectionner le fichier `.xpi` téléchargé et valider l'installation.
+
+### Mises à jour automatiques autonomes
+
+Magic Threads intègre le protocole officiel de mise à jour Gecko (`update_url` + `updates.json`). Dès la version **2.5.11** installée :
+- Thunderbird vérifie périodiquement les nouvelles versions en tâche de fond.
+- Vous pouvez également forcer la vérification à tout moment : **Modules complémentaires** → ⚙️ → **Rechercher des mises à jour**.
+- Les futures versions sont téléchargées et appliquées automatiquement avec vérification d'intégrité cryptographique SHA256.
 
 ### Depuis les sources
 
 ```bash
-git clone <url-du-dépôt>
-cd magic-threads-b
+git clone https://github.com/mtfkarukera/magic-threads.git
+cd magic-threads
 bash build.sh
 ```
 

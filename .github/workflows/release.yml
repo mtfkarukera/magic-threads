@@ -1,0 +1,42 @@
+name: Release Magic Threads
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build XPI
+        run: bash build.sh
+
+      - name: Verify SHA256 against updates.json
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          XPI_FILE="dist/magic-threads-${VERSION}.xpi"
+          if [ ! -f "$XPI_FILE" ]; then
+            echo "❌ Fichier $XPI_FILE introuvable !"
+            exit 1
+          fi
+          XPI_HASH="sha256:$(sha256sum "$XPI_FILE" | cut -d' ' -f1)"
+          echo "Empreinte générée : $XPI_HASH"
+          if ! grep -q "$XPI_HASH" updates.json; then
+            echo "⚠️ Avertissement : Le hash généré ne correspond pas à celui consigné dans updates.json"
+          else
+            echo "✅ Intégrité vérifiée avec updates.json"
+          fi
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/magic-threads-*.xpi
+          generate_release_notes: true

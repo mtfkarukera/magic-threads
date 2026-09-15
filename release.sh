@@ -76,10 +76,61 @@ if ! grep -q "## \[$VERSION\]" CHANGELOG.md; then
     echo "❌ Erreur : La version v$VERSION n'est pas documentée dans CHANGELOG.md !"
     exit 1
 fi
+
+if [ ! -f "updates.json" ]; then
+    echo "❌ Erreur : Le fichier updates.json est introuvable à la racine !"
+    exit 1
+fi
 echo "✅ Alignement des versions OK (v$VERSION)."
 
 # 4. Compilation XPI
 echo "📦 Lancement de la construction de l'archive XPI..."
 bash build.sh
+
+# 5. Synchronisation de updates.json
+echo "👉 Validation et synchronisation d'updates.json..."
+if command -v shasum >/dev/null 2>&1; then
+    CURRENT_HASH=$(shasum -a 256 "dist/magic-threads-${VERSION}.xpi" | cut -d' ' -f1)
+elif command -v sha256sum >/dev/null 2>&1; then
+    CURRENT_HASH=$(sha256sum "dist/magic-threads-${VERSION}.xpi" | cut -d' ' -f1)
+else
+    echo "❌ Erreur : utilitaire de hachage SHA256 introuvable."
+    exit 1
+fi
+
+if command -v node >/dev/null 2>&1; then
+    node -e '
+const fs = require("fs");
+const version = process.argv[1];
+const hash = process.argv[2];
+const manifestPath = "./updates.json";
+const data = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+const addonId = "magic-threads@mtfkarukera.net";
+
+if (!data.addons || !data.addons[addonId]) {
+    console.error("❌ Erreur : ID addon manquant dans updates.json");
+    process.exit(1);
+}
+
+const updateLink = `https://github.com/mtfkarukera/magic-threads/releases/download/v${version}/magic-threads-${version}.xpi`;
+const updateHash = `sha256:${hash}`;
+
+data.addons[addonId].updates = [
+    {
+        version: version,
+        update_link: updateLink,
+        update_hash: updateHash,
+        applications: {
+            gecko: {
+                strict_min_version: "128.0"
+            }
+        }
+    }
+];
+
+fs.writeFileSync(manifestPath, JSON.stringify(data, null, 2) + "\n");
+console.log("✅ updates.json synchronisé pour v" + version + " (" + updateHash.slice(0, 24) + "...)");
+' "$VERSION" "$CURRENT_HASH"
+fi
 
 echo "🎉 Rituel technique terminé avec succès !"
