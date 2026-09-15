@@ -602,7 +602,9 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
     }
 
     function formatDate(timestamp) {
+      if (!Number.isFinite(timestamp) || timestamp <= 0) return "";
       let dateObj = new Date(timestamp);
+      if (isNaN(dateObj.getTime())) return "";
       let now = new Date();
       if (dateObj.toDateString() === now.toDateString()) {
         return dateObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -704,19 +706,21 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       item.appendChild(snippet);
 
       let activate = () => {
-        // Retour visuel immédiat (Optimistic UI) sur l'item cliqué
-        let root = item.closest("#threads-list");
-        if (root) {
-          let allItems = root.querySelectorAll(".thread-item");
-          for (let it of allItems) {
-            it.classList.remove("current");
-            it.removeAttribute("aria-current");
-            it.removeAttribute("aria-disabled");
+        // Retour visuel immédiat (Optimistic UI) uniquement en navigation intra-onglet
+        if (navState.mode === "currentTab") {
+          let root = item.closest("#threads-list");
+          if (root) {
+            let allItems = root.querySelectorAll(".thread-item");
+            for (let it of allItems) {
+              it.classList.remove("current");
+              it.removeAttribute("aria-current");
+              it.removeAttribute("aria-disabled");
+            }
           }
+          item.classList.add("current");
+          item.setAttribute("aria-current", "true");
+          item.setAttribute("aria-disabled", "true");
         }
-        item.classList.add("current");
-        item.setAttribute("aria-current", "true");
-        item.setAttribute("aria-disabled", "true");
 
         if (itemClickFire) {
           itemClickFire.async(msg.id, navState.mode);

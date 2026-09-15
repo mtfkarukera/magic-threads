@@ -5,6 +5,25 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.5.12] - 2026-09-16
+
+### Corrigé
+- **Optimisation de la navigation et élimination des 180 ms de latence ([background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js))** :
+  - Correction de la détection `isFolderChange` en comparant les attributs canoniques `{ accountId, path }` de `MailFolder` au lieu d'une comparaison de références d'objets (qui retournait toujours `true`).
+  - Suppression des rechargements de dossier redondants et passage immédiat (0 ms) lors de la navigation intra-dossier.
+  - Résolution précise de l'onglet 3-pane actif (`activeTab.id`) au lieu d'un ciblage aveugle de `mailTabs[0]`.
+  - Protection contre les dates futures dans le calcul de temporisation des messages récents.
+  - Nettoyage du cache `tabLastMessageId` sur message orphelin pour permettre le rafraîchissement.
+- **Élimination de la duplication du message actif ([glodaApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/glodaApi.js))** :
+  - Harmonisation des Message-IDs avec et sans chevrons `<>` et comparaison numérique par identifiant WebExtension (`r.id === messageId`). Le message actuellement sélectionné n'apparaît plus en double exemplaire dans la liste.
+- **Restauration de l'expansion du fil par `References` ([glodaApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/glodaApi.js))** :
+  - Normalisation des références d'en-tête via `normalizeMessageId` avant interrogation de la base SQLite de Gloda, rétablissant la découverte des messages parents.
+- **Fiabilisation de l'UI optimiste ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - Conditionnement de l'application immédiate de l'état actif `.current` au mode de navigation intra-onglet (`currentTab`). En mode nouvel onglet (`newTab`), l'onglet d'origine conserve son état actif réel sans désynchronisation.
+- **Robustesse du cycle de vie XPCOM & gestion d'erreurs ([glodaApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/glodaApi.js), [magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - Implémentation de `onShutdown(isAppShutdown)` dans `convGloda` pour purger les timers XPCOM en attente.
+  - Sécurisation de `formatDate` contre les valeurs d'horodatage non finies ou invalides (`NaN`), évitant les interruptions d'affichage.
+
 ## [2.5.11] - 2026-09-15
 
 ### Ajouté

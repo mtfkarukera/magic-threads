@@ -138,6 +138,7 @@ async function showThreadForMessage(tab, message) {
 
   // Message orphelin → masquer
   if (!threadData || threadData.length <= 1) {
+    tabLastMessageId.delete(tab.id);
     await browser.magicThreadsWindow.hideBanner(tab.id).catch(() => {});
     return;
   }
@@ -258,32 +259,35 @@ async function handleOpenMessage(messageId, mode) {
     return;
   }
 
-  let mailTab = mailTabs[0];
+  let mailTab = mailTabs.find(t => t.id === activeTab?.id) || mailTabs[0];
   let targetMsg = await browser.messages.get(messageId);
   if (!targetMsg) {
     throw new Error("Target message not found.");
   }
 
-  let currentFolderId = mailTab.displayedFolder.id || mailTab.displayedFolder;
-  let folderId = targetMsg.folder.id || targetMsg.folder;
-
   // Détection d'un message envoyé de moins de 5 minutes
   const FIVE_MINUTES_MS = 5 * 60 * 1000;
   let msgDate = new Date(targetMsg.date).getTime();
+  let age = Date.now() - msgDate;
   let isRecentSent = targetMsg.folder && 
                      targetMsg.folder.type === "sent" && 
-                     (Date.now() - msgDate) < FIVE_MINUTES_MS;
+                     age >= 0 && age < FIVE_MINUTES_MS;
 
   // Pause de sécurité pour laisser l'écriture locale de l'index se terminer si le message est récent
   if (isRecentSent) {
     await new Promise(resolve => setTimeout(resolve, 250));
   }
 
-  let isFolderChange = currentFolderId !== folderId;
+  let isFolderChange = !!(
+    mailTab.displayedFolder &&
+    targetMsg.folder &&
+    (mailTab.displayedFolder.accountId !== targetMsg.folder.accountId ||
+     mailTab.displayedFolder.path !== targetMsg.folder.path)
+  );
   if (isFolderChange) {
     // Dossier différent : changement de dossier
     await browser.mailTabs.update(mailTab.id, {
-      displayedFolder: folderId
+      displayedFolder: targetMsg.folder
     });
   }
 

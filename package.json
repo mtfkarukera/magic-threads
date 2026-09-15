@@ -1,6 +1,6 @@
 {
   "name": "magic-threads",
-  "version": "2.5.11",
+  "version": "2.5.12",
   "description": "Outillage de développement (lint) pour l'extension Thunderbird Magic Threads. N'est PAS embarqué dans le XPI — voir build.sh.",
   "private": true,
   "scripts": {

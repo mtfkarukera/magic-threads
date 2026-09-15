@@ -79,7 +79,9 @@ flowchart LR
   ce qu'affiche la liste de messages) et les conversations sœurs retrouvées en
   suivant les en-têtes `References` (requête Gloda `headerMessageID`), avec
   dédoublonnage par `Message-ID` et expansion bornée.
+- **Normalisation des Message-IDs** : Les identifiants extraits des en-têtes XPCOM (contenant des chevrons `<...>`) sont systématiquement normalisés sans chevrons pour garantir la parfaite correspondance avec les IDs indexés dans Gloda (anti-doublon strict et reconstitution intégrale des chaînes `References`).
 - **Dédoublonnage intelligent Gmail** : La détection `isAllMailFolder` normalise les URIs IMAP (nettoyage des paramètres et slashs terminaux) et identifie le dossier virtuel *Tous les messages* de Gmail de manière insensible à la casse dans 22 langues. La logique fusionne les doublons en privilégiant les e-mails dans des dossiers précis (Boîte de réception, Envoyés) tout en préservant le snippet indexé de Gloda.
+- **Gestion du cycle de vie** : Implémente `onShutdown` pour purger immédiatement tous les timers asynchrones (`safeSetTimeout`) lors du déchargement ou de la mise à jour de l'extension.
 - Retourne un tableau JSON sérialisable de métadonnées de messages
 - Expose aussi `isGlodaAvailable()` (v2.3.0) : vérifie la préférence `mailnews.database.global.indexer.enabled` et le chargement du module Gloda — utilisé par la page d'options pour avertir si l'index est désactivé
 - Schéma défini dans `glodaSchema.json`
@@ -201,7 +203,7 @@ La sélection programmée de messages (en particulier après un envoi récent) f
 
 1. **Délai de sécurité des messages récents** : Si l'e-mail a été envoyé depuis moins de 5 minutes, une temporisation fixe de 250 ms est systématiquement appliquée. Cela évite d'ouvrir le dossier et de forcer la sélection alors que le fichier physique de dossier/index est verrouillé ou en cours d'écriture locale.
 2. **Boucle de validation de sélection différenciée (Adaptive Retry Loop)** : La fonction `setSelectedMessagesWithRetry` adapte sa stratégie selon le contexte de navigation :
-   - **Même dossier (`isFolderChange === false`)** : Une seule tentative immédiate (0 ms d'attente). Si le message est masqué par un filtre rapide actif, l'échec est constaté instantanément, déclenchant le fallback d'affichage direct sans délai perceptible (~200 ms au total).
+   - **Même dossier (`isFolderChange === false`)** : Déterminé par comparaison stricte des attributs d'identité `{ accountId, path }` des dossiers. Une seule tentative immédiate (0 ms d'attente). Si le message est masqué par un filtre rapide actif, l'échec est constaté instantanément, déclenchant le fallback d'affichage direct sans délai perceptible (~200 ms au total).
    - **Changement de dossier (`isFolderChange === true`)** : 6 tentatives rapides espacées de 30 ms (180 ms max au lieu des 500 ms d'origine) pour laisser à Thunderbird le temps de charger la base du dossier.
 
 ### Zéro scintillement & DOM Patching in-place

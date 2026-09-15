@@ -22,6 +22,24 @@ const kMaxThreadMessages = 500;
 // Préférence Thunderbird pilotant l'indexeur de recherche globale (Gloda).
 const kGlodaIndexerPref = "mailnews.database.global.indexer.enabled";
 
+const activeGlodaTimeouts = new Set();
+
+function safeSetTimeout(callback, ms) {
+  let timerId = setTimeout(() => {
+    activeGlodaTimeouts.delete(timerId);
+    callback();
+  }, ms);
+  activeGlodaTimeouts.add(timerId);
+  return timerId;
+}
+
+function safeClearTimeout(timerId) {
+  if (timerId) {
+    clearTimeout(timerId);
+    activeGlodaTimeouts.delete(timerId);
+  }
+}
+
 function normalizeMessageId(id) {
   if (!id) return "";
   return id.trim().toLowerCase().replace(/^</, "").replace(/>$/, "");
@@ -103,6 +121,13 @@ function checkGlodaAvailability() {
 
 /* exported convGloda */
 var convGloda = class extends ExtensionCommon.ExtensionAPI {
+  onShutdown(_isAppShutdown) {
+    for (let timerId of activeGlodaTimeouts) {
+      clearTimeout(timerId);
+    }
+    activeGlodaTimeouts.clear();
+  }
+
   getAPI(context) {
     return {
       convGloda: {
@@ -132,8 +157,13 @@ var convGloda = class extends ExtensionCommon.ExtensionAPI {
               }
             }
 
-            // S'assurer que le message actif de base est dans le résultat
-            if (!results.some(r => r.headerMessageId === msgHdr.messageId)) {
+            // S'assurer que le message actif de base est dans le résultat (sans doublon)
+            let activeHeaderId = normalizeMessageId(msgHdr.messageId);
+            let alreadyPresent = results.some(r => 
+              r.id === messageId || 
+              (r.headerMessageId && normalizeMessageId(r.headerMessageId) === activeHeaderId)
+            );
+            if (!alreadyPresent) {
               let fallback = translateStandardMessage(context, msgHdr);
               if (fallback) results.push(fallback);
             }
@@ -311,7 +341,8 @@ async function resolveFullThread(msgHdr) {
       let hdr = entry.msgHdr;
       if (!hdr) continue;
       for (let i = 0; i < hdr.numReferences && wanted.length < kMaxIdsPerQuery; i++) {
-        let ref = hdr.getStringReference(i);
+        let rawRef = hdr.getStringReference(i);
+        let ref = normalizeMessageId(rawRef);
         if (ref && !byHeaderId.has(ref) && !queriedRefs.has(ref)) {
           queriedRefs.add(ref);
           wanted.push(ref);
@@ -353,7 +384,7 @@ async function resolveFullThread(msgHdr) {
  */
 function queryGlodaByHeaderMessageId(ids) {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
+    const timeout = safeSetTimeout(() => {
       console.warn("Magic Threads: Gloda headerMessageID timeout — resolving with empty array.");
       resolve([]);
     }, kGlodaTimeoutMs);
@@ -365,12 +396,12 @@ function queryGlodaByHeaderMessageId(ids) {
         onItemsModified() {},
         onItemsRemoved() {},
         onQueryCompleted(collection) {
-          clearTimeout(timeout);
+          safeClearTimeout(timeout);
           resolve(collection.items);
         }
       });
     } catch (e) {
-      clearTimeout(timeout);
+      safeClearTimeout(timeout);
       reject(e);
     }
   });
@@ -378,7 +409,7 @@ function queryGlodaByHeaderMessageId(ids) {
 
 function getGlodaMessages(msgHdrs) {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
+    const timeout = safeSetTimeout(() => {
       console.warn("Magic Threads: Gloda timeout — resolving with empty array.");
       resolve([]);
     }, kGlodaTimeoutMs);
@@ -390,7 +421,7 @@ function getGlodaMessages(msgHdrs) {
           onItemsModified() {},
           onItemsRemoved() {},
           onQueryCompleted(collection) {
-            clearTimeout(timeout);
+            safeClearTimeout(timeout);
             resolve(collection.items);
           },
         },
@@ -399,7 +430,7 @@ function getGlodaMessages(msgHdrs) {
     } catch (e) {
       // Exception synchrone (ex. Gloda désactivée) : annuler le timer
       // pour éviter un warn trompeur 10 s plus tard.
-      clearTimeout(timeout);
+      safeClearTimeout(timeout);
       reject(e);
     }
   });
@@ -407,7 +438,7 @@ function getGlodaMessages(msgHdrs) {
 
 function getConversationMessages(conversation) {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
+    const timeout = safeSetTimeout(() => {
       console.warn("Magic Threads: Gloda conversation timeout — resolving with empty array.");
       resolve([]);
     }, kGlodaTimeoutMs);
@@ -418,14 +449,14 @@ function getConversationMessages(conversation) {
           onItemsModified() {},
           onItemsRemoved() {},
           onQueryCompleted(collection) {
-            clearTimeout(timeout);
+            safeClearTimeout(timeout);
             resolve(collection.items);
-          }
+          },
         },
-        false
+        null
       );
     } catch (e) {
-      clearTimeout(timeout);
+      safeClearTimeout(timeout);
       reject(e);
     }
   });
