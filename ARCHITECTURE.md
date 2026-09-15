@@ -233,15 +233,13 @@ flowchart TD
     URL --> MANIFEST["updates.json"]
     MANIFEST -->|"Comparaison de version"| EVAL{"Nouvelle version disponible ?"}
     EVAL -->|"Non"| IDLE["Fin de verification"]
-    EVAL -->|"Oui"| DL["Telechargement du XPI (GitHub Releases)"]
-    DL --> HASH{"Verification SHA256 (update_hash)"}
-    HASH -->|"Invalide"| ABORT["Installation annulee"]
-    HASH -->|"Valide"| INSTALL["Mise a jour transparente appliquee"]
+    EVAL -->|"Oui"| DL["Telechargement securise du XPI (GitHub Releases HTTPS)"]
+    DL --> INSTALL["Mise a jour transparente appliquee par Gecko"]
 ```
 
 1. **Point d'amorce (`manifest.json`)** : Déclare `update_url` dans `browser_specific_settings.gecko` pointant vers `updates.json`.
-2. **Manifeste distant (`updates.json`)** : Renseigne la dernière version stable, l'URL de téléchargement de l'archive `.xpi` dans GitHub Releases et l'empreinte d'intégrité `update_hash: sha256:...`.
-3. **Contrôle d'intégrité cryptographique** : Gecko valide l'empreinte SHA256 avant d'appliquer la mise à jour, garantissant une installation sécurisée et transparente en tâche de fond.
+2. **Manifeste distant (`updates.json`)** : Renseigne la dernière version stable, l'URL de téléchargement HTTPS de l'archive `.xpi` dans GitHub Releases et la compatibilité `strict_min_version`.
+3. **Livraison sécurisée HTTPS sans contrainte de hash** : Conforme aux spécifications Mozilla pour les URL sécurisées (`update_hash` omis), éliminant tout blocage de cache HTTP local ou CDN lors de mises à jour successives.
 
 ## Contraintes et problèmes connus
 
