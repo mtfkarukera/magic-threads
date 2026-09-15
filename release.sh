@@ -113,13 +113,11 @@ if (!data.addons || !data.addons[addonId]) {
 }
 
 const updateLink = `https://github.com/mtfkarukera/magic-threads/releases/download/v${version}/magic-threads-${version}.xpi`;
-const updateHash = `sha256:${hash}`;
 
 data.addons[addonId].updates = [
     {
         version: version,
         update_link: updateLink,
-        update_hash: updateHash,
         applications: {
             gecko: {
                 strict_min_version: "128.0"
@@ -129,7 +127,7 @@ data.addons[addonId].updates = [
 ];
 
 fs.writeFileSync(manifestPath, JSON.stringify(data, null, 2) + "\n");
-console.log("✅ updates.json synchronisé pour v" + version + " (" + updateHash.slice(0, 24) + "...)");
+console.log("✅ updates.json synchronisé pour v" + version);
 ' "$VERSION" "$CURRENT_HASH"
 fi
 
