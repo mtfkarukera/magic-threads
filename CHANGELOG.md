@@ -5,6 +5,18 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.6.2] - 2026-10-09
+
+### Corrigé
+- **Résolution Gloda & Constante NOUN_MESSAGE ([glodaApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/glodaApi.js), [.eslintrc.json](file:///Users/mtfkarukera/Scripts/magic-threads-b/.eslintrc.json), [eslint.config.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/eslint.config.js))** :
+  - Importation explicite du module `GlodaConstants` (`resource:///modules/gloda/GlodaConstants.sys.mjs`) dans l'API Experiment. Dans Thunderbird 128+ ESR, la constante `NOUN_MESSAGE` (valeur `102`) n'est plus exposée sur l'objet public `Gloda`, ce qui provoquait l'exception fatale `TypeError: can't access property "queryClass", nounDef is undefined` lors de l'appel à `Gloda.newQuery` et bloquait la récupération des messages distants dans `convGloda.getThreadByHeaderId`.
+  - Blindage de l'instanciation de requête avec fallback sur `102` invariant (`GlodaConstants?.NOUN_MESSAGE ?? 102`).
+  - Élargissement des critères de recherche par Message-ID (`query.headerMessageID`) aux variantes RFC 822 (forme nettoyée sans chevrons, forme standardisée `<id>` et forme brute d'origine) pour garantir une correspondance SQLite instantanée quel que soit le format d'indexation.
+- **Affichage dynamique du décompte dans la bannière de staging ([_locales/](file:///Users/mtfkarukera/Scripts/magic-threads-b/_locales/), [magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - Retrait du bloc `placeholders` sur la clé `stagingBannerPromptThread` en français et en anglais afin d'empêcher le moteur i18n Gecko de remplacer prématurément le paramètre manquant par la valeur textuelle littérale `"null"`.
+  - Préservation du jeton `$COUNT$` pour une substitution dynamique déterministe dans le Shadow DOM.
+  - Conversion et sécurisation numérique stricte de `count` (`Math.max(1, Number(...) || 1)`).
+
 ## [2.6.1] - 2026-10-08
 
 ### Corrigé

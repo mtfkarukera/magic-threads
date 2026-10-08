@@ -55,6 +55,7 @@ module.exports = [
         Services: "readonly",
         ChromeUtils: "readonly",
         Gloda: "readonly",
+        GlodaConstants: "readonly",
         GlodaMsgIndexer: "readonly",
         Cu: "readonly",
         Ci: "readonly",

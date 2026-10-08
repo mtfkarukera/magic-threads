@@ -4,6 +4,7 @@
 
 ChromeUtils.defineESModuleGetters(this, {
   Gloda: "resource:///modules/gloda/GlodaPublic.sys.mjs",
+  GlodaConstants: "resource:///modules/gloda/GlodaConstants.sys.mjs",
 });
 
 const { setTimeout, clearTimeout } = ChromeUtils.importESModule(
@@ -430,8 +431,28 @@ function queryGlodaByHeaderMessageId(ids) {
       resolve([]);
     }, kGlodaTimeoutMs);
     try {
-      let query = Gloda.newQuery(Gloda.NOUN_MESSAGE);
-      query.headerMessageID(...ids);
+      const nounMessage = (typeof GlodaConstants !== "undefined" && GlodaConstants?.NOUN_MESSAGE) || Gloda.NOUN_MESSAGE || 102;
+      let query = Gloda.newQuery(nounMessage);
+
+      // Préparation des variantes d'identifiants (brut, nettoyé, encadré RFC 822)
+      let candidateIds = new Set();
+      for (let rawId of ids) {
+        if (!rawId) continue;
+        let clean = normalizeMessageId(rawId);
+        if (clean) {
+          candidateIds.add(clean);
+          candidateIds.add("<" + clean + ">");
+        }
+        candidateIds.add(rawId.trim());
+      }
+
+      if (candidateIds.size === 0) {
+        safeClearTimeout(timeout);
+        resolve([]);
+        return;
+      }
+
+      query.headerMessageID(...candidateIds);
       query.getCollection({
         onItemsAdded() {},
         onItemsModified() {},

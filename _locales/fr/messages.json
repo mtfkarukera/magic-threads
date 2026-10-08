@@ -178,14 +178,8 @@
     "description": "Prompt for linking a single orphan message"
   },
   "stagingBannerPromptThread": {
-    "message": "Rattacher cette conversation ($COUNT$ messages) au fil ci-dessous ?",
-    "description": "Prompt for linking a message that has its own thread",
-    "placeholders": {
-      "count": {
-        "content": "$1",
-        "example": "3"
-      }
-    }
+    "message": "Rattacher cette conversation ({count} messages) au fil ci-dessous ?",
+    "description": "Prompt for linking a message that has its own thread"
   },
   "stagingSourceLabel": {
     "message": "Source :",

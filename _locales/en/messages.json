@@ -178,14 +178,8 @@
     "description": "Prompt for linking a single orphan message"
   },
   "stagingBannerPromptThread": {
-    "message": "Link this conversation ($COUNT$ messages) to the thread below?",
-    "description": "Prompt for linking a message that has its own thread",
-    "placeholders": {
-      "count": {
-        "content": "$1",
-        "example": "3"
-      }
-    }
+    "message": "Link this conversation ({count} messages) to the thread below?",
+    "description": "Prompt for linking a message that has its own thread"
   },
   "stagingSourceLabel": {
     "message": "Source:",

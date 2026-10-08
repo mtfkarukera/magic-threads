@@ -736,7 +736,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       unreadLabel: "Unread",
       stagingBannerTitle: "Thread association in progress",
       stagingBannerPromptSingle: "Link this message to the conversation below?",
-      stagingBannerPromptThread: "Link this conversation ($COUNT$ messages) to the thread below?",
+      stagingBannerPromptThread: "Link this conversation ({count} messages) to the thread below?",
       stagingSourceLabel: "Source:",
       stagingOptionMergeThreads: "Merge entire threads together (Recommended)",
       stagingOptionSingleMsg: "Attach only this specific message",
@@ -1221,9 +1221,10 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         let stagingTitle = doc.createElement("div");
         stagingTitle.className = "staging-title";
         let isThread = !!stagingData.isSourceInThread;
-        let count = stagingData.sourceThreadCount || stagingData.sourceCount || 1;
+        let count = Math.max(1, Number(stagingData.sourceThreadCount) || Number(stagingData.sourceCount) || 1);
+        let promptTemplate = labels.stagingBannerPromptThread || "Rattacher cette conversation ({count} messages) au fil ci-dessous ?";
         let promptText = isThread && count > 1
-          ? (labels.stagingBannerPromptThread || "Rattacher cette conversation ($COUNT$ messages) au fil ci-dessous ?").replace("$COUNT$", count)
+          ? promptTemplate.replace("{count}", String(count)).replace("$COUNT$", String(count))
           : (labels.stagingBannerPromptSingle || "Rattacher ce message à la conversation ci-dessous ?");
         stagingTitle.textContent = "\uD83D\uDD17 " + promptText;
         stagingDiv.appendChild(stagingTitle);
