@@ -5,6 +5,27 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.6.0] - 2026-10-08
+
+### Ajouté
+- **Rattachement manuel de messages & fusion de fils de discussion ([manualLinksManager.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/manualLinksManager.js), [threadResolver.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/threadResolver.js))** :
+  - Capacité d'associer manuellement des messages orphelins (qui n'ont pas fait l'objet d'un "Répondre à") ou de fusionner deux fils de discussion scindés.
+  - Modèle d'Overlay Virtuel persistant dans `browser.storage.local` basé sur les en-têtes universels `Message-ID` RFC 822 normalisés, 100% résilient face aux réindexations de Gloda et sans altération des bases Thunderbird.
+  - Deux portées de liaison : fusion complète des deux conversations (`entire_thread`) ou intégration d'un message unique isolé (`single_message`).
+  - Déduplication stricte et protection contre les boucles récursives de liaison.
+- **Workflow d'association en deux temps (Staging) ([background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js), [magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - Déclenchement naturel par clic droit sur la liste de messages : `Magic Threads > Rattacher à un fil de discussion...` (permission `"menus"`).
+  - Bannière contextuelle interactive en tête de panneau avec prévisualisation de la source, choix de la portée et boutons d'action `[Confirmer l'association]` et `[Annuler]`.
+  - Maintien du panneau ouvert en mode staging pour permettre d'associer deux messages orphelins uniques.
+- **Indicateurs visuels et réversibilité totale ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - Badge discret `🔗` indiquant les messages rattachés manuellement.
+  - Bouton de détachement rapide `×` sur chaque carte rattachée pour séparer les fils ou délier un message en un clic.
+- **Gestionnaire centralisé des liaisons manuelles ([options.html](file:///Users/mtfkarukera/Scripts/magic-threads-b/options/options.html), [options.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/options/options.js))** :
+  - Tableau récapitulatif accessible (WCAG AA) dans les préférences de l'extension listant toutes les liaisons actives (Source, Cible, Portée, Date).
+  - Bouton de suppression 🗑️ avec notification de confirmation vocale (`role="status"`).
+- **Extension de l'API Experiment Gloda ([glodaApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/glodaApi.js), [glodaSchema.json](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/glodaSchema.json))** :
+  - Nouvelle méthode `convGloda.getThreadByHeaderId(headerId)` permettant la résolution et l'expansion d'une conversation Gloda arbitraire depuis un Message-ID.
+
 ## [2.5.14] - 2026-09-16
 
 ### Amélioré

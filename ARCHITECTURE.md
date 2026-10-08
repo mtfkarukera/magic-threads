@@ -39,19 +39,33 @@ désélection) et `messageDisplay.onMessageDisplayed` pour les onglets message.
 
 Point d'entrée de l'extension. Responsabilités :
 
-- **Écoute des événements** : `browser.messageDisplay.onMessageDisplayed` pour détecter la sélection d'un message
+- **Écoute des événements** : `browser.messageDisplay.onMessageDisplayed` et `mailTabs.onSelectedMessagesChanged` pour détecter la sélection d'un message
 - **Coordination** : orchestre les appels entre le ThreadResolver et l'API Window
 - **Préférences** : lit et applique les paramètres utilisateur via `browser.storage.sync` (avec fallback depuis `browser.storage.local`)
 - **Navigation** : gère les clics sur les messages du fil (intra-onglet ou nouvel onglet)
 - **Détection du contexte** : distingue la vue 3-pane des onglets message
+- **Workflow de liaison manuelle (Staging)** : gère le menu contextuel `browser.menus` (`message_list`), conserve l'état de pré-liaison (`pendingStagingState`), maintient le panneau ouvert sur les messages cibles orphelins, et écoute les événements d'action (`onConfirmManualLink`, `onCancelManualLink`, `onDetachManualLink`)
+
+#### `background/manualLinksManager.js` (v2.6.0)
+
+Gestionnaire CRUD de persistance pour l'Overlay Virtuel dans `browser.storage.local` :
+
+- Stocke les liaisons manuelles indexées par un identifiant unique `linkId` (`link_timestamp_random`)
+- Clés universelles basées sur les `headerMessageId` RFC 822 normalisés (sans chevrons)
+- Indexation bidirectionnelle : permet de trouver instantanément si un message (ou un ensemble de Message-IDs) est source ou cible d'un lien actif
+- Support des deux portées : `entire_thread` (fusion complète) et `single_message` (attachement isolé)
+- Méthodes exposées : `getAllLinks()`, `saveLink()`, `deleteLink()`, `getLinksForHeaderIds()`
 
 #### `background/threadResolver.js`
 
-Proxy simple (Data Access Layer) pour l'accès aux données :
+Couche d'accès aux données (DAL) unifiant Gloda et l'Overlay Virtuel :
 
 - Appelle `browser.convGloda.getThreadMessages()` avec l'identifiant du message
-- Délègue entièrement à l'Experiment API Gloda sans transformation ni formatage
-- Retourne directement les résultats de l'API sans normalisation
+- Résout les liaisons manuelles actives via `ManualLinksManager.getLinksForHeaderIds()`
+- Rapatrie dynamiquement les fils ou messages associés via `browser.convGloda.getThreadByHeaderId()`
+- Protège contre les boucles récursives de liaison (`visitedHeaderIds`, `visitedLinks`)
+- Fusionne les ensembles de messages, élimine les doublons stricts par `headerMessageId`, et marque les messages rattachés (`isManualLink: true`, `manualLinkId`)
+- Trie l'ensemble chronologiquement de manière uniforme
 - Gère les cas d'erreur (API non disponible, message non indexé)
 
 ### 2. Experiment APIs (contexte chrome)
@@ -83,6 +97,7 @@ flowchart LR
 - **Dédoublonnage intelligent Gmail** : La détection `isAllMailFolder` normalise les URIs IMAP (nettoyage des paramètres et slashs terminaux) et identifie le dossier virtuel *Tous les messages* de Gmail de manière insensible à la casse dans 22 langues. La logique fusionne les doublons en privilégiant les e-mails dans des dossiers précis (Boîte de réception, Envoyés) tout en préservant le snippet indexé de Gloda.
 - **Gestion du cycle de vie** : Implémente `onShutdown` pour purger immédiatement tous les timers asynchrones (`safeSetTimeout`) lors du déchargement ou de la mise à jour de l'extension.
 - Retourne un tableau JSON sérialisable de métadonnées de messages
+- **Résolution par Message-ID arbitraire (`getThreadByHeaderId`) (v2.6.0)** : Permet à `ThreadResolver` de reconstruire le fil complet associé à un `headerMessageId` sans passer par un identifiant numérique de message (`msgId`), essentiel pour la fusion d'e-mails liés via l'Overlay.
 - Expose aussi `isGlodaAvailable()` (v2.3.0) : vérifie la préférence `mailnews.database.global.indexer.enabled` et le chargement du module Gloda — utilisé par la page d'options pour avertir si l'index est désactivé
 - Schéma défini dans `glodaSchema.json`
 
@@ -94,6 +109,9 @@ Experiment API pour l'injection DOM :
 - Crée et injecte le panneau dans un **Shadow DOM**
 - Gère les trois modes d'affichage (bottom panel en 3-pane / sidebar en 3-pane / sidebar en onglet message)
 - Injecte les styles CSS dans le Shadow DOM
+- **Bannière d'association en Staging (v2.6.0)** : Construit et insère en tête de panneau l'interface de pré-liaison interactive avec prévisualisation du message source, choix de la portée (`entire_thread` / `single_message`) et boutons `[Confirmer l'association]` et `[Annuler]`.
+- **Badges et dissociation rapide (v2.6.0)** : Affiche le badge `🔗` et le bouton `×` de détachement direct sur les cartes liées, sans dialogue bloquant (conforme Règle 14).
+- **Communication bidirectionnelle d'événements** : Expose les événements `onConfirmManualLink`, `onCancelManualLink` et `onDetachManualLink` via `EventManager` pour notifier le background.
 - Gère le nettoyage du DOM quand le message change
 - Schéma défini dans `magicThreadsWindowSchema.json`
 
@@ -106,7 +124,9 @@ Page de paramètres accessible depuis le gestionnaire de modules complémentaire
 - **Mode de navigation** : intra-onglet ou nouvel onglet
 - **Position du sidebar** en onglet message : gauche ou droite
 - **Position du panneau** en vue 3-pane : bottom, gauche ou droite
-- Persistance via `browser.storage.sync` (avec fallback depuis `browser.storage.local`)
+- **Ordre de tri** : antichronologique ou chronologique
+- **Gestionnaire des liaisons manuelles (v2.6.0)** : Tableau accessible (WCAG 2.1 AA) listant l'intégralité des liaisons enregistrées (source, cible, portée, date) avec suppression unitaire dynamique 🗑️ et annonce vocale (`role="status"`).
+- Persistance des préférences via `browser.storage.sync` (avec fallback depuis `browser.storage.local`) et gestion directe des liaisons dans `browser.storage.local`.
 
 ## Structure du Shadow DOM
 
@@ -221,6 +241,36 @@ Lorsqu'une recherche ou un filtre rapide est actif dans la vue 3-pane de Thunder
 - `mailTabs.setSelectedMessages` échoue à sélectionner ce message hors vue.
 - **Résolution** : `handleOpenMessage` déclenche automatiquement le fallback `browser.magicThreadsWindow.displayMessageDirectly(mailTab.id, messageId)`. Celui-ci accède directement au visualiseur via le composant de haut niveau `messagePane.displayMessage(msgURI)` (ou `msgBrowser.contentWindow.displayMessage`), tout en restaurant impérativement la visibilité du visualiseur natif (`messageBrowser.hidden = false`) masqué par Thunderbird lors d'un résultat de filtre vide. Le filtre rapide de l'utilisateur n'est ni altéré ni réinitialisé, préservant son contexte de recherche tout en affichant instantanément l'e-mail désiré.
 
+## Overlay Virtuel & Rattachement Manuel de Fils (v2.6.0)
+
+Pour pallier l'absence d'API de réassignation interne dans Gloda et garantir la persistance des regroupements même après une réindexation globale de Thunderbird, Magic Threads utilise un **Overlay Virtuel** non intrusif.
+
+### Architecture de la liaison
+
+```mermaid
+flowchart TD
+    A["Clic droit sur message source"] --> B["Action menu : Rattacher a un fil"]
+    B --> C["background.js : mise en cache du pendingStagingState"]
+    C --> D["Selection du message cible"]
+    D --> E["magicThreadsWindowApi.js : affichage banniere de staging"]
+    E --> F{"Choix de l'utilisateur"}
+    F -->|"Annuler"| G["onCancelManualLink : abandon et reinitialisation"]
+    F -->|"Confirmer"| H["onConfirmManualLink : creation du lien"]
+    H --> I["manualLinksManager.js : persistance dans storage.local"]
+    I --> J["ThreadResolver : fusion des fils et rafraichissement"]
+    J --> K["Affichage du fil enrichi avec badge et bouton detacher"]
+```
+
+1. **Isolation et Intégrité** : La base de données SQLite de Gloda n'est jamais modifiée directement. Les liaisons sont stockées dans `browser.storage.local` sous la clé `manualThreadLinks`.
+2. **Identification universelle RFC 822** : Les liaisons utilisent les en-têtes `headerMessageId` normalisés (nettoyés des chevrons). Si les dossiers sont compactés, déplacés ou synchronisés en IMAP, les liaisons restent pérennes.
+3. **Deux portées de liaison** :
+   - `entire_thread` : regroupe les deux conversations complètes. Tout message appartenant à l'un des fils affichera l'intégralité des deux conversations fusionnées.
+   - `single_message` : associe uniquement le message source isolé au fil cible.
+4. **Résolution DAG et protection anti-boucles** : `ThreadResolver` utilise des ensembles mémoires `visitedHeaderIds` et `visitedLinks` pour explorer le graphe des correspondances de manière acyclique et dédupliquée.
+5. **Réversibilité instantanée** :
+   - Clic sur le bouton de détachement rapide `×` d'un message : déclenche `onDetachManualLink` et supprime la liaison correspondante.
+   - Tableau de gestion dans les Options : suppression unitaire avec rafraîchissement dynamique.
+
 ## Distribution & Auto-Update Autonome
 
 En raison du refus d'ATN (addons.thunderbird.net) d'accepter les nouveaux add-ons exploitant des Experiment APIs, Magic Threads s'appuie sur le mécanisme natif Mozilla Gecko d'auto-hébergement et de distribution autonome.
@@ -266,6 +316,7 @@ graph LR
     subgraph "WebExtension (background)"
         BG["background.js"]
         TR["threadResolver.js"]
+        MLM["manualLinksManager.js"]
     end
 
     subgraph "Experiment APIs (chrome)"
@@ -278,20 +329,25 @@ graph LR
         DOM["DOM natif (XUL/HTML)"]
     end
 
-    subgraph "Configuration"
+    subgraph "Stockage & Configuration"
         OPT["options.js"]
-         STORAGE["browser.storage.sync (fallback .local)"]
+        STORAGE_SYNC["browser.storage.sync"]
+        STORAGE_LOCAL["browser.storage.local (Overlay & fallback)"]
     end
 
     BG --> TR
+    BG --> MLM
     TR --> GA
+    TR --> MLM
     GA --> GLODA
     BG --> WA
     WA --> DOM
-    BG --> STORAGE
-    OPT --> STORAGE
+    BG --> STORAGE_SYNC
+    OPT --> STORAGE_SYNC
+    MLM --> STORAGE_LOCAL
+    OPT --> STORAGE_LOCAL
 
     style GLODA fill:#ff6b6b,color:#fff
     style DOM fill:#ff6b6b,color:#fff
-    style STORAGE fill:#51cf66,color:#fff
+    style STORAGE_LOCAL fill:#51cf66,color:#fff
 ```

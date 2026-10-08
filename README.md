@@ -17,6 +17,7 @@ Extension Thunderbird qui affiche le fil chronologique des e-mails (métadonnée
 - 🌍 **Multilingue** : interface traduite en 7 langues
 - ♿ **Accessible** : navigation complète au clavier (touches fléchées, Roving Tabindex sans fatigue de tabulation, poignées de redimensionnement), contrastes WCAG 2.1 AA renforcés en thème sombre, annonces d'états aux lecteurs d'écran (non lu dynamique, panneau replié)
 - 🧭 **Navigation intra-onglet** : clic sur un message ouvre celui-ci sans quitter l'onglet courant
+- 🔗 **Rattachement manuel & Fusion de fils** : associe facilement des messages orphelins (expédiés sans "Répondre à") ou fusionne deux fils distincts via un clic droit contextuel et une confirmation interactive avec portée paramétrable (message unique ou fil complet).
 - 📧 **Dédoublonnage intelligent** : fusionne automatiquement les doublons d'e-mails (par exemple, les copies stockées dans le dossier *Tous les messages* de Gmail) pour n'afficher qu'une seule entrée propre avec son extrait (snippet) de texte préservé.
 - 🔍 **Résilience de recherche & Filtre rapide** : permet de consulter instantanément n'importe quel message du fil même lorsqu'un filtre rapide actif le masque dans la liste des messages, sans jamais altérer ni effacer votre saisie de recherche en cours.
 
@@ -72,6 +73,18 @@ Accéder aux options via **Modules complémentaires** → **Magic Threads** → 
 | `pt` | Português |
 | `vi` | Tiếng Việt |
 
+### Rattachement manuel & Fusion de fils (v2.6.0)
+
+Pour associer un message orphelin à un fil ou fusionner deux conversations :
+1. **Étape 1 (Sélection du message source)** : Faites un clic droit sur le message à lier dans la liste des messages Thunderbird, puis choisissez **Magic Threads > Rattacher à un fil de discussion...**.
+2. **Étape 2 (Sélection de la destination & Validation)** : Naviguez librement vers le message ou la conversation cible. Une bannière jaune interactive apparaît en tête du panneau Magic Threads :
+   - Choisissez la portée : **Fil complet** (pour fusionner les deux conversations) ou **Message unique** (pour n'attacher que l'e-mail sélectionné).
+   - Cliquez sur **Confirmer l'association** (ou **Annuler** à tout moment).
+3. **Identification & Réversibilité** :
+   - Les messages rattachés manuellement arborent un badge discret `🔗`.
+   - Cliquez sur l'icône de suppression rapide `×` présente sur la carte pour délier le message en un clic.
+   - Vous pouvez également consulter, filtrer et révoquer l'ensemble des liaisons actives depuis l'onglet **Options** de l'extension (tableau récapitulatif accessible).
+
 ## Architecture
 
 L'extension utilise deux **Experiment APIs** pour accéder aux fonctionnalités internes de Thunderbird :
@@ -81,8 +94,8 @@ L'extension utilise deux **Experiment APIs** pour accéder aux fonctionnalités 
 
 ```
 Sélection message → messageDisplay.onMessageDisplayed
-    → background.js → ThreadResolver → Gloda API → XPCOM/Gloda
-    → données du fil → showBanner → Window API → Shadow DOM
+    → background.js → ThreadResolver (Gloda + Overlay storage.local)
+    → données unifiées → showBanner → Window API → Shadow DOM
 ```
 
 ### Structure du projet
@@ -91,16 +104,17 @@ Sélection message → messageDisplay.onMessageDisplayed
 magic-threads-b/
 ├── manifest.json                          # Manifest v2, TB 128+
 ├── background/
-│   ├── background.js                      # Événements, navigation, préférences
-│   └── threadResolver.js                  # Couche d'accès aux données (Gloda)
+│   ├── background.js                      # Événements, navigation, staging, menus
+│   ├── manualLinksManager.js              # Gestion CRUD de l'Overlay Virtuel (storage.local)
+│   └── threadResolver.js                  # Couche d'accès aux données (Gloda + Overlay)
 ├── experiment-api/
 │   ├── glodaApi.js                        # Experiment API Gloda (XPCOM)
 │   ├── glodaSchema.json                   # Schéma de l'API Gloda
-│   ├── magicThreadsWindowApi.js           # Experiment API Window (DOM, Shadow DOM)
+│   ├── magicThreadsWindowApi.js           # Experiment API Window (DOM, Shadow DOM, Staging)
 │   └── magicThreadsWindowSchema.json      # Schéma de l'API Window
 ├── options/
-│   ├── options.html                       # Page de paramètres
-│   └── options.js                         # Persistance des paramètres
+│   ├── options.html                       # Page de paramètres & gestionnaire de liaisons
+│   └── options.js                         # Persistance et suppression des liaisons
 ├── _locales/                              # Fichiers de traduction i18n
 ├── LICENSE                                # Mozilla Public License 2.0
 ├── README.md                              # Ce fichier

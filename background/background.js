@@ -3,6 +3,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import { ThreadResolver } from "./threadResolver.js";
+import { ManualLinksManager } from "./manualLinksManager.js";
+
+// État de l'association manuelle en cours (mode staging)
+let pendingStagingState = null;
 
 // ---- Préférences utilisateur ----
 const storage = browser.storage.sync || browser.storage.local;
@@ -66,7 +70,10 @@ function getLabels(count) {
     "tooltipResize", "tooltipAttachment",
     "folderInbox", "folderSent", "folderArchive",
     "folderDrafts", "folderTrash",
-    "unknownAuthor", "unreadLabel"
+    "unknownAuthor", "unreadLabel",
+    "stagingBannerTitle", "stagingBannerPromptSingle", "stagingBannerPromptThread",
+    "stagingSourceLabel", "stagingOptionMergeThreads", "stagingOptionSingleMsg",
+    "btnConfirmLink", "btnCancelLink", "badgeManualLink", "btnDetachLink", "confirmDetachPrompt"
   ];
   let labels = {};
   for (let key of keys) {
@@ -122,7 +129,7 @@ async function showThreadForMessage(tab, message) {
 
   // Requête Gloda et lecture des préférences en parallèle :
   // plus aucun await entre le contrôle de fraîcheur et showBanner.
-  const [threadData, order, navMode, sidebarPos, mainViewPos] = await Promise.all([
+  let [threadData, order, navMode, sidebarPos, mainViewPos] = await Promise.all([
     ThreadResolver.getThreadMessages(message.id),
     getThreadOrder(),
     getNavigationMode(),
@@ -136,11 +143,32 @@ async function showThreadForMessage(tab, message) {
     return;
   }
 
-  // Message orphelin → masquer
+  // Message orphelin → masquer (sauf si mode association de fil en cours)
   if (!threadData || threadData.length <= 1) {
-    tabLastMessageId.delete(tab.id);
-    await browser.magicThreadsWindow.hideBanner(tab.id).catch(() => {});
-    return;
+    if (!pendingStagingState) {
+      tabLastMessageId.delete(tab.id);
+      await browser.magicThreadsWindow.hideBanner(tab.id).catch(() => {});
+      return;
+    }
+
+    // En mode association actif sur message unique : garantir un tableau non vide pour afficher la bannière
+    if (!threadData || threadData.length === 0) {
+      threadData = [{
+        id: message.id,
+        headerMessageId: message.headerMessageId || message.messageId,
+        author: message.author,
+        date: new Date(message.date).getTime(),
+        folder: message.folder ? {
+          accountId: message.folder.accountId,
+          path: message.folder.path,
+          type: message.folder.type
+        } : { accountId: "", path: "?", type: "" },
+        snippet: "...",
+        isRead: message.read,
+        hasAttachments: false,
+        tags: []
+      }];
+    }
   }
 
   // Trier les messages selon l'ordre défini dans les préférences
@@ -159,7 +187,8 @@ async function showThreadForMessage(tab, message) {
     navMode,
     sidebarPos,
     mainViewPos,
-    labels
+    labels,
+    pendingStagingState ? { ...pendingStagingState } : null
   );
 }
 
@@ -201,6 +230,133 @@ browser.magicThreadsWindow.onBannerItemClicked.addListener(async (messageId, mod
     await handleOpenMessage(messageId, mode);
   } catch (e) {
     console.error("Magic Threads: navigation error:", e);
+  }
+});
+
+// ---- Menu contextuel pour le rattachement manuel de fil ----
+try {
+  browser.menus.create({
+    id: "magic-threads-link-to-thread",
+    title: browser.i18n.getMessage("menuLinkToThread") || "Rattacher à un fil de discussion...",
+    contexts: ["message_list"],
+  });
+} catch (e) {
+  // Ignorer si le menu existe déjà lors d'un rechargement
+}
+
+browser.menus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId === "magic-threads-link-to-thread") {
+    try {
+      let selectedMessages = [];
+      if (info.selectedMessages?.messages?.length > 0) {
+        selectedMessages = info.selectedMessages.messages;
+      } else if (tab?.id) {
+        let selection = await browser.mailTabs.getSelectedMessages(tab.id).catch(() => null);
+        if (selection?.messages?.length > 0) {
+          selectedMessages = selection.messages;
+        }
+      }
+      if (selectedMessages.length === 0) return;
+
+      let primaryMsg = selectedMessages[0];
+      let sourceThread = await ThreadResolver.getThreadMessages(primaryMsg.id).catch(() => []);
+      let hasThread = Array.isArray(sourceThread) && sourceThread.length > 1;
+
+      pendingStagingState = {
+        sourceHeaderId: primaryMsg.headerMessageId || primaryMsg.messageId,
+        sourceSubject: primaryMsg.subject || "",
+        sourceAuthor: primaryMsg.author || "",
+        sourceCount: selectedMessages.length,
+        isSourceInThread: hasThread,
+        sourceThreadCount: hasThread ? sourceThread.length : 1
+      };
+
+      // Si l'onglet actif affiche un message, rafraîchir son affichage pour montrer la bannière
+      if (tab?.id) {
+        tabLastMessageId.delete(tab.id);
+        await showThreadForMessage(tab, primaryMsg);
+      }
+    } catch (e) {
+      console.error("Magic Threads: Erreur lors de l'activation du mode liaison :", e);
+    }
+  }
+});
+
+// ---- Écouteurs pour les événements d'association manuelle ----
+browser.magicThreadsWindow.onConfirmManualLink.addListener(async (scope) => {
+  try {
+    if (!pendingStagingState) return;
+
+    let [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (!activeTab) return;
+
+    let targetMsgId = tabLastMessageId.get(activeTab.id);
+    if (!targetMsgId) return;
+
+    let targetMsg = await browser.messages.get(targetMsgId).catch(() => null);
+    if (!targetMsg) return;
+
+    let targetHeaderId = targetMsg.headerMessageId || targetMsg.messageId;
+    if (!targetHeaderId || targetHeaderId === pendingStagingState.sourceHeaderId) {
+      pendingStagingState = null;
+      return;
+    }
+
+    await ManualLinksManager.addLink({
+      sourceHeaderId: pendingStagingState.sourceHeaderId,
+      sourceSubject: pendingStagingState.sourceSubject,
+      sourceAuthor: pendingStagingState.sourceAuthor,
+      targetHeaderId,
+      targetSubject: targetMsg.subject || "",
+      targetAuthor: targetMsg.author || "",
+      scope: scope || "entire_thread"
+    });
+
+    pendingStagingState = null;
+
+    // Forcer le rafraîchissement complet du panneau avec le fil fusionné
+    tabLastMessageId.delete(activeTab.id);
+    await showThreadForMessage(activeTab, targetMsg);
+  } catch (e) {
+    console.error("Magic Threads: Erreur lors de la confirmation d'association :", e);
+  }
+});
+
+browser.magicThreadsWindow.onCancelManualLink.addListener(async () => {
+  try {
+    pendingStagingState = null;
+    let [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (!activeTab) return;
+    let targetMsgId = tabLastMessageId.get(activeTab.id);
+    if (targetMsgId) {
+      let targetMsg = await browser.messages.get(targetMsgId).catch(() => null);
+      if (targetMsg) {
+        tabLastMessageId.delete(activeTab.id);
+        await showThreadForMessage(activeTab, targetMsg);
+      }
+    }
+  } catch (e) {
+    console.error("Magic Threads: Erreur lors de l'annulation d'association :", e);
+  }
+});
+
+browser.magicThreadsWindow.onDetachManualLink.addListener(async (manualLinkId) => {
+  try {
+    if (!manualLinkId) return;
+    await ManualLinksManager.removeLink(manualLinkId);
+
+    let [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (!activeTab) return;
+    let targetMsgId = tabLastMessageId.get(activeTab.id);
+    if (targetMsgId) {
+      let targetMsg = await browser.messages.get(targetMsgId).catch(() => null);
+      if (targetMsg) {
+        tabLastMessageId.delete(activeTab.id);
+        await showThreadForMessage(activeTab, targetMsg);
+      }
+    }
+  } catch (e) {
+    console.error("Magic Threads: Erreur lors de la dissociation :", e);
   }
 });
 

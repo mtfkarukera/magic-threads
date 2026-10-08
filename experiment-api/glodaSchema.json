@@ -21,6 +21,19 @@
             "description": "L'identifiant du message dans le contexte WebExtension."
           }
         ]
+      },
+      {
+        "name": "getThreadByHeaderId",
+        "type": "function",
+        "description": "Interroge Gloda pour recuperer tous les messages du fil de discussion lie a un Message-ID RFC 822 d'en-tete.",
+        "async": true,
+        "parameters": [
+          {
+            "name": "headerId",
+            "type": "string",
+            "description": "Le Message-ID RFC 822 du message recherche."
+          }
+        ]
       }
     ]
   }

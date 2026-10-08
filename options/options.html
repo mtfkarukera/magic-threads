@@ -92,6 +92,43 @@
         border-color: #8a6d1f;
       }
     }
+    table.links-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    table.links-table th, table.links-table td {
+      border: 1px solid var(--in-content-border-color, color-mix(in srgb, CanvasText 25%, Canvas));
+      padding: 8px 10px;
+      text-align: left;
+    }
+    table.links-table th {
+      background-color: color-mix(in srgb, CanvasText 5%, Canvas);
+      font-weight: 600;
+    }
+    .delete-link-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #ff3b30;
+      transition: background-color 0.2s;
+    }
+    .delete-link-btn:hover {
+      background-color: rgba(255, 59, 48, 0.15);
+    }
+    .delete-link-btn:focus-visible {
+      outline: 2px solid var(--in-content-focus-outline-color, #0060df);
+      outline-offset: 2px;
+    }
+    .empty-links-notice {
+      padding: 12px 0;
+      font-style: italic;
+      color: color-mix(in srgb, CanvasText 65%, Canvas);
+    }
   </style>
 </head>
 <body>
@@ -177,6 +214,15 @@
         <input type="radio" id="thread-order-chrono" name="threadOrder" value="chronological">
         <strong data-i18n="optThreadOrderChrono"></strong>
       </label>
+    </div>
+  </fieldset>
+
+  <fieldset class="option-group" aria-describedby="manual-links-desc">
+    <legend class="option-group-title" data-i18n="optManualLinksGroupTitle"></legend>
+    <div id="manual-links-desc" class="description" style="padding-left: 0; margin-bottom: 12px;" data-i18n="optManualLinksDesc"></div>
+
+    <div id="manual-links-container">
+      <!-- Rempli dynamiquement par options.js -->
     </div>
   </fieldset>
 

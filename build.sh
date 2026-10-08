@@ -34,6 +34,13 @@ DIST_DIR="dist"
 
 echo "🔧 Construction de Magic Threads v${VERSION}..."
 
+# Garde-fou de compilation : vérification de l'absence de constante DEBUG = true (Règle 12)
+if grep -rnE "(DEBUG[[:space:]]*=[[:space:]]*true|const[[:space:]]+DEBUG[[:space:]]*=[[:space:]]*true)" background/ experiment-api/ options/ 2>/dev/null; then
+    echo "❌ ÉCHEC DE COMPILATION : Une constante DEBUG = true a été détectée dans le code source !"
+    echo "   Veuillez désactiver les traces de débogage avant de compiler pour la production."
+    exit 1
+fi
+
 # Créer le répertoire dist/
 mkdir -p "$DIST_DIR"
 

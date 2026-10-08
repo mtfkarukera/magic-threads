@@ -66,6 +66,16 @@
                   "type": "array",
                   "optional": true,
                   "items": { "type": "string" }
+                },
+                "isManualLink": {
+                  "type": "boolean",
+                  "optional": true,
+                  "description": "Indique si le message provient d'une liaison manuelle."
+                },
+                "manualLinkId": {
+                  "type": "string",
+                  "optional": true,
+                  "description": "Identifiant unique de la liaison manuelle."
                 }
               }
             }
@@ -114,7 +124,32 @@
               "folderDrafts": { "type": "string", "optional": true },
               "folderTrash": { "type": "string", "optional": true },
               "unknownAuthor": { "type": "string", "optional": true },
-              "unreadLabel": { "type": "string", "optional": true }
+              "unreadLabel": { "type": "string", "optional": true },
+              "stagingBannerTitle": { "type": "string", "optional": true },
+              "stagingBannerPromptSingle": { "type": "string", "optional": true },
+              "stagingBannerPromptThread": { "type": "string", "optional": true },
+              "stagingSourceLabel": { "type": "string", "optional": true },
+              "stagingOptionMergeThreads": { "type": "string", "optional": true },
+              "stagingOptionSingleMsg": { "type": "string", "optional": true },
+              "btnConfirmLink": { "type": "string", "optional": true },
+              "btnCancelLink": { "type": "string", "optional": true },
+              "badgeManualLink": { "type": "string", "optional": true },
+              "btnDetachLink": { "type": "string", "optional": true },
+              "confirmDetachPrompt": { "type": "string", "optional": true }
+            }
+          },
+          {
+            "name": "stagingData",
+            "type": "object",
+            "optional": true,
+            "additionalProperties": false,
+            "description": "Données d'association manuelle en cours (mode staging).",
+            "properties": {
+              "sourceSubject": { "type": "string", "optional": true },
+              "sourceAuthor": { "type": "string", "optional": true },
+              "sourceCount": { "type": "integer", "optional": true },
+              "isSourceInThread": { "type": "boolean", "optional": true },
+              "sourceThreadCount": { "type": "integer", "optional": true }
             }
           }
         ]
@@ -185,6 +220,37 @@
             "type": "string",
             "enum": ["currentTab", "newTab"],
             "description": "Mode de navigation au moment du clic."
+          }
+        ]
+      },
+      {
+        "name": "onConfirmManualLink",
+        "type": "function",
+        "description": "Déclenché quand l'utilisateur confirme l'association dans la bannière de staging.",
+        "parameters": [
+          {
+            "name": "scope",
+            "type": "string",
+            "enum": ["entire_thread", "single_message"],
+            "description": "Portée de l'association retenue."
+          }
+        ]
+      },
+      {
+        "name": "onCancelManualLink",
+        "type": "function",
+        "description": "Déclenché quand l'utilisateur annule le mode d'association.",
+        "parameters": []
+      },
+      {
+        "name": "onDetachManualLink",
+        "type": "function",
+        "description": "Déclenché quand l'utilisateur détache un message du fil.",
+        "parameters": [
+          {
+            "name": "manualLinkId",
+            "type": "string",
+            "description": "Identifiant de la liaison à révoquer."
           }
         ]
       }

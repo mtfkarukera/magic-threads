@@ -164,5 +164,111 @@
   "optGlodaDisabledWarning": {
     "message": "La recherche globale (Gloda) est désactivée dans Thunderbird. Magic Threads ne peut pas reconstituer les fils de discussion. Activez « Activer la recherche globale et l'indexation des messages » dans les paramètres de Thunderbird.",
     "description": "Warning shown in options when the Gloda indexer is disabled"
+  },
+  "menuLinkToThread": {
+    "message": "Rattacher à un fil de discussion...",
+    "description": "Context menu item to link a message to a thread"
+  },
+  "stagingBannerTitle": {
+    "message": "Association de fil en cours",
+    "description": "Title of the staging banner"
+  },
+  "stagingBannerPromptSingle": {
+    "message": "Rattacher ce message à la conversation ci-dessous ?",
+    "description": "Prompt for linking a single orphan message"
+  },
+  "stagingBannerPromptThread": {
+    "message": "Rattacher cette conversation ($COUNT$ messages) au fil ci-dessous ?",
+    "description": "Prompt for linking a message that has its own thread",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "stagingSourceLabel": {
+    "message": "Source :",
+    "description": "Label indicating source message"
+  },
+  "stagingOptionMergeThreads": {
+    "message": "Fusionner les deux fils complets (Recommandé)",
+    "description": "Radio option to merge entire threads"
+  },
+  "stagingOptionSingleMsg": {
+    "message": "Rattacher uniquement ce message précis",
+    "description": "Radio option to attach single message only"
+  },
+  "btnConfirmLink": {
+    "message": "Confirmer l'association",
+    "description": "Button to confirm manual thread link"
+  },
+  "btnCancelLink": {
+    "message": "Annuler",
+    "description": "Button to cancel manual thread link"
+  },
+  "badgeManualLink": {
+    "message": "Message rattaché manuellement",
+    "description": "Badge/tooltip for manually linked messages"
+  },
+  "btnDetachLink": {
+    "message": "Détacher du fil",
+    "description": "Button to detach message from thread"
+  },
+  "confirmDetachPrompt": {
+    "message": "Détacher ce message du fil de discussion ?",
+    "description": "Confirmation prompt before detaching a message"
+  },
+  "optManualLinksGroupTitle": {
+    "message": "Fils associés manuellement :",
+    "description": "Title of manual links section in options"
+  },
+  "optManualLinksDesc": {
+    "message": "Liste des liaisons actives créées manuellement pour regrouper des messages orphelins ou fusionner des discussions scindées.",
+    "description": "Description of manual links section in options"
+  },
+  "optManualLinksEmpty": {
+    "message": "Aucune liaison manuelle enregistrée pour le moment.",
+    "description": "Notice shown when no manual links exist"
+  },
+  "optManualLinksColSource": {
+    "message": "Message Source",
+    "description": "Table column header for source message"
+  },
+  "optManualLinksColTarget": {
+    "message": "Fil Cible",
+    "description": "Table column header for target thread"
+  },
+  "optManualLinksColScope": {
+    "message": "Portée",
+    "description": "Table column header for link scope"
+  },
+  "optManualLinksColDate": {
+    "message": "Date",
+    "description": "Table column header for creation date"
+  },
+  "optManualLinksColAction": {
+    "message": "Actions",
+    "description": "Table column header for actions"
+  },
+  "optManualLinksScopeEntire": {
+    "message": "Fil complet",
+    "description": "Label for entire thread merge scope"
+  },
+  "optManualLinksScopeSingle": {
+    "message": "Message unique",
+    "description": "Label for single message link scope"
+  },
+  "optManualLinksBtnDelete": {
+    "message": "Supprimer la liaison",
+    "description": "Tooltip / button label to delete manual link"
+  },
+  "optManualLinksConfirmDelete": {
+    "message": "Voulez-vous vraiment supprimer cette liaison manuelle ?",
+    "description": "Confirmation prompt when deleting link in options"
+  },
+  "optManualLinksDeletedFeedback": {
+    "message": "Liaison manuelle supprimée avec succès.",
+    "description": "Status feedback after deleting link in options"
   }
 }

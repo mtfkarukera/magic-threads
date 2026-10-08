@@ -176,6 +176,47 @@ var convGloda = class extends ExtensionCommon.ExtensionAPI {
             console.error("Error in convGloda.getThreadMessages: ", e);
             return [];
           }
+        },
+
+        async getThreadByHeaderId(headerId) {
+          try {
+            let normId = normalizeMessageId(headerId);
+            if (!normId) return [];
+
+            let found = await queryGlodaByHeaderMessageId([normId]);
+            if (!found || found.length === 0) {
+              return [];
+            }
+
+            let msgHdr = found[0].folderMessage;
+            if (!msgHdr) return [];
+
+            let entries = await resolveFullThread(msgHdr);
+            let results = [];
+            for (let entry of entries) {
+              let webMsg = entry.glodaMsg
+                ? translateGlodaMessage(context, entry.glodaMsg, entry.msgHdr)
+                : translateStandardMessage(context, entry.msgHdr);
+              if (webMsg) {
+                results.push(webMsg);
+              }
+            }
+
+            let activeHeaderId = normalizeMessageId(msgHdr.messageId);
+            let alreadyPresent = results.some(r => 
+              r.headerMessageId && normalizeMessageId(r.headerMessageId) === activeHeaderId
+            );
+            if (!alreadyPresent) {
+              let fallback = translateStandardMessage(context, msgHdr);
+              if (fallback) results.push(fallback);
+            }
+
+            results.sort((a, b) => a.date - b.date);
+            return results;
+          } catch (e) {
+            console.error("Error in convGloda.getThreadByHeaderId: ", e);
+            return [];
+          }
         }
       }
     };

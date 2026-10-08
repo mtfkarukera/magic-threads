@@ -12,7 +12,8 @@ L'extension **Magic Threads** (développée par **MTF Karukera**) respecte scrup
 4. **Utilisation des permissions** :
    - `messagesRead` : Nécessaire uniquement pour lire les en-têtes et métadonnées des messages locaux afin de reconstituer l'arborescence des fils de discussion.
    - `accountsRead` : Nécessaire pour identifier les dossiers et comptes locaux afin d'assurer la navigation intra-dossier et intra-onglet.
-   - `storage` : Nécessaire exclusivement pour enregistrer localement tes préférences d'affichage (mode de navigation, position du panneau).
+   - `menus` : Nécessaire pour afficher l'action contextuelle « Rattacher à un fil de discussion... » dans la liste des messages Thunderbird.
+   - `storage` : Nécessaire exclusivement pour enregistrer localement tes préférences d'affichage (mode de navigation, position du panneau) ainsi que tes liaisons manuelles de messages virtuelles.
 
 ---
 
@@ -28,4 +29,5 @@ The **Magic Threads** extension (developed by **MTF Karukera**) strictly respect
 4. **Permission Usage**:
    - `messagesRead`: Required solely to read local message headers and metadata to reconstruct discussion threads.
    - `accountsRead`: Required to identify local folders and accounts to support intra-folder and tab navigation.
-   - `storage`: Required exclusively to store your display preferences locally (navigation mode, panel position).
+   - `menus`: Required to display the "Attach to thread..." context menu action in the Thunderbird message list.
+   - `storage`: Required exclusively to store your display preferences (navigation mode, panel position) and your virtual manual thread links locally.

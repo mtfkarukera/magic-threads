@@ -164,5 +164,111 @@
   "optGlodaDisabledWarning": {
     "message": "Global search (Gloda) is disabled in Thunderbird. Magic Threads cannot build conversation threads. Enable “Enable Global Search and Indexer” in Thunderbird's settings.",
     "description": "Warning shown in options when the Gloda indexer is disabled"
+  },
+  "menuLinkToThread": {
+    "message": "Link to a thread...",
+    "description": "Context menu item to link a message to a thread"
+  },
+  "stagingBannerTitle": {
+    "message": "Thread association in progress",
+    "description": "Title of the staging banner"
+  },
+  "stagingBannerPromptSingle": {
+    "message": "Link this message to the conversation below?",
+    "description": "Prompt for linking a single orphan message"
+  },
+  "stagingBannerPromptThread": {
+    "message": "Link this conversation ($COUNT$ messages) to the thread below?",
+    "description": "Prompt for linking a message that has its own thread",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "stagingSourceLabel": {
+    "message": "Source:",
+    "description": "Label indicating source message"
+  },
+  "stagingOptionMergeThreads": {
+    "message": "Merge entire threads together (Recommended)",
+    "description": "Radio option to merge entire threads"
+  },
+  "stagingOptionSingleMsg": {
+    "message": "Attach only this specific message",
+    "description": "Radio option to attach single message only"
+  },
+  "btnConfirmLink": {
+    "message": "Confirm association",
+    "description": "Button to confirm manual thread link"
+  },
+  "btnCancelLink": {
+    "message": "Cancel",
+    "description": "Button to cancel manual thread link"
+  },
+  "badgeManualLink": {
+    "message": "Manually linked message",
+    "description": "Badge/tooltip for manually linked messages"
+  },
+  "btnDetachLink": {
+    "message": "Detach from thread",
+    "description": "Button to detach message from thread"
+  },
+  "confirmDetachPrompt": {
+    "message": "Detach this message from the thread?",
+    "description": "Confirmation prompt before detaching a message"
+  },
+  "optManualLinksGroupTitle": {
+    "message": "Manually linked threads:",
+    "description": "Title of manual links section in options"
+  },
+  "optManualLinksDesc": {
+    "message": "List of active manual links created to group orphan messages or merge split conversations.",
+    "description": "Description of manual links section in options"
+  },
+  "optManualLinksEmpty": {
+    "message": "No manual links saved yet.",
+    "description": "Notice shown when no manual links exist"
+  },
+  "optManualLinksColSource": {
+    "message": "Source Message",
+    "description": "Table column header for source message"
+  },
+  "optManualLinksColTarget": {
+    "message": "Target Thread",
+    "description": "Table column header for target thread"
+  },
+  "optManualLinksColScope": {
+    "message": "Scope",
+    "description": "Table column header for link scope"
+  },
+  "optManualLinksColDate": {
+    "message": "Date",
+    "description": "Table column header for creation date"
+  },
+  "optManualLinksColAction": {
+    "message": "Actions",
+    "description": "Table column header for actions"
+  },
+  "optManualLinksScopeEntire": {
+    "message": "Entire thread",
+    "description": "Label for entire thread merge scope"
+  },
+  "optManualLinksScopeSingle": {
+    "message": "Single message",
+    "description": "Label for single message link scope"
+  },
+  "optManualLinksBtnDelete": {
+    "message": "Delete link",
+    "description": "Tooltip / button label to delete manual link"
+  },
+  "optManualLinksConfirmDelete": {
+    "message": "Are you sure you want to delete this manual link?",
+    "description": "Confirmation prompt when deleting link in options"
+  },
+  "optManualLinksDeletedFeedback": {
+    "message": "Manual link deleted successfully.",
+    "description": "Status feedback after deleting link in options"
   }
 }

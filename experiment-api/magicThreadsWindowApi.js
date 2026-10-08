@@ -276,6 +276,109 @@ const SHARED_CSS = `
           margin-left: 4px;
           vertical-align: middle;
         }
+
+        .thread-badge-manual {
+          display: inline-block;
+          font-size: 11px;
+          color: var(--accent-border);
+          margin-left: 4px;
+          vertical-align: middle;
+        }
+
+        .thread-detach-btn {
+          background: none;
+          border: none;
+          padding: 0 4px;
+          margin-left: auto;
+          cursor: pointer;
+          color: var(--text-muted);
+          font-size: 14px;
+          line-height: 1;
+          border-radius: 3px;
+        }
+
+        .thread-detach-btn:hover {
+          color: #ff3b30;
+          background-color: rgba(255, 59, 48, 0.1);
+        }
+
+        .staging-banner {
+          background-color: var(--accent-bg);
+          border: 1px solid var(--accent-border);
+          border-radius: 6px;
+          padding: 8px 10px;
+          margin: 6px 0;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          font-size: 12px;
+        }
+
+        .staging-title {
+          font-weight: 600;
+          color: var(--text-main);
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .staging-source-desc {
+          color: var(--text-muted);
+          font-size: 11px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .staging-options {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          margin: 2px 0;
+        }
+
+        .staging-option-label {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 11px;
+          color: var(--text-main);
+          cursor: pointer;
+        }
+
+        .staging-actions {
+          display: flex;
+          gap: 8px;
+          margin-top: 4px;
+        }
+
+        .staging-btn {
+          padding: 4px 10px;
+          font-size: 11px;
+          font-weight: 500;
+          border-radius: 4px;
+          cursor: pointer;
+          border: 1px solid transparent;
+        }
+
+        .staging-btn-confirm {
+          background-color: var(--accent-border);
+          color: #ffffff;
+        }
+
+        .staging-btn-confirm:hover {
+          filter: brightness(1.1);
+        }
+
+        .staging-btn-cancel {
+          background-color: var(--card-bg);
+          color: var(--text-main);
+          border-color: var(--banner-border);
+        }
+
+        .staging-btn-cancel:hover {
+          background-color: var(--card-hover-bg);
+        }
       `;
 
 const BOTTOM_CSS = `
@@ -609,6 +712,9 @@ function attachResizeBehavior(handle, axis, shadowRoot, sidebarPosition) {
 var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
   getAPI(context) {
     let itemClickFire = null;
+    let confirmManualLinkFire = null;
+    let cancelManualLinkFire = null;
+    let detachManualLinkFire = null;
 
     // Labels par défaut (fallback en anglais si non fournis, alignés sur _locales/en)
     const DEFAULT_LABELS = {
@@ -627,7 +733,18 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       folderDrafts: "Drafts",
       folderTrash: "Trash",
       unknownAuthor: "Unknown",
-      unreadLabel: "Unread"
+      unreadLabel: "Unread",
+      stagingBannerTitle: "Thread association in progress",
+      stagingBannerPromptSingle: "Link this message to the conversation below?",
+      stagingBannerPromptThread: "Link this conversation ($COUNT$ messages) to the thread below?",
+      stagingSourceLabel: "Source:",
+      stagingOptionMergeThreads: "Merge entire threads together (Recommended)",
+      stagingOptionSingleMsg: "Attach only this specific message",
+      btnConfirmLink: "Confirm association",
+      btnCancelLink: "Cancel",
+      badgeManualLink: "Manually linked message",
+      btnDetachLink: "Detach from thread",
+      confirmDetachPrompt: "Detach this message from the thread?"
     };
 
     // =================================================================
@@ -779,6 +896,31 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         meta.appendChild(clip);
       }
 
+      if (msg.isManualLink) {
+        let linkBadge = doc.createElement("span");
+        linkBadge.className = "thread-badge-manual";
+        linkBadge.textContent = "\uD83D\uDD17";
+        linkBadge.title = labels.badgeManualLink || "Message rattaché manuellement";
+        linkBadge.setAttribute("aria-label", labels.badgeManualLink || "Message rattaché manuellement");
+        meta.appendChild(linkBadge);
+
+        if (msg.manualLinkId) {
+          let detachBtn = doc.createElement("button");
+          detachBtn.className = "thread-detach-btn";
+          detachBtn.textContent = "\u00D7";
+          detachBtn.title = labels.btnDetachLink || "Détacher du fil";
+          detachBtn.setAttribute("aria-label", labels.btnDetachLink || "Détacher du fil");
+          detachBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (detachManualLinkFire) {
+              detachManualLinkFire.async(msg.manualLinkId);
+            }
+          });
+          meta.appendChild(detachBtn);
+        }
+      }
+
       item.appendChild(meta);
 
       let snippet = doc.createElement("div");
@@ -866,9 +1008,14 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
      * Évite le scintillement (flash) lorsque le fil affiché est identique.
      * @returns {boolean} true si le DOM a été mis à jour in-place, false si une reconstruction est requise.
      */
-    function tryUpdateBannerDOM(shadowRoot, threadData, currentMessageId, navigationMode, layoutMode, sidebarPosition, labels) {
+    function tryUpdateBannerDOM(shadowRoot, threadData, currentMessageId, navigationMode, layoutMode, sidebarPosition, labels, stagingData) {
       let hostEl = shadowRoot.host;
       if (!hostEl) return false;
+
+      // En présence de staging ou d'une ancienne bannière de staging, reconstruire
+      if (stagingData || shadowRoot.querySelector(".staging-banner")) {
+        return false;
+      }
 
       let wrapper = shadowRoot.querySelector(".threads-wrapper");
       let list = shadowRoot.querySelector("#threads-list");
@@ -960,8 +1107,8 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
      * @param {string} sidebarPosition - "left" ou "right"
      * @param {object} labels - Chaînes i18n
      */
-    function buildBannerDOM(shadowRoot, threadData, currentMessageId, navigationMode, layoutMode, sidebarPosition, labels) {
-      if (tryUpdateBannerDOM(shadowRoot, threadData, currentMessageId, navigationMode, layoutMode, sidebarPosition, labels)) {
+    function buildBannerDOM(shadowRoot, threadData, currentMessageId, navigationMode, layoutMode, sidebarPosition, labels, stagingData) {
+      if (tryUpdateBannerDOM(shadowRoot, threadData, currentMessageId, navigationMode, layoutMode, sidebarPosition, labels, stagingData)) {
         return;
       }
 
@@ -1063,6 +1210,94 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
 
       header.appendChild(actionsDiv);
       wrapper.appendChild(header);
+
+      // Bannière d'association manuelle (Mode staging en attente de confirmation)
+      if (stagingData) {
+        let stagingDiv = doc.createElement("div");
+        stagingDiv.className = "staging-banner";
+        stagingDiv.setAttribute("role", "region");
+        stagingDiv.setAttribute("aria-label", labels.stagingBannerTitle || "Association de fil en cours");
+
+        let stagingTitle = doc.createElement("div");
+        stagingTitle.className = "staging-title";
+        let isThread = !!stagingData.isSourceInThread;
+        let count = stagingData.sourceThreadCount || stagingData.sourceCount || 1;
+        let promptText = isThread && count > 1
+          ? (labels.stagingBannerPromptThread || "Rattacher cette conversation ($COUNT$ messages) au fil ci-dessous ?").replace("$COUNT$", count)
+          : (labels.stagingBannerPromptSingle || "Rattacher ce message à la conversation ci-dessous ?");
+        stagingTitle.textContent = "\uD83D\uDD17 " + promptText;
+        stagingDiv.appendChild(stagingTitle);
+
+        if (stagingData.sourceSubject) {
+          let sourceDesc = doc.createElement("div");
+          sourceDesc.className = "staging-source-desc";
+          let authorPart = stagingData.sourceAuthor ? " (" + cleanAuthor(stagingData.sourceAuthor, labels) + ")" : "";
+          sourceDesc.textContent = (labels.stagingSourceLabel || "Source : ") + " « " + stagingData.sourceSubject + " »" + authorPart;
+          stagingDiv.appendChild(sourceDesc);
+        }
+
+        let selectedScope = "entire_thread";
+
+        if (isThread && count > 1) {
+          let optionsDiv = doc.createElement("div");
+          optionsDiv.className = "staging-options";
+
+          // Option 1 : Fusion complète
+          let optMergeLabel = doc.createElement("label");
+          optMergeLabel.className = "staging-option-label";
+          let optMergeRadio = doc.createElement("input");
+          optMergeRadio.type = "radio";
+          optMergeRadio.name = "stagingScope";
+          optMergeRadio.value = "entire_thread";
+          optMergeRadio.checked = true;
+          optMergeRadio.addEventListener("change", () => { selectedScope = "entire_thread"; });
+          optMergeLabel.appendChild(optMergeRadio);
+          optMergeLabel.appendChild(doc.createTextNode(labels.stagingOptionMergeThreads || "Fusionner les deux fils complets (Recommandé)"));
+          optionsDiv.appendChild(optMergeLabel);
+
+          // Option 2 : Message unique
+          let optSingleLabel = doc.createElement("label");
+          optSingleLabel.className = "staging-option-label";
+          let optSingleRadio = doc.createElement("input");
+          optSingleRadio.type = "radio";
+          optSingleRadio.name = "stagingScope";
+          optSingleRadio.value = "single_message";
+          optSingleRadio.addEventListener("change", () => { selectedScope = "single_message"; });
+          optSingleLabel.appendChild(optSingleRadio);
+          optSingleLabel.appendChild(doc.createTextNode(labels.stagingOptionSingleMsg || "Rattacher uniquement ce message précis"));
+          optionsDiv.appendChild(optSingleLabel);
+
+          stagingDiv.appendChild(optionsDiv);
+        }
+
+        let stagingActions = doc.createElement("div");
+        stagingActions.className = "staging-actions";
+
+        let confirmBtn = doc.createElement("button");
+        confirmBtn.className = "staging-btn staging-btn-confirm";
+        confirmBtn.textContent = labels.btnConfirmLink || "Confirmer l'association";
+        confirmBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (confirmManualLinkFire) {
+            confirmManualLinkFire.async(selectedScope);
+          }
+        });
+        stagingActions.appendChild(confirmBtn);
+
+        let cancelBtn = doc.createElement("button");
+        cancelBtn.className = "staging-btn staging-btn-cancel";
+        cancelBtn.textContent = labels.btnCancelLink || "Annuler";
+        cancelBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (cancelManualLinkFire) {
+            cancelManualLinkFire.async();
+          }
+        });
+        stagingActions.appendChild(cancelBtn);
+
+        stagingDiv.appendChild(stagingActions);
+        wrapper.appendChild(stagingDiv);
+      }
 
       // Liste (sémantique ARIA : list > listitem, voir construction des items)
       let list = doc.createElement("div");
@@ -1177,7 +1412,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
     // Injection : mode BOTTOM (3-pane, panneau en bas)
     // =================================================================
 
-    function injectBottom(contentDoc, threadData, currentMessageId, navigationMode, labels) {
+    function injectBottom(contentDoc, threadData, currentMessageId, navigationMode, labels, stagingData) {
       let container = contentDoc.getElementById("magic-threads-container");
 
       // Si un ancien conteneur d'un autre mode existe : restaurer les styles natifs et retirer
@@ -1201,7 +1436,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       }
       container.style.display = "flex";
       container.removeAttribute("hidden");
-      buildBannerDOM(container.shadowRoot, threadData, currentMessageId, navigationMode, "bottom", "right", labels);
+      buildBannerDOM(container.shadowRoot, threadData, currentMessageId, navigationMode, "bottom", "right", labels, stagingData);
       return true;
     }
 
@@ -1210,7 +1445,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
     // Position absolue dans le <message-pane> + marge sur le messageBrowser
     // =================================================================
 
-    function injectSide3Pane(contentDoc, threadData, currentMessageId, navigationMode, sidePosition, labels) {
+    function injectSide3Pane(contentDoc, threadData, currentMessageId, navigationMode, sidePosition, labels, stagingData) {
       let container = contentDoc.getElementById("magic-threads-container");
 
       // Ancien conteneur d'un autre mode, ou position changée : nettoyer et recréer
@@ -1290,7 +1525,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
 
       container.style.display = "flex";
       container.removeAttribute("hidden");
-      buildBannerDOM(container.shadowRoot, threadData, currentMessageId, navigationMode, "sidebar", sidePosition, labels);
+      buildBannerDOM(container.shadowRoot, threadData, currentMessageId, navigationMode, "sidebar", sidePosition, labels, stagingData);
       return true;
     }
 
@@ -1299,7 +1534,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
     // Utilise position fixe + padding sur le body, sans reparenter le DOM
     // =================================================================
 
-    function injectSidebar(contentDoc, threadData, currentMessageId, navigationMode, sidebarPosition, labels) {
+    function injectSidebar(contentDoc, threadData, currentMessageId, navigationMode, sidebarPosition, labels, stagingData) {
       let container = contentDoc.getElementById("magic-threads-container");
       let body = contentDoc.body || contentDoc.documentElement;
 
@@ -1349,7 +1584,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
 
       container.style.display = "flex";
       container.removeAttribute("hidden");
-      buildBannerDOM(container.shadowRoot, threadData, currentMessageId, navigationMode, "sidebar", sidebarPosition, labels);
+      buildBannerDOM(container.shadowRoot, threadData, currentMessageId, navigationMode, "sidebar", sidebarPosition, labels, stagingData);
       return true;
     }
 
@@ -1455,7 +1690,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
 
     return {
       magicThreadsWindow: {
-        async showBanner(tabId, threadData, currentMessageId, navigationMode, sidebarPosition, mainViewPosition, labels) {
+        async showBanner(tabId, threadData, currentMessageId, navigationMode, sidebarPosition, mainViewPosition, labels, stagingData) {
           try {
             let tabInfo = getTabInfo(tabId);
             if (!tabInfo) {
@@ -1473,14 +1708,14 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
 
             if (tabInfo.isMessageTab) {
               // Onglet message → sidebar avec position fixe
-              success = injectSidebar(contentDoc, threadData, currentMessageId, navigationMode, sidebarPosition || "right", labels);
+              success = injectSidebar(contentDoc, threadData, currentMessageId, navigationMode, sidebarPosition || "right", labels, stagingData);
             } else {
               // 3-pane → selon mainViewPosition (le schéma garantit "bottom" ou "right")
               let mvp = mainViewPosition || "bottom";
               if (mvp === "right") {
-                success = injectSide3Pane(contentDoc, threadData, currentMessageId, navigationMode, mvp, labels);
+                success = injectSide3Pane(contentDoc, threadData, currentMessageId, navigationMode, mvp, labels, stagingData);
               } else {
-                success = injectBottom(contentDoc, threadData, currentMessageId, navigationMode, labels);
+                success = injectBottom(contentDoc, threadData, currentMessageId, navigationMode, labels, stagingData);
               }
             }
 
@@ -1540,6 +1775,39 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
             itemClickFire = fire;
             return function () {
               itemClickFire = null;
+            };
+          },
+        }).api(),
+
+        onConfirmManualLink: new ExtensionCommon.EventManager({
+          context,
+          name: "magicThreadsWindow.onConfirmManualLink",
+          register(fire) {
+            confirmManualLinkFire = fire;
+            return function () {
+              confirmManualLinkFire = null;
+            };
+          },
+        }).api(),
+
+        onCancelManualLink: new ExtensionCommon.EventManager({
+          context,
+          name: "magicThreadsWindow.onCancelManualLink",
+          register(fire) {
+            cancelManualLinkFire = fire;
+            return function () {
+              cancelManualLinkFire = null;
+            };
+          },
+        }).api(),
+
+        onDetachManualLink: new ExtensionCommon.EventManager({
+          context,
+          name: "magicThreadsWindow.onDetachManualLink",
+          register(fire) {
+            detachManualLinkFire = fire;
+            return function () {
+              detachManualLinkFire = null;
             };
           },
         }).api(),
