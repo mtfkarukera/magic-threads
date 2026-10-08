@@ -5,6 +5,15 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.6.1] - 2026-10-08
+
+### Corrigé
+- **Validation du schéma de staging & Robustesse ([magicThreadsWindowSchema.json](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowSchema.json), [background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js))** :
+  - Déclaration de `sourceHeaderId` dans les propriétés autorisées de `stagingData` dans le schéma de l'API Experiment, éliminant l'erreur `TypeError: Unexpected property "sourceHeaderId"` levée par le validateur strict de Thunderbird lors du déclenchement du rattachement manuel.
+  - Filtrage explicite et assainissement du payload `stagingPayload` transmis au composant d'injection DOM.
+  - Conditionnement de la bannière d'association : la bannière de staging interactive n'est présentée que lors de la navigation vers un message cible distinct du message source, évitant les auto-références.
+  - Récupération fiabilisée des métadonnées du message source lors du clic droit via `browser.messages.get()` pour garantir un `headerMessageId` RFC 822 valide.
+
 ## [2.6.0] - 2026-10-08
 
 ### Ajouté

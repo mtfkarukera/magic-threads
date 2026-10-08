@@ -3,7 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import { ThreadResolver } from "./threadResolver.js";
-import { ManualLinksManager } from "./manualLinksManager.js";
+import { ManualLinksManager, normalizeMessageId } from "./manualLinksManager.js";
 
 // État de l'association manuelle en cours (mode staging)
 let pendingStagingState = null;
@@ -143,9 +143,26 @@ async function showThreadForMessage(tab, message) {
     return;
   }
 
-  // Message orphelin → masquer (sauf si mode association de fil en cours)
+  // Déterminer si le message en cours d'affichage est la source de la liaison en cours
+  let isCurrentSource = pendingStagingState && (
+    (pendingStagingState.sourceMsgId && message.id === pendingStagingState.sourceMsgId) ||
+    (message.headerMessageId && pendingStagingState.sourceHeaderId &&
+      normalizeMessageId(message.headerMessageId) === normalizeMessageId(pendingStagingState.sourceHeaderId))
+  );
+
+  // La bannière de staging n'est active que sur un message de destination différent de la source
+  let stagingPayload = (pendingStagingState && !isCurrentSource) ? {
+    sourceHeaderId: pendingStagingState.sourceHeaderId,
+    sourceSubject: pendingStagingState.sourceSubject,
+    sourceAuthor: pendingStagingState.sourceAuthor,
+    sourceCount: pendingStagingState.sourceCount,
+    isSourceInThread: pendingStagingState.isSourceInThread,
+    sourceThreadCount: pendingStagingState.sourceThreadCount
+  } : null;
+
+  // Message orphelin → masquer (sauf si mode association de fil en cours vers une destination)
   if (!threadData || threadData.length <= 1) {
-    if (!pendingStagingState) {
+    if (!stagingPayload) {
       tabLastMessageId.delete(tab.id);
       await browser.magicThreadsWindow.hideBanner(tab.id).catch(() => {});
       return;
@@ -188,7 +205,7 @@ async function showThreadForMessage(tab, message) {
     sidebarPos,
     mainViewPos,
     labels,
-    pendingStagingState ? { ...pendingStagingState } : null
+    stagingPayload
   );
 }
 
@@ -259,23 +276,23 @@ browser.menus.onClicked.addListener(async (info, tab) => {
       if (selectedMessages.length === 0) return;
 
       let primaryMsg = selectedMessages[0];
+      let fullMsg = await browser.messages.get(primaryMsg.id).catch(() => primaryMsg);
+      let headerId = normalizeMessageId(fullMsg.headerMessageId || fullMsg.messageId || primaryMsg.headerMessageId || primaryMsg.messageId);
+
       let sourceThread = await ThreadResolver.getThreadMessages(primaryMsg.id).catch(() => []);
       let hasThread = Array.isArray(sourceThread) && sourceThread.length > 1;
 
       pendingStagingState = {
-        sourceHeaderId: primaryMsg.headerMessageId || primaryMsg.messageId,
-        sourceSubject: primaryMsg.subject || "",
-        sourceAuthor: primaryMsg.author || "",
+        sourceMsgId: primaryMsg.id,
+        sourceHeaderId: headerId,
+        sourceSubject: fullMsg.subject || primaryMsg.subject || "",
+        sourceAuthor: fullMsg.author || primaryMsg.author || "",
         sourceCount: selectedMessages.length,
         isSourceInThread: hasThread,
         sourceThreadCount: hasThread ? sourceThread.length : 1
       };
 
-      // Si l'onglet actif affiche un message, rafraîchir son affichage pour montrer la bannière
-      if (tab?.id) {
-        tabLastMessageId.delete(tab.id);
-        await showThreadForMessage(tab, primaryMsg);
-      }
+      console.log("Magic Threads: mode liaison activé pour le message", primaryMsg.id, "headerId:", headerId);
     } catch (e) {
       console.error("Magic Threads: Erreur lors de l'activation du mode liaison :", e);
     }
@@ -296,8 +313,8 @@ browser.magicThreadsWindow.onConfirmManualLink.addListener(async (scope) => {
     let targetMsg = await browser.messages.get(targetMsgId).catch(() => null);
     if (!targetMsg) return;
 
-    let targetHeaderId = targetMsg.headerMessageId || targetMsg.messageId;
-    if (!targetHeaderId || targetHeaderId === pendingStagingState.sourceHeaderId) {
+    let targetHeaderId = normalizeMessageId(targetMsg.headerMessageId || targetMsg.messageId);
+    if (!targetHeaderId || targetHeaderId === normalizeMessageId(pendingStagingState.sourceHeaderId)) {
       pendingStagingState = null;
       return;
     }

@@ -145,6 +145,7 @@
             "additionalProperties": false,
             "description": "Données d'association manuelle en cours (mode staging).",
             "properties": {
+              "sourceHeaderId": { "type": "string", "optional": true, "description": "Message-ID RFC 822 du message source." },
               "sourceSubject": { "type": "string", "optional": true },
               "sourceAuthor": { "type": "string", "optional": true },
               "sourceCount": { "type": "integer", "optional": true },
