@@ -3,8 +3,8 @@
     "magic-threads@mtfkarukera.net": {
       "updates": [
         {
-          "version": "2.6.2",
-          "update_link": "https://github.com/mtfkarukera/magic-threads/releases/download/v2.6.2/magic-threads-2.6.2.xpi",
+          "version": "2.7.0",
+          "update_link": "https://github.com/mtfkarukera/magic-threads/releases/download/v2.7.0/magic-threads-2.7.0.xpi",
           "applications": {
             "gecko": {
               "strict_min_version": "128.0"

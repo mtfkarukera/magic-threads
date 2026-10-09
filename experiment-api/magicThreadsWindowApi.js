@@ -1280,7 +1280,17 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         confirmBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           if (confirmManualLinkFire) {
-            confirmManualLinkFire.async(selectedScope);
+            let currentMsg = threadData.find(m => m.id === currentMessageId) || threadData[0];
+            let tid = hostEl?.dataset?.tabId ? Number(hostEl.dataset.tabId) : undefined;
+            let targetContext = {
+              tabId: tid,
+              targetMessageId: currentMessageId,
+              targetHeaderId: currentMsg?.headerMessageId || "",
+              targetThreadHeaderIds: threadData.map(m => m.headerMessageId).filter(Boolean),
+              targetSubject: currentMsg?.subject || "",
+              targetAuthor: currentMsg?.author || ""
+            };
+            confirmManualLinkFire.async(selectedScope, targetContext);
           }
         });
         stagingActions.appendChild(confirmBtn);
@@ -1413,7 +1423,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
     // Injection : mode BOTTOM (3-pane, panneau en bas)
     // =================================================================
 
-    function injectBottom(contentDoc, threadData, currentMessageId, navigationMode, labels, stagingData) {
+    function injectBottom(contentDoc, threadData, currentMessageId, navigationMode, labels, stagingData, tabId) {
       let container = contentDoc.getElementById("magic-threads-container");
 
       // Si un ancien conteneur d'un autre mode existe : restaurer les styles natifs et retirer
@@ -1435,6 +1445,9 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         parent.appendChild(container);
         container.attachShadow({ mode: "open" });
       }
+      if (typeof tabId !== "undefined") {
+        container.dataset.tabId = String(tabId);
+      }
       container.style.display = "flex";
       container.removeAttribute("hidden");
       buildBannerDOM(container.shadowRoot, threadData, currentMessageId, navigationMode, "bottom", "right", labels, stagingData);
@@ -1446,7 +1459,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
     // Position absolue dans le <message-pane> + marge sur le messageBrowser
     // =================================================================
 
-    function injectSide3Pane(contentDoc, threadData, currentMessageId, navigationMode, sidePosition, labels, stagingData) {
+    function injectSide3Pane(contentDoc, threadData, currentMessageId, navigationMode, sidePosition, labels, stagingData, tabId) {
       let container = contentDoc.getElementById("magic-threads-container");
 
       // Ancien conteneur d'un autre mode, ou position changée : nettoyer et recréer
@@ -1524,6 +1537,9 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         container.dataset.msgBrowserId = msgBrowser.id;
       }
 
+      if (typeof tabId !== "undefined") {
+        container.dataset.tabId = String(tabId);
+      }
       container.style.display = "flex";
       container.removeAttribute("hidden");
       buildBannerDOM(container.shadowRoot, threadData, currentMessageId, navigationMode, "sidebar", sidePosition, labels, stagingData);
@@ -1535,7 +1551,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
     // Utilise position fixe + padding sur le body, sans reparenter le DOM
     // =================================================================
 
-    function injectSidebar(contentDoc, threadData, currentMessageId, navigationMode, sidebarPosition, labels, stagingData) {
+    function injectSidebar(contentDoc, threadData, currentMessageId, navigationMode, sidebarPosition, labels, stagingData, tabId) {
       let container = contentDoc.getElementById("magic-threads-container");
       let body = contentDoc.body || contentDoc.documentElement;
 
@@ -1583,6 +1599,9 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         body.style.boxSizing = "border-box";
       }
 
+      if (typeof tabId !== "undefined") {
+        container.dataset.tabId = String(tabId);
+      }
       container.style.display = "flex";
       container.removeAttribute("hidden");
       buildBannerDOM(container.shadowRoot, threadData, currentMessageId, navigationMode, "sidebar", sidebarPosition, labels, stagingData);
@@ -1709,14 +1728,14 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
 
             if (tabInfo.isMessageTab) {
               // Onglet message → sidebar avec position fixe
-              success = injectSidebar(contentDoc, threadData, currentMessageId, navigationMode, sidebarPosition || "right", labels, stagingData);
+              success = injectSidebar(contentDoc, threadData, currentMessageId, navigationMode, sidebarPosition || "right", labels, stagingData, tabId);
             } else {
               // 3-pane → selon mainViewPosition (le schéma garantit "bottom" ou "right")
               let mvp = mainViewPosition || "bottom";
               if (mvp === "right") {
-                success = injectSide3Pane(contentDoc, threadData, currentMessageId, navigationMode, mvp, labels, stagingData);
+                success = injectSide3Pane(contentDoc, threadData, currentMessageId, navigationMode, mvp, labels, stagingData, tabId);
               } else {
-                success = injectBottom(contentDoc, threadData, currentMessageId, navigationMode, labels, stagingData);
+                success = injectBottom(contentDoc, threadData, currentMessageId, navigationMode, labels, stagingData, tabId);
               }
             }
 

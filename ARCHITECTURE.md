@@ -46,27 +46,27 @@ Point d'entrée de l'extension. Responsabilités :
 - **Détection du contexte** : distingue la vue 3-pane des onglets message
 - **Workflow de liaison manuelle (Staging)** : gère le menu contextuel `browser.menus` (`message_list`), conserve l'état de pré-liaison (`pendingStagingState`), maintient le panneau ouvert sur les messages cibles orphelins, et écoute les événements d'action (`onConfirmManualLink`, `onCancelManualLink`, `onDetachManualLink`)
 
-#### `background/manualLinksManager.js` (v2.6.0)
+#### `background/manualLinksManager.js` (v2.7.0)
 
-Gestionnaire CRUD de persistance pour l'Overlay Virtuel dans `browser.storage.local` :
+Gestionnaire CRUD de persistance pour l'Overlay Virtuel dans `browser.storage.local` basé sur un modèle de **Clusters de Conversation** (`ConversationCluster`) :
 
-- Stocke les liaisons manuelles indexées par un identifiant unique `linkId` (`link_timestamp_random`)
+- Modélise les associations sous forme de clusters bidirectionnels regroupant l'ensemble des Message-IDs de toutes les conversations fusionnées (`allHeaderIds`) ainsi que les identifiants numériques WebExtension d'ancres (`anchorMessageIds`)
 - Clés universelles basées sur les `headerMessageId` RFC 822 normalisés (sans chevrons)
-- Indexation bidirectionnelle : permet de trouver instantanément si un message (ou un ensemble de Message-IDs) est source ou cible d'un lien actif
-- Support des deux portées : `entire_thread` (fusion complète) et `single_message` (attachement isolé)
-- Méthodes exposées : `getAllLinks()`, `saveLink()`, `deleteLink()`, `getLinksForHeaderIds()`
+- Fusion automatique des clusters connexes (Union-Find) : si deux fils liés rejoignent un autre fil, l'ensemble des branches est consolidé sans rupture
+- Support de la multi-sélection directe (`addMultiMessageCluster`) pour réunir plusieurs e-mails d'un seul clic
+- Méthodes exposées : `getAllLinks()`, `addLink()`, `addMultiMessageCluster()`, `removeLink()`, `removeLinksByHeaderId()`, `getClustersForHeaderIds()`
 
-#### `background/threadResolver.js`
+#### `background/threadResolver.js` (v2.7.0)
 
-Couche d'accès aux données (DAL) unifiant Gloda et l'Overlay Virtuel :
+Couche d'accès aux données (DAL) unifiant Gloda et les Clusters de Conversation :
 
-- Appelle `browser.convGloda.getThreadMessages()` avec l'identifiant du message
-- Résout les liaisons manuelles actives via `ManualLinksManager.getLinksForHeaderIds()`
-- Rapatrie dynamiquement les fils ou messages associés via `browser.convGloda.getThreadByHeaderId()`
-- Protège contre les boucles récursives de liaison (`visitedHeaderIds`, `visitedLinks`)
+- Appelle `browser.convGloda.getThreadMessages()` avec l'identifiant du message sélectionné
+- Interroge les clusters actifs via `ManualLinksManager.getClustersForHeaderIds()`
+- Rapatrie en priorité les branches distantes via les identifiants d'ancres WebExtension (`convGloda.getThreadMessages`), garantissant une résolution complète et instantanée
+- Fallback automatique par en-tête Gloda (`convGloda.getThreadByHeaderId`) pour les messages sans ancre active
 - Fusionne les ensembles de messages, élimine les doublons stricts par `headerMessageId`, et marque les messages rattachés (`isManualLink: true`, `manualLinkId`)
 - Trie l'ensemble chronologiquement de manière uniforme
-- Gère les cas d'erreur (API non disponible, message non indexé)
+- Garantit une visibilité totale de la fusion quel que soit le message cliqué dans l'une quelconque des conversations réunies
 
 ### 2. Experiment APIs (contexte chrome)
 
@@ -241,33 +241,36 @@ Lorsqu'une recherche ou un filtre rapide est actif dans la vue 3-pane de Thunder
 - `mailTabs.setSelectedMessages` échoue à sélectionner ce message hors vue.
 - **Résolution** : `handleOpenMessage` déclenche automatiquement le fallback `browser.magicThreadsWindow.displayMessageDirectly(mailTab.id, messageId)`. Celui-ci accède directement au visualiseur via le composant de haut niveau `messagePane.displayMessage(msgURI)` (ou `msgBrowser.contentWindow.displayMessage`), tout en restaurant impérativement la visibilité du visualiseur natif (`messageBrowser.hidden = false`) masqué par Thunderbird lors d'un résultat de filtre vide. Le filtre rapide de l'utilisateur n'est ni altéré ni réinitialisé, préservant son contexte de recherche tout en affichant instantanément l'e-mail désiré.
 
-## Overlay Virtuel & Rattachement Manuel de Fils (v2.6.0)
+## Overlay Virtuel, Multi-sélection & Clusters de Conversation (v2.7.0)
 
-Pour pallier l'absence d'API de réassignation interne dans Gloda et garantir la persistance des regroupements même après une réindexation globale de Thunderbird, Magic Threads utilise un **Overlay Virtuel** non intrusif.
+Pour pallier l'absence d'API de réassignation interne dans Gloda et garantir la persistance des regroupements même après une réindexation globale de Thunderbird, Magic Threads utilise un **Overlay Virtuel** fondé sur des **Clusters de Conversation**.
 
-### Architecture de la liaison
+### Architecture de la liaison et du staging
 
 ```mermaid
 flowchart TD
-    A["Clic droit sur message source"] --> B["Action menu : Rattacher a un fil"]
-    B --> C["background.js : mise en cache du pendingStagingState"]
-    C --> D["Selection du message cible"]
-    D --> E["magicThreadsWindowApi.js : affichage banniere de staging"]
-    E --> F{"Choix de l'utilisateur"}
-    F -->|"Annuler"| G["onCancelManualLink : abandon et reinitialisation"]
-    F -->|"Confirmer"| H["onConfirmManualLink : creation du lien"]
-    H --> I["manualLinksManager.js : persistance dans storage.local"]
-    I --> J["ThreadResolver : fusion des fils et rafraichissement"]
-    J --> K["Affichage du fil enrichi avec badge et bouton detacher"]
+    A["Clic droit liste : 1 message ou multi-selection"] --> B{"Intention de l'utilisateur"}
+    B -->|"Fusion directe (N messages)"| C["addMultiMessageCluster : creation immediate"]
+    B -->|"Rattacher a un fil..."| D["pendingStagingState + Badge ambre message_display_action"]
+    D --> E["Selection de la conversation cible"]
+    E --> F["Shadow DOM : banniere staging interactive"]
+    F --> G{"Validation"}
+    G -->|"Annuler ou Clic Action"| H["onCancelManualLink : reset staging et badge"]
+    G -->|"Confirmer"| I["onConfirmManualLink avec targetContext direct"]
+    I --> J["ManualLinksManager : creation ou fusion de cluster"]
+    C --> J
+    J --> K["ThreadResolver : rapatriement prioritaire par ancres et en-tetes"]
+    K --> L["Panneau reunifie pour toutes les branches du cluster"]
 ```
 
 1. **Isolation et Intégrité** : La base de données SQLite de Gloda n'est jamais modifiée directement. Les liaisons sont stockées dans `browser.storage.local` sous la clé `manualThreadLinks`.
-2. **Identification universelle RFC 822** : Les liaisons utilisent les en-têtes `headerMessageId` normalisés (nettoyés des chevrons). Si les dossiers sont compactés, déplacés ou synchronisés en IMAP, les liaisons restent pérennes.
-3. **Deux portées de liaison** :
-   - `entire_thread` : regroupe les deux conversations complètes. Tout message appartenant à l'un des fils affichera l'intégralité des deux conversations fusionnées.
-   - `single_message` : associe uniquement le message source isolé au fil cible.
-4. **Résolution DAG et protection anti-boucles** : `ThreadResolver` utilise des ensembles mémoires `visitedHeaderIds` et `visitedLinks` pour explorer le graphe des correspondances de manière acyclique et dédupliquée.
-5. **Réversibilité instantanée** :
+2. **Identification universelle RFC 822 & Ancres WebExtension** : Les clusters combinent l'ensemble des `allHeaderIds` normalisés (résistance aux déplacements/compactages de dossiers) et les `anchorMessageIds` (identifiants WebExtension des e-mails pivots pour un rapatriement instantané).
+3. **Propagation bidirectionnelle intégrale** : Contrairement au modèle de paires ponctuelles, le cluster englobe toutes les conversations fusionnées. Quel que soit le message affiché (source, cible, ou message secondaire de l'un des fils), l'intégralité du fil combiné s'affiche.
+4. **Bouton persistant `message_display_action`** :
+   - Indique visuellement l'état de staging via un **badge ambre `🔗`** (ou nombre d'e-mails mis en attente).
+   - Offre une annulation ergonomique en un clic sans friction.
+5. **Fiabilisation de l'événement de confirmation** : Le Shadow DOM passe un `targetContext` explicite (`tabId`, `targetMessageId`, `targetHeaderId`, liste des en-têtes cibles) lors du clic sur `[Confirmer l'association]`, éliminant les devinettes asynchrones sur l'onglet actif.
+6. **Réversibilité instantanée** :
    - Clic sur le bouton de détachement rapide `×` d'un message : déclenche `onDetachManualLink` et supprime la liaison correspondante.
    - Tableau de gestion dans les Options : suppression unitaire avec rafraîchissement dynamique.
 

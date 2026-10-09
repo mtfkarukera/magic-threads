@@ -234,6 +234,25 @@
             "type": "string",
             "enum": ["entire_thread", "single_message"],
             "description": "Portée de l'association retenue."
+          },
+          {
+            "name": "targetContext",
+            "type": "object",
+            "optional": true,
+            "additionalProperties": false,
+            "description": "Métadonnées de la cible sélectionnée passées par le Shadow DOM.",
+            "properties": {
+              "tabId": { "type": "integer", "optional": true },
+              "targetMessageId": { "type": "integer", "optional": true },
+              "targetHeaderId": { "type": "string", "optional": true },
+              "targetThreadHeaderIds": {
+                "type": "array",
+                "optional": true,
+                "items": { "type": "string" }
+              },
+              "targetSubject": { "type": "string", "optional": true },
+              "targetAuthor": { "type": "string", "optional": true }
+            }
           }
         ]
       },

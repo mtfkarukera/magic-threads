@@ -73,17 +73,20 @@ Accéder aux options via **Modules complémentaires** → **Magic Threads** → 
 | `pt` | Português |
 | `vi` | Tiếng Việt |
 
-### Rattachement manuel & Fusion de fils (v2.6.0)
+### Rattachement manuel, Multi-sélection & Clusters de Conversation (v2.7.0)
 
-Pour associer un message orphelin à un fil ou fusionner deux conversations :
-1. **Étape 1 (Sélection du message source)** : Faites un clic droit sur le message à lier dans la liste des messages Thunderbird, puis choisissez **Magic Threads > Rattacher à un fil de discussion...**.
-2. **Étape 2 (Sélection de la destination & Validation)** : Naviguez librement vers le message ou la conversation cible. Une bannière jaune interactive apparaît en tête du panneau Magic Threads :
-   - Choisissez la portée : **Fil complet** (pour fusionner les deux conversations) ou **Message unique** (pour n'attacher que l'e-mail sélectionné).
-   - Cliquez sur **Confirmer l'association** (ou **Annuler** à tout moment).
-3. **Identification & Réversibilité** :
-   - Les messages rattachés manuellement arborent un badge discret `🔗`.
-   - Cliquez sur l'icône de suppression rapide `×` présente sur la carte pour délier le message en un clic.
-   - Vous pouvez également consulter, filtrer et révoquer l'ensemble des liaisons actives depuis l'onglet **Options** de l'extension (tableau récapitulatif accessible).
+Pour associer des messages orphelins ou réunifier des discussions :
+1. **Liaison en 2 étapes (Staging)** :
+   - Faites un clic droit sur un ou plusieurs messages dans la liste Thunderbird → **Rattacher à un fil de discussion...** (ou **Rattacher cette sélection (N messages)...**).
+   - Le bouton Magic Threads dans la barre d'action du message s'allume avec un **badge ambre `🔗`** (ou le décompte des messages) pour signaler que le mode sélection est actif. Vous pouvez annuler le mode à tout moment en cliquant directement sur ce bouton.
+   - Sélectionnez la conversation cible et validez dans la bannière interactive avec la portée souhaitée (**Fil complet** ou **Message unique**).
+2. **Fusion directe en multi-sélection** :
+   - Sélectionnez plusieurs messages ($N \ge 2$) dans la liste avec `Maj` ou `Cmd/Ctrl` → Clic droit → **🔗 Fusionner les messages sélectionnés (N)**.
+   - Les messages sont réunis instantanément dans un même fil consolidé sans étape intermédiaire.
+3. **Modèle de Clusters de Conversation** :
+   - La fusion s'applique de manière universelle : quel que soit le message sélectionné dans l'une quelconque des conversations réunies, l'ensemble des branches liées est affiché.
+   - Les messages rattachés manuellement arborent un badge discret `🔗` avec un bouton de détachement rapide `×`.
+   - Vous pouvez également consulter et supprimer vos liaisons actives depuis la page d'**Options** de l'extension.
 
 ## Architecture
 

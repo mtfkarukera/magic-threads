@@ -8,6 +8,72 @@ import { ManualLinksManager, normalizeMessageId } from "./manualLinksManager.js"
 // État de l'association manuelle en cours (mode staging)
 let pendingStagingState = null;
 
+// ---- Gestionnaire d'état du bouton d'action message_display_action ----
+async function updateActionState(isStaging, count = 1) {
+  try {
+    if (typeof browser.messageDisplayAction === "undefined") return;
+
+    if (isStaging) {
+      let badgeText = count > 1 ? String(count) : "🔗";
+      await browser.messageDisplayAction.setBadgeText({ text: badgeText });
+      await browser.messageDisplayAction.setBadgeBackgroundColor({ color: "#e65100" });
+      let stagingTitle = browser.i18n.getMessage("messageDisplayActionStagingTooltip") ||
+        "Mode liaison actif : sélectionnez un fil cible ou cliquez pour annuler";
+      await browser.messageDisplayAction.setTitle({ title: stagingTitle });
+    } else {
+      await browser.messageDisplayAction.setBadgeText({ text: "" });
+      let defaultTitle = browser.i18n.getMessage("messageDisplayActionTitle") || "Magic Threads";
+      await browser.messageDisplayAction.setTitle({ title: defaultTitle });
+    }
+  } catch (e) {
+    // Les onglets autonomes ou fenêtres spécifiques peuvent lever si non supporté
+  }
+}
+
+// Initialisation au chargement
+updateActionState(false);
+
+// Écouteur de clic sur le bouton de barre d'action du message
+if (browser.messageDisplayAction?.onClicked) {
+  browser.messageDisplayAction.onClicked.addListener(async (tab) => {
+    try {
+      if (pendingStagingState) {
+        // Clic en mode staging = annulation immédiate du mode liaison
+        pendingStagingState = null;
+        await updateActionState(false);
+
+        // Rafraîchir le panneau pour retirer la bannière ambre
+        let targetMsgId = tabLastMessageId.get(tab.id);
+        if (targetMsgId) {
+          let targetMsg = await browser.messages.get(targetMsgId).catch(() => null);
+          if (targetMsg) {
+            tabLastMessageId.delete(tab.id);
+            await showThreadForMessage(tab, targetMsg);
+          }
+        }
+      } else {
+        // En mode normal : rafraîchir / forcer l'affichage du fil du message actif
+        let targetMsgId = tabLastMessageId.get(tab.id);
+        if (!targetMsgId && tab?.id) {
+          let selection = await browser.mailTabs.getSelectedMessages(tab.id).catch(() => null);
+          if (selection?.messages?.length > 0) {
+            targetMsgId = selection.messages[0].id;
+          }
+        }
+        if (targetMsgId) {
+          let targetMsg = await browser.messages.get(targetMsgId).catch(() => null);
+          if (targetMsg) {
+            tabLastMessageId.delete(tab.id);
+            await showThreadForMessage(tab, targetMsg);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Magic Threads: Erreur lors du clic sur messageDisplayAction :", e);
+    }
+  });
+}
+
 // ---- Préférences utilisateur ----
 const storage = browser.storage.sync || browser.storage.local;
 
@@ -250,37 +316,114 @@ browser.magicThreadsWindow.onBannerItemClicked.addListener(async (messageId, mod
   }
 });
 
-// ---- Menu contextuel pour le rattachement manuel de fil ----
+// ---- Menus contextuels pour la gestion des liaisons de fils ----
 try {
+  browser.menus.create({
+    id: "magic-threads-merge-selected",
+    title: browser.i18n.getMessage("menuMergeSelectedMessages", ["2"]) || "🔗 Fusionner les messages sélectionnés",
+    contexts: ["message_list"],
+    visible: false
+  });
+
   browser.menus.create({
     id: "magic-threads-link-to-thread",
     title: browser.i18n.getMessage("menuLinkToThread") || "Rattacher à un fil de discussion...",
-    contexts: ["message_list"],
+    contexts: ["message_list"]
   });
 } catch (e) {
-  // Ignorer si le menu existe déjà lors d'un rechargement
+  // Ignorer si les menus existent déjà lors d'un rechargement
+}
+
+// Mise à jour dynamique des libellés et de la visibilité des menus selon la sélection
+if (browser.menus?.onShown) {
+  browser.menus.onShown.addListener(async (info, tab) => {
+    try {
+      let count = info.selectedMessages?.messages?.length;
+      if (typeof count === "undefined" && tab?.id) {
+        let sel = await browser.mailTabs.getSelectedMessages(tab.id).catch(() => null);
+        count = sel?.messages?.length;
+      }
+      count = count || 1;
+
+      if (count > 1) {
+        let mergeTitle = browser.i18n.getMessage("menuMergeSelectedMessages", [String(count)]) ||
+          `🔗 Fusionner les messages sélectionnés (${count})`;
+        let linkTitle = browser.i18n.getMessage("menuLinkSelectedToThread", [String(count)]) ||
+          `🎯 Rattacher cette sélection (${count} messages) à un autre fil...`;
+
+        await browser.menus.update("magic-threads-merge-selected", {
+          visible: true,
+          title: mergeTitle
+        });
+        await browser.menus.update("magic-threads-link-to-thread", {
+          title: linkTitle
+        });
+      } else {
+        let singleLinkTitle = browser.i18n.getMessage("menuLinkToThread") || "Rattacher à un fil de discussion...";
+        await browser.menus.update("magic-threads-merge-selected", {
+          visible: false
+        });
+        await browser.menus.update("magic-threads-link-to-thread", {
+          title: singleLinkTitle
+        });
+      }
+      await browser.menus.refresh();
+    } catch (e) {
+      // Ignorer si le rafraîchissement menus échoue
+    }
+  });
 }
 
 browser.menus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId === "magic-threads-link-to-thread") {
-    try {
-      let selectedMessages = [];
-      if (info.selectedMessages?.messages?.length > 0) {
-        selectedMessages = info.selectedMessages.messages;
-      } else if (tab?.id) {
-        let selection = await browser.mailTabs.getSelectedMessages(tab.id).catch(() => null);
-        if (selection?.messages?.length > 0) {
-          selectedMessages = selection.messages;
-        }
-      }
-      if (selectedMessages.length === 0) return;
+  let selectedMessages = [];
+  if (info.selectedMessages?.messages?.length > 0) {
+    selectedMessages = info.selectedMessages.messages;
+  } else if (tab?.id) {
+    let selection = await browser.mailTabs.getSelectedMessages(tab.id).catch(() => null);
+    if (selection?.messages?.length > 0) {
+      selectedMessages = selection.messages;
+    }
+  }
+  if (selectedMessages.length === 0) return;
 
+  if (info.menuItemId === "magic-threads-merge-selected") {
+    // Intention 1 : Fusion directe immédiate des messages sélectionnés dans un cluster
+    try {
+      let cluster = await ManualLinksManager.addMultiMessageCluster(selectedMessages, "entire_thread");
+      console.log("Magic Threads: Cluster direct créé pour", selectedMessages.length, "messages:", cluster.id);
+
+      if (tab?.id) {
+        tabLastMessageId.delete(tab.id);
+        await showThreadForMessage(tab, selectedMessages[0]);
+      }
+    } catch (e) {
+      console.error("Magic Threads: Erreur lors de la fusion directe des messages :", e);
+    }
+    return;
+  }
+
+  if (info.menuItemId === "magic-threads-link-to-thread") {
+    // Intention 2 : Mise en attente (staging) pour rattachement à un autre fil distant
+    try {
       let primaryMsg = selectedMessages[0];
       let fullMsg = await browser.messages.get(primaryMsg.id).catch(() => primaryMsg);
       let headerId = normalizeMessageId(fullMsg.headerMessageId || fullMsg.messageId || primaryMsg.headerMessageId || primaryMsg.messageId);
 
       let sourceThread = await ThreadResolver.getThreadMessages(primaryMsg.id).catch(() => []);
       let hasThread = Array.isArray(sourceThread) && sourceThread.length > 1;
+
+      let allSourceHeaders = new Set();
+      if (hasThread) {
+        for (let m of sourceThread) {
+          let h = normalizeMessageId(m.headerMessageId);
+          if (h) allSourceHeaders.add(h);
+        }
+      }
+      for (let m of selectedMessages) {
+        let h = normalizeMessageId(m.headerMessageId || m.messageId);
+        if (h) allSourceHeaders.add(h);
+      }
+      if (headerId) allSourceHeaders.add(headerId);
 
       pendingStagingState = {
         sourceMsgId: primaryMsg.id,
@@ -289,10 +432,12 @@ browser.menus.onClicked.addListener(async (info, tab) => {
         sourceAuthor: fullMsg.author || primaryMsg.author || "",
         sourceCount: selectedMessages.length,
         isSourceInThread: hasThread,
-        sourceThreadCount: hasThread ? sourceThread.length : 1
+        sourceThreadCount: hasThread ? sourceThread.length : selectedMessages.length,
+        sourceThreadHeaderIds: Array.from(allSourceHeaders)
       };
 
-      console.log("Magic Threads: mode liaison activé pour le message", primaryMsg.id, "headerId:", headerId);
+      await updateActionState(true, selectedMessages.length);
+      console.log("Magic Threads: mode liaison activé pour", selectedMessages.length, "message(s), headerId:", headerId);
     } catch (e) {
       console.error("Magic Threads: Erreur lors de l'activation du mode liaison :", e);
     }
@@ -300,49 +445,101 @@ browser.menus.onClicked.addListener(async (info, tab) => {
 });
 
 // ---- Écouteurs pour les événements d'association manuelle ----
-browser.magicThreadsWindow.onConfirmManualLink.addListener(async (scope) => {
+browser.magicThreadsWindow.onConfirmManualLink.addListener(async (scope, targetContext) => {
   try {
     if (!pendingStagingState) return;
 
-    let [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
-    if (!activeTab) return;
+    let targetTabId = targetContext?.tabId;
+    let targetMsgId = targetContext?.targetMessageId;
+    let targetHeaderId = targetContext?.targetHeaderId ? normalizeMessageId(targetContext.targetHeaderId) : "";
+    let targetThreadHeaders = Array.isArray(targetContext?.targetThreadHeaderIds)
+      ? targetContext.targetThreadHeaderIds.map(normalizeMessageId).filter(Boolean)
+      : [];
 
-    let targetMsgId = tabLastMessageId.get(activeTab.id);
-    if (!targetMsgId) return;
+    let targetTab = null;
 
-    let targetMsg = await browser.messages.get(targetMsgId).catch(() => null);
-    if (!targetMsg) return;
+    if (typeof targetTabId === "number") {
+      targetTab = await browser.tabs.get(targetTabId).catch(() => null);
+    }
+    if (!targetTab) {
+      let [active] = await browser.tabs.query({ active: true, currentWindow: true }).catch(() => []);
+      targetTab = active;
+      if (targetTab && typeof targetTabId === "undefined") {
+        targetTabId = targetTab.id;
+      }
+    }
 
-    let targetHeaderId = normalizeMessageId(targetMsg.headerMessageId || targetMsg.messageId);
-    if (!targetHeaderId || targetHeaderId === normalizeMessageId(pendingStagingState.sourceHeaderId)) {
+    if (!targetMsgId && targetTabId) {
+      targetMsgId = tabLastMessageId.get(targetTabId);
+    }
+
+    let targetMsg = null;
+    if (targetMsgId) {
+      targetMsg = await browser.messages.get(targetMsgId).catch(() => null);
+    }
+
+    if (!targetHeaderId && targetMsg) {
+      targetHeaderId = normalizeMessageId(targetMsg.headerMessageId || targetMsg.messageId);
+    }
+
+    let normSourceId = normalizeMessageId(pendingStagingState.sourceHeaderId);
+    if (!targetHeaderId || targetHeaderId === normSourceId) {
+      console.warn("Magic Threads: targetHeaderId manquant ou identique à la source. Annulation de liaison.");
       pendingStagingState = null;
+      await updateActionState(false);
       return;
+    }
+
+    if (targetThreadHeaders.length === 0 && targetMsg) {
+      let thread = await ThreadResolver.getThreadMessages(targetMsg.id).catch(() => []);
+      for (let m of thread) {
+        let h = normalizeMessageId(m.headerMessageId);
+        if (h) targetThreadHeaders.push(h);
+      }
+    }
+    if (!targetThreadHeaders.includes(targetHeaderId)) {
+      targetThreadHeaders.push(targetHeaderId);
     }
 
     await ManualLinksManager.addLink({
       sourceHeaderId: pendingStagingState.sourceHeaderId,
       sourceSubject: pendingStagingState.sourceSubject,
       sourceAuthor: pendingStagingState.sourceAuthor,
+      sourceThreadHeaderIds: pendingStagingState.sourceThreadHeaderIds || [normSourceId],
+      sourceMsgId: pendingStagingState.sourceMsgId,
       targetHeaderId,
-      targetSubject: targetMsg.subject || "",
-      targetAuthor: targetMsg.author || "",
+      targetSubject: targetContext?.targetSubject || targetMsg?.subject || "",
+      targetAuthor: targetContext?.targetAuthor || targetMsg?.author || "",
+      targetThreadHeaderIds: targetThreadHeaders,
+      targetMsgId: targetMsgId || targetMsg?.id,
       scope: scope || "entire_thread"
     });
 
+    console.log("Magic Threads: Association confirmée avec succès vers", targetHeaderId);
     pendingStagingState = null;
+    await updateActionState(false);
 
     // Forcer le rafraîchissement complet du panneau avec le fil fusionné
-    tabLastMessageId.delete(activeTab.id);
-    await showThreadForMessage(activeTab, targetMsg);
+    if (targetTab && targetMsg) {
+      tabLastMessageId.delete(targetTab.id);
+      await showThreadForMessage(targetTab, targetMsg);
+    } else if (targetTabId && targetMsg) {
+      tabLastMessageId.delete(targetTabId);
+      await showThreadForMessage({ id: targetTabId }, targetMsg);
+    }
   } catch (e) {
     console.error("Magic Threads: Erreur lors de la confirmation d'association :", e);
+    pendingStagingState = null;
+    await updateActionState(false);
   }
 });
 
 browser.magicThreadsWindow.onCancelManualLink.addListener(async () => {
   try {
     pendingStagingState = null;
-    let [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+    await updateActionState(false);
+
+    let [activeTab] = await browser.tabs.query({ active: true, currentWindow: true }).catch(() => []);
     if (!activeTab) return;
     let targetMsgId = tabLastMessageId.get(activeTab.id);
     if (targetMsgId) {
@@ -361,8 +558,9 @@ browser.magicThreadsWindow.onDetachManualLink.addListener(async (manualLinkId) =
   try {
     if (!manualLinkId) return;
     await ManualLinksManager.removeLink(manualLinkId);
+    await updateActionState(false);
 
-    let [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+    let [activeTab] = await browser.tabs.query({ active: true, currentWindow: true }).catch(() => []);
     if (!activeTab) return;
     let targetMsgId = tabLastMessageId.get(activeTab.id);
     if (targetMsgId) {

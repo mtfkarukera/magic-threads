@@ -5,6 +5,29 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.7.0] - 2026-10-10
+
+### Ajouté
+- **Modèle de Clusters de Conversation & Propagation Universelle ([manualLinksManager.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/manualLinksManager.js), [threadResolver.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/threadResolver.js))** :
+  - Remplacement du stockage de paires isolées par un modèle de **Clusters de Conversation** (`ConversationCluster`) garantissant que la fusion est effective et visible quel que soit le message sélectionné dans l'une quelconque des conversations réunies.
+  - Enregistrement de l'ensemble de tous les Message-IDs connus des deux fils (`allHeaderIds`) ainsi que des identifiants numériques WebExtension de contact (`anchorMessageIds`).
+  - Fusion automatique des clusters connexes (Union-Find) : si une conversation liée rejoint un nouveau fil, l'ensemble des branches est consolidé sans rupture de continuité.
+  - Rapatriement DAL hautement résilient combinant la résolution native par ancres (`convGloda.getThreadMessages`) et la recherche par en-tête Gloda (`getThreadByHeaderId`).
+- **Bouton d'action persistant & Indicateur de mode sélection ([manifest.json](file:///Users/mtfkarukera/Scripts/magic-threads-b/manifest.json), [background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js))** :
+  - Déclaration du composant natif `message_display_action` dans la barre d'outils du visualiseur de messages de Thunderbird.
+  - **Mode repos** : icône neutre, un clic force le rafraîchissement ou le déploiement du fil sur le message actif.
+  - **Mode sélection actif (staging)** : affichage d'un **badge ambre `🔗`** (ou nombre d'e-mails mis en attente), tooltip descriptif d'aide à la sélection, et annulation immédiate du mode sélection en un seul clic sur le bouton.
+- **Multi-sélection intelligente & Double intention ([background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js), [_locales/](file:///Users/mtfkarukera/Scripts/magic-threads-b/_locales/))** :
+  - Adaptation dynamique du menu contextuel selon la sélection (`menus.onShown`) :
+    - `🔗 Fusionner les messages sélectionnés (N)` : crée immédiatement un cluster réunifiant tous les messages sélectionnés sans étape intermédiaire de staging.
+    - `🎯 Rattacher cette sélection (N messages) à un autre fil...` : place l'ensemble des messages sélectionnés en attente (badge ambre) pour les associer en bloc à une conversation cible distante.
+
+### Corrigé
+- **Élimination des échecs silencieux lors de la confirmation ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js), [magicThreadsWindowSchema.json](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowSchema.json), [background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js))** :
+  - Transmission directe du contexte cible (`targetContext` : `tabId`, `targetMessageId`, `targetHeaderId`, liste des en-têtes du fil affiché) par le Shadow DOM lors du clic sur `[Confirmer l'association]`.
+  - Suppression de la dépendance fragile à `browser.tabs.query` et `tabLastMessageId` qui provoquait l'abandon silencieux de la liaison lors des changements de focus.
+  - Traitement sécurisé avec logs explicites en cas d'anomalie.
+
 ## [2.6.2] - 2026-10-09
 
 ### Corrigé
