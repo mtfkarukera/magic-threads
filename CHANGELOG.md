@@ -4,6 +4,30 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
+## [2.8.1] - 2026-10-11
+
+### Internationalisation (i18n)
+- **Parité Linguistique Totale sur l'ensemble des 7 catalogues ([_locales/](file:///Users/mtfkarukera/Scripts/magic-threads-b/_locales/))** :
+  - Complétion des 29 clés d'interface introduites en v2.7.x dans les catalogues allemand (`de`), espagnol (`es`), japonais (`ja`), portugais (`pt`) et vietnamien (`vi`).
+  - Élimination complète de l'affichage forcé en français pour les utilisateurs de ces locales lors de l'affichage des bandeaux d'association, menus contextuels et paramètres de liaisons manuelles.
+  - Chaque catalogue compte désormais exactement 69 clés traduites et validées syntaxiquement.
+
+### Accessibilité (WCAG 2.1 AA)
+- **Conformité des Contrastes de Couleurs (WCAG 1.4.3 & 1.4.11) ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - **Bouton de confirmation en Dark Mode** : contraste renforcé à un ratio de **4,95:1** ($\ge 4{,}5:1$) via texte sombre `#1e222b` avec `font-weight: 600` sur fond d'accent `#528bff`.
+  - **Poignée de redimensionnement** : suppression de `opacity: 0.7` et adoption de motifs de points SVG contrastés (`#666666` en mode clair, `#aaaaaa` en mode sombre) garantissant un ratio $\ge 3:1$ sur élément interactif.
+  - **Badge de liaison manuelle** : migration vers la variable d'accent textuelle `--accent-text` (`#2b6cb0` en clair, `#82aaff` en sombre) avec un ratio $\ge 4{,}98:1$.
+- **Restructuration Sémantique ARIA & Navigation Clavier (WCAG 4.1.2 & 2.1.1) ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - **Élimination du contrôle interactif imbriqué** : remplacement de `role="button"` par `role="article"` et `aria-roledescription="message"` sur la carte `.thread-item`, éliminant l'imbrication illégale d'un sous-bouton d'action (`.thread-detach-btn`) au sein d'un bouton.
+  - **Roving Tabindex étanche sur le bouton de détachement** : initialisation et maintien de `tabIndex = -1` sur les boutons détacher des cartes inactives, évitant toute pollution de la séquence de tabulation (`Tab`).
+  - **Raccourci clavier de détachement direct** : déclenchement immédiat de la déliaison d'un message lié via les touches `Suppr` (`Delete`) ou `Retour arrière` (`Backspace`) depuis la carte active au clavier.
+  - **Indicateurs de focus nets** : extension de la règle `:focus-visible` aux boutons de détachement et d'action de staging.
+- **Repères Sémantiques (Landmarks) & Région Vocale Directe ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js), [background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js))** :
+  - Déclaration de `role="complementary"` et de l'étiquette accessible `aria-label` sur le conteneur du volet injecté.
+  - Encapsulation des options de fusion de fil dans un groupe `role="radiogroup"` avec `aria-label`.
+  - Intégration d'une région invisible `aria-live="polite"` (`role="status"`) pour annoncer vocalement les confirmations, annulations et détachements de messages.
+- **Typographie Adaptative Relative (WCAG 1.4.4 — Zoom) ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js), [options.html](file:///Users/mtfkarukera/Scripts/magic-threads-b/options/options.html))** :
+  - Remplacement des tailles de police rigides en pixels par des unités relatives (`em` dans le Shadow DOM, `rem` dans la page d'options), respectant parfaitement les préférences de zoom et d'accessibilité typographique de Thunderbird.
 
 ## [2.8.0] - 2026-10-11
 

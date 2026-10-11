@@ -164,5 +164,133 @@
   "optGlodaDisabledWarning": {
     "message": "La búsqueda global (Gloda) está desactivada en Thunderbird. Magic Threads no puede reconstruir los hilos. Active «Activar la búsqueda global y el indexador» en la configuración de Thunderbird.",
     "description": "Warning shown in options when the Gloda indexer is disabled"
+  },
+  "menuLinkToThread": {
+    "message": "Vincular a un hilo...",
+    "description": "Context menu item to link a message to a thread"
+  },
+  "stagingBannerTitle": {
+    "message": "Vinculación de hilo en curso",
+    "description": "Title of the staging banner"
+  },
+  "stagingBannerPromptSingle": {
+    "message": "¿Vincular este mensaje a la conversación inferior?",
+    "description": "Prompt for linking a single orphan message"
+  },
+  "stagingBannerPromptThread": {
+    "message": "¿Vincular esta conversación ({count} mensajes) al hilo inferior?",
+    "description": "Prompt for linking a message that has its own thread"
+  },
+  "stagingSourceLabel": {
+    "message": "Origen:",
+    "description": "Label indicating source message"
+  },
+  "stagingOptionMergeThreads": {
+    "message": "Fusionar los hilos completos (Recomendado)",
+    "description": "Radio option to merge entire threads"
+  },
+  "stagingOptionSingleMsg": {
+    "message": "Adjuntar solo este mensaje específico",
+    "description": "Radio option to attach single message only"
+  },
+  "btnConfirmLink": {
+    "message": "Confirmar vinculación",
+    "description": "Button to confirm manual thread link"
+  },
+  "btnCancelLink": {
+    "message": "Cancelar",
+    "description": "Button to cancel manual thread link"
+  },
+  "badgeManualLink": {
+    "message": "Mensaje vinculado manualmente",
+    "description": "Badge/tooltip for manually linked messages"
+  },
+  "btnDetachLink": {
+    "message": "Desvincular del hilo",
+    "description": "Button to detach message from thread"
+  },
+  "confirmDetachPrompt": {
+    "message": "¿Desvincular este mensaje del hilo?",
+    "description": "Confirmation prompt before detaching a message"
+  },
+  "optManualLinksGroupTitle": {
+    "message": "Hilos vinculados manualmente:",
+    "description": "Title of manual links section in options"
+  },
+  "optManualLinksDesc": {
+    "message": "Lista de vínculos manuales activos creados para agrupar mensajes huérfanos o fusionar conversaciones divididas.",
+    "description": "Description of manual links section in options"
+  },
+  "optManualLinksEmpty": {
+    "message": "Aún no hay vínculos manuales guardados.",
+    "description": "Notice shown when no manual links exist"
+  },
+  "optManualLinksColSource": {
+    "message": "Mensaje de origen",
+    "description": "Table column header for source message"
+  },
+  "optManualLinksColTarget": {
+    "message": "Hilo de destino",
+    "description": "Table column header for target thread"
+  },
+  "optManualLinksColScope": {
+    "message": "Alcance",
+    "description": "Table column header for link scope"
+  },
+  "optManualLinksColDate": {
+    "message": "Fecha",
+    "description": "Table column header for creation date"
+  },
+  "optManualLinksColAction": {
+    "message": "Acciones",
+    "description": "Table column header for actions"
+  },
+  "optManualLinksScopeEntire": {
+    "message": "Hilo completo",
+    "description": "Label for entire thread merge scope"
+  },
+  "optManualLinksScopeSingle": {
+    "message": "Mensaje único",
+    "description": "Label for single message link scope"
+  },
+  "optManualLinksBtnDelete": {
+    "message": "Eliminar vínculo",
+    "description": "Tooltip / button label to delete manual link"
+  },
+  "optManualLinksConfirmDelete": {
+    "message": "¿Seguro que desea eliminar este vínculo manual?",
+    "description": "Confirmation prompt when deleting link in options"
+  },
+  "optManualLinksDeletedFeedback": {
+    "message": "Vínculo manual eliminado correctamente.",
+    "description": "Status feedback after deleting link in options"
+  },
+  "messageDisplayActionTitle": {
+    "message": "Magic Threads — Mostrar / actualizar hilo",
+    "description": "Tooltip for message display action button in resting mode"
+  },
+  "messageDisplayActionStagingTooltip": {
+    "message": "Modo de vinculación de hilos activo: seleccione un hilo de destino o haga clic para cancelar",
+    "description": "Tooltip for message display action button in staging mode"
+  },
+  "menuMergeSelectedMessages": {
+    "message": "🔗 Fusionar los mensajes seleccionados ($COUNT$)",
+    "description": "Context menu title to directly merge multiple selected messages",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "menuLinkSelectedToThread": {
+    "message": "🎯 Vincular esta selección ($COUNT$ mensajes) a otro hilo...",
+    "description": "Context menu title to stage multiple selected messages for linking",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
   }
 }

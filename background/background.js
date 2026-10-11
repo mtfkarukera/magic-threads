@@ -139,7 +139,8 @@ function getLabels(count) {
     "unknownAuthor", "unreadLabel",
     "stagingBannerTitle", "stagingBannerPromptSingle", "stagingBannerPromptThread",
     "stagingSourceLabel", "stagingOptionMergeThreads", "stagingOptionSingleMsg",
-    "btnConfirmLink", "btnCancelLink", "badgeManualLink", "btnDetachLink", "confirmDetachPrompt"
+    "btnConfirmLink", "btnCancelLink", "badgeManualLink", "btnDetachLink", "confirmDetachPrompt",
+    "optManualLinksDeletedFeedback"
   ];
   let labels = {};
   for (let key of keys) {

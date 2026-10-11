@@ -108,7 +108,7 @@ flowchart LR
 - Expose aussi `isGlodaAvailable()` (v2.3.0) : vérifie la préférence `mailnews.database.global.indexer.enabled` et le chargement du module Gloda — utilisé par la page d'options pour avertir si l'index est désactivé
 - Schéma défini dans `glodaSchema.json`
 
-#### `experiment-api/magicThreadsWindowApi.js`
+#### `experiment-api/magicThreadsWindowApi.js` (v2.8.1)
 
 Experiment API pour l'injection DOM :
 
@@ -116,9 +116,16 @@ Experiment API pour l'injection DOM :
 - Crée et injecte le panneau dans un **Shadow DOM**
 - Gère les trois modes d'affichage (bottom panel en 3-pane / sidebar en 3-pane / sidebar en onglet message)
 - Injecte les styles CSS dans le Shadow DOM
-- **Bannière d'association en Staging (v2.6.0)** : Construit et insère en tête de panneau l'interface de pré-liaison interactive avec prévisualisation du message source, choix de la portée (`entire_thread` / `single_message`) et boutons `[Confirmer l'association]` et `[Annuler]`.
-- **Badges et dissociation rapide (v2.6.0)** : Affiche le badge `🔗` et le bouton `×` de détachement direct sur les cartes liées, sans dialogue bloquant (conforme Règle 14).
+- **Bannière d'association en Staging (v2.6.0)** : Construit et insère en tête de panneau l'interface de pré-liaison interactive avec prévisualisation du message source, choix de la portée (`entire_thread` / `single_message`) dans un conteneur sémantique `role="radiogroup"` et boutons `[Confirmer l'association]` et `[Annuler]`.
+- **Badges et dissociation rapide (v2.6.0)** : Affiche le badge de lien manuel et le bouton `×` de détachement direct sur les cartes liées, sans dialogue bloquant (conforme Règle 14).
 - **Communication bidirectionnelle d'événements** : Expose les événements `onConfirmManualLink`, `onCancelManualLink` et `onDetachManualLink` via `EventManager` pour notifier le background.
+- **Accessibilité WCAG 2.1 AA (v2.8.1)** :
+  - **Élimination du contrôle interactif imbriqué (WCAG 4.1.2)** : Les cartes de messages utilisent `role="article"` avec `aria-roledescription="message"` au lieu de `role="button"` parent, permettant la cohabitation sémantique légale du bouton de détachement interne.
+  - **Roving Tabindex étanche** : Seule la carte active et son éventuel bouton de détachement possèdent `tabIndex = 0` ; les cartes inactives et leurs boutons restent à `tabIndex = -1` pour préserver le cycle de tabulation clavier.
+  - **Raccourci clavier de détachement** : Touches `Suppr` ou `Retour arrière` actives directement sur la carte sélectionnée.
+  - **Repère sémantique Landmark & Région vocale** : Déclaration de `role="complementary"` sur le conteneur du volet et région `aria-live="polite"` pour annoncer vocalement les confirmations et détachements.
+  - **Conformité des contrastes (WCAG 1.4.3 & 1.4.11)** : Bouton de confirmation dark mode à ratio 4.95:1, poignée de redimensionnement sans opacité avec points contrastés $\ge 3:1$, badge manuel sur `--accent-text` ($\ge 4{,}98:1$).
+  - **Typographie adaptative (WCAG 1.4.4)** : Unités relatives `em` s'adaptant fidèlement à la taille de police définie dans Thunderbird.
 - Gère le nettoyage du DOM quand le message change
 - Schéma défini dans `magicThreadsWindowSchema.json`
 

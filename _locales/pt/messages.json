@@ -164,5 +164,133 @@
   "optGlodaDisabledWarning": {
     "message": "A pesquisa global (Gloda) está desativada no Thunderbird. O Magic Threads não consegue reconstruir os tópicos. Ative «Ativar pesquisa global e indexação» nas definições do Thunderbird.",
     "description": "Warning shown in options when the Gloda indexer is disabled"
+  },
+  "menuLinkToThread": {
+    "message": "Associar a um tópico...",
+    "description": "Context menu item to link a message to a thread"
+  },
+  "stagingBannerTitle": {
+    "message": "Associação de tópico em curso",
+    "description": "Title of the staging banner"
+  },
+  "stagingBannerPromptSingle": {
+    "message": "Associar esta mensagem à conversa abaixo?",
+    "description": "Prompt for linking a single orphan message"
+  },
+  "stagingBannerPromptThread": {
+    "message": "Associar esta conversa ({count} mensagens) ao tópico abaixo?",
+    "description": "Prompt for linking a message that has its own thread"
+  },
+  "stagingSourceLabel": {
+    "message": "Origem:",
+    "description": "Label indicating source message"
+  },
+  "stagingOptionMergeThreads": {
+    "message": "Fundir os tópicos inteiros (Recomendado)",
+    "description": "Radio option to merge entire threads"
+  },
+  "stagingOptionSingleMsg": {
+    "message": "Anexar apenas esta mensagem específica",
+    "description": "Radio option to attach single message only"
+  },
+  "btnConfirmLink": {
+    "message": "Confirmar associação",
+    "description": "Button to confirm manual thread link"
+  },
+  "btnCancelLink": {
+    "message": "Cancelar",
+    "description": "Button to cancel manual thread link"
+  },
+  "badgeManualLink": {
+    "message": "Mensagem associada manualmente",
+    "description": "Badge/tooltip for manually linked messages"
+  },
+  "btnDetachLink": {
+    "message": "Desassociar do tópico",
+    "description": "Button to detach message from thread"
+  },
+  "confirmDetachPrompt": {
+    "message": "Desassociar esta mensagem do tópico?",
+    "description": "Confirmation prompt before detaching a message"
+  },
+  "optManualLinksGroupTitle": {
+    "message": "Tópicos associados manualmente:",
+    "description": "Title of manual links section in options"
+  },
+  "optManualLinksDesc": {
+    "message": "Lista de ligações manuais ativas criadas para agrupar mensagens órfãs ou fundir conversas divididas.",
+    "description": "Description of manual links section in options"
+  },
+  "optManualLinksEmpty": {
+    "message": "Ainda não existem ligações manuais guardadas.",
+    "description": "Notice shown when no manual links exist"
+  },
+  "optManualLinksColSource": {
+    "message": "Mensagem de origem",
+    "description": "Table column header for source message"
+  },
+  "optManualLinksColTarget": {
+    "message": "Tópico de destino",
+    "description": "Table column header for target thread"
+  },
+  "optManualLinksColScope": {
+    "message": "Âmbito",
+    "description": "Table column header for link scope"
+  },
+  "optManualLinksColDate": {
+    "message": "Data",
+    "description": "Table column header for creation date"
+  },
+  "optManualLinksColAction": {
+    "message": "Ações",
+    "description": "Table column header for actions"
+  },
+  "optManualLinksScopeEntire": {
+    "message": "Tópico inteiro",
+    "description": "Label for entire thread merge scope"
+  },
+  "optManualLinksScopeSingle": {
+    "message": "Mensagem única",
+    "description": "Label for single message link scope"
+  },
+  "optManualLinksBtnDelete": {
+    "message": "Eliminar ligação",
+    "description": "Tooltip / button label to delete manual link"
+  },
+  "optManualLinksConfirmDelete": {
+    "message": "Tem a certeza de que pretende eliminar esta ligação manual?",
+    "description": "Confirmation prompt when deleting link in options"
+  },
+  "optManualLinksDeletedFeedback": {
+    "message": "Ligação manual eliminada com sucesso.",
+    "description": "Status feedback after deleting link in options"
+  },
+  "messageDisplayActionTitle": {
+    "message": "Magic Threads — Mostrar / atualizar tópico",
+    "description": "Tooltip for message display action button in resting mode"
+  },
+  "messageDisplayActionStagingTooltip": {
+    "message": "Modo de associação de tópicos ativo: selecione um tópico de destino ou clique para cancelar",
+    "description": "Tooltip for message display action button in staging mode"
+  },
+  "menuMergeSelectedMessages": {
+    "message": "🔗 Fundir mensagens selecionadas ($COUNT$)",
+    "description": "Context menu title to directly merge multiple selected messages",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "menuLinkSelectedToThread": {
+    "message": "🎯 Associar esta seleção ($COUNT$ mensagens) a outro tópico...",
+    "description": "Context menu title to stage multiple selected messages for linking",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
   }
 }

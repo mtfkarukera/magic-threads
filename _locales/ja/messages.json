@@ -164,5 +164,133 @@
   "optGlodaDisabledWarning": {
     "message": "Thunderbird のグローバル検索 (Gloda) が無効になっています。Magic Threads はスレッドを構築できません。Thunderbird の設定で「グローバル検索と索引データベースを有効にする」を有効にしてください。",
     "description": "Warning shown in options when the Gloda indexer is disabled"
+  },
+  "menuLinkToThread": {
+    "message": "スレッドにリンク...",
+    "description": "Context menu item to link a message to a thread"
+  },
+  "stagingBannerTitle": {
+    "message": "スレッドの関連付け処理中",
+    "description": "Title of the staging banner"
+  },
+  "stagingBannerPromptSingle": {
+    "message": "このメッセージを下のスレッドに関連付けますか？",
+    "description": "Prompt for linking a single orphan message"
+  },
+  "stagingBannerPromptThread": {
+    "message": "この会話 ({count} 件のメッセージ) を下のスレッドに関連付けますか？",
+    "description": "Prompt for linking a message that has its own thread"
+  },
+  "stagingSourceLabel": {
+    "message": "ソース:",
+    "description": "Label indicating source message"
+  },
+  "stagingOptionMergeThreads": {
+    "message": "スレッド全体を結合する (推奨)",
+    "description": "Radio option to merge entire threads"
+  },
+  "stagingOptionSingleMsg": {
+    "message": "この特定のメッセージのみを添付する",
+    "description": "Radio option to attach single message only"
+  },
+  "btnConfirmLink": {
+    "message": "関連付けを確定",
+    "description": "Button to confirm manual thread link"
+  },
+  "btnCancelLink": {
+    "message": "キャンセル",
+    "description": "Button to cancel manual thread link"
+  },
+  "badgeManualLink": {
+    "message": "手動でリンクされたメッセージ",
+    "description": "Badge/tooltip for manually linked messages"
+  },
+  "btnDetachLink": {
+    "message": "スレッドからリンクを解除",
+    "description": "Button to detach message from thread"
+  },
+  "confirmDetachPrompt": {
+    "message": "このメッセージのスレッドへのリンクを解除しますか？",
+    "description": "Confirmation prompt before detaching a message"
+  },
+  "optManualLinksGroupTitle": {
+    "message": "手動でリンクされたスレッド:",
+    "description": "Title of manual links section in options"
+  },
+  "optManualLinksDesc": {
+    "message": "孤立したメッセージをグループ化したり、分割された会話を結合するために作成されたアクティブな手動リンクの一覧です。",
+    "description": "Description of manual links section in options"
+  },
+  "optManualLinksEmpty": {
+    "message": "保存された手動リンクはまだありません。",
+    "description": "Notice shown when no manual links exist"
+  },
+  "optManualLinksColSource": {
+    "message": "送信元メッセージ",
+    "description": "Table column header for source message"
+  },
+  "optManualLinksColTarget": {
+    "message": "宛先スレッド",
+    "description": "Table column header for target thread"
+  },
+  "optManualLinksColScope": {
+    "message": "スコープ",
+    "description": "Table column header for link scope"
+  },
+  "optManualLinksColDate": {
+    "message": "作成日",
+    "description": "Table column header for creation date"
+  },
+  "optManualLinksColAction": {
+    "message": "操作",
+    "description": "Table column header for actions"
+  },
+  "optManualLinksScopeEntire": {
+    "message": "スレッド全体",
+    "description": "Label for entire thread merge scope"
+  },
+  "optManualLinksScopeSingle": {
+    "message": "単一メッセージ",
+    "description": "Label for single message link scope"
+  },
+  "optManualLinksBtnDelete": {
+    "message": "リンクを削除",
+    "description": "Tooltip / button label to delete manual link"
+  },
+  "optManualLinksConfirmDelete": {
+    "message": "この手動リンクを削除してもよろしいですか？",
+    "description": "Confirmation prompt when deleting link in options"
+  },
+  "optManualLinksDeletedFeedback": {
+    "message": "手動リンクが正常に削除されました。",
+    "description": "Status feedback after deleting link in options"
+  },
+  "messageDisplayActionTitle": {
+    "message": "Magic Threads — スレッドを表示 / 更新",
+    "description": "Tooltip for message display action button in resting mode"
+  },
+  "messageDisplayActionStagingTooltip": {
+    "message": "スレッド関連付けモードが有効: リンク先のスレッドを選択するか、クリックしてキャンセル",
+    "description": "Tooltip for message display action button in staging mode"
+  },
+  "menuMergeSelectedMessages": {
+    "message": "🔗 選択したメッセージを結合 ($COUNT$)",
+    "description": "Context menu title to directly merge multiple selected messages",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "menuLinkSelectedToThread": {
+    "message": "🎯 この選択範囲 ($COUNT$ 件のメッセージ) を別のスレッドにリンク...",
+    "description": "Context menu title to stage multiple selected messages for linking",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
   }
 }

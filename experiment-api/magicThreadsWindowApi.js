@@ -49,6 +49,7 @@ const SHARED_CSS = `
           --text-muted: var(--layout-color-2, #5a6675);
           --accent-border: var(--color-accent-primary, #3182ce);
           --accent-bg: #ebf8ff;
+          --accent-text: #2b6cb0;
           --focus-color: var(--focus-outline-color, var(--accent-border));
           --folder-bg: #edf2f7;
           --folder-text: #4a5568;
@@ -85,6 +86,7 @@ const SHARED_CSS = `
             --text-muted: var(--layout-color-2, #9fa8b7);
             --accent-border: var(--color-accent-primary, #528bff);
             --accent-bg: #223147;
+            --accent-text: #82aaff;
             --folder-bg: #2d3139;
             --folder-text: #abb2bf;
             --inbox-bg: #1e3a5f;
@@ -108,7 +110,7 @@ const SHARED_CSS = `
         .threads-title {
           font-weight: 600;
           color: var(--text-main);
-          font-size: 13px;
+          font-size: 1em;
         }
 
         .threads-actions {
@@ -118,7 +120,7 @@ const SHARED_CSS = `
         }
 
         .threads-mode-indicator {
-          font-size: 11px;
+          font-size: 0.85em;
           color: var(--text-muted);
           background-color: var(--card-bg);
           border: 1px solid var(--banner-border);
@@ -136,7 +138,7 @@ const SHARED_CSS = `
           padding: 2px 6px;
           border-radius: 4px;
           background-color: var(--card-bg);
-          font-size: 12px;
+          font-size: 0.9em;
           transition: background-color 0.2s;
         }
 
@@ -185,7 +187,9 @@ const SHARED_CSS = `
         .thread-item:focus-visible,
         .threads-toggle-btn:focus-visible,
         .threads-collapse-btn:focus-visible,
-        .resize-handle:focus-visible {
+        .resize-handle:focus-visible,
+        .thread-detach-btn:focus-visible,
+        .staging-btn:focus-visible {
           outline: 2px solid var(--focus-color);
           outline-offset: -2px;
         }
@@ -221,16 +225,16 @@ const SHARED_CSS = `
           content: " ●";
           color: #ff3b30;
           font-weight: bold;
-          font-size: 10px;
+          font-size: 0.75em;
         }
 
         .thread-date {
           color: var(--text-muted);
-          font-size: 11px;
+          font-size: 0.85em;
         }
 
         .thread-folder {
-          font-size: 10px;
+          font-size: 0.77em;
           font-weight: 500;
           padding: 1px 6px;
           border-radius: 4px;
@@ -257,7 +261,7 @@ const SHARED_CSS = `
 
         .thread-snippet {
           color: var(--text-muted);
-          font-size: 12px;
+          font-size: 0.92em;
           line-height: 1.4;
           white-space: nowrap;
           overflow: hidden;
@@ -271,7 +275,7 @@ const SHARED_CSS = `
 
         .thread-attachment {
           display: inline-block;
-          font-size: 11px;
+          font-size: 0.85em;
           color: var(--text-muted);
           margin-left: 4px;
           vertical-align: middle;
@@ -279,8 +283,9 @@ const SHARED_CSS = `
 
         .thread-badge-manual {
           display: inline-block;
-          font-size: 11px;
-          color: var(--accent-border);
+          font-size: 0.85em;
+          color: var(--accent-text);
+          font-weight: 500;
           margin-left: 4px;
           vertical-align: middle;
         }
@@ -292,7 +297,7 @@ const SHARED_CSS = `
           margin-left: auto;
           cursor: pointer;
           color: var(--text-muted);
-          font-size: 14px;
+          font-size: 1.08em;
           line-height: 1;
           border-radius: 3px;
         }
@@ -311,7 +316,7 @@ const SHARED_CSS = `
           display: flex;
           flex-direction: column;
           gap: 6px;
-          font-size: 12px;
+          font-size: 0.92em;
         }
 
         .staging-title {
@@ -324,7 +329,7 @@ const SHARED_CSS = `
 
         .staging-source-desc {
           color: var(--text-muted);
-          font-size: 11px;
+          font-size: 0.85em;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -341,7 +346,7 @@ const SHARED_CSS = `
           display: flex;
           align-items: center;
           gap: 6px;
-          font-size: 11px;
+          font-size: 0.85em;
           color: var(--text-main);
           cursor: pointer;
         }
@@ -354,7 +359,7 @@ const SHARED_CSS = `
 
         .staging-btn {
           padding: 4px 10px;
-          font-size: 11px;
+          font-size: 0.85em;
           font-weight: 500;
           border-radius: 4px;
           cursor: pointer;
@@ -364,6 +369,13 @@ const SHARED_CSS = `
         .staging-btn-confirm {
           background-color: var(--accent-border);
           color: #ffffff;
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .staging-btn-confirm {
+            color: #1e222b;
+            font-weight: 600;
+          }
         }
 
         .staging-btn-confirm:hover {
@@ -392,17 +404,18 @@ const BOTTOM_CSS = `
           flex-shrink: 0;
           cursor: ns-resize;
           background-color: var(--banner-border);
-          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='4'%3E%3Ccircle cx='4' cy='2' r='1.2' fill='%23999'/%3E%3Ccircle cx='10' cy='2' r='1.2' fill='%23999'/%3E%3Ccircle cx='16' cy='2' r='1.2' fill='%23999'/%3E%3C/svg%3E");
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='4'%3E%3Ccircle cx='4' cy='2' r='1.2' fill='%23666666'/%3E%3Ccircle cx='10' cy='2' r='1.2' fill='%23666666'/%3E%3Ccircle cx='16' cy='2' r='1.2' fill='%23666666'/%3E%3C/svg%3E");
           background-repeat: no-repeat;
           background-position: center;
-          opacity: 0.7;
-          transition: opacity 0.2s, background-color 0.2s;
-        }
-        .resize-handle {
+          transition: background-color 0.2s;
           touch-action: none;
         }
+        @media (prefers-color-scheme: dark) {
+          .resize-handle {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='4'%3E%3Ccircle cx='4' cy='2' r='1.2' fill='%23aaaaaa'/%3E%3Ccircle cx='10' cy='2' r='1.2' fill='%23aaaaaa'/%3E%3Ccircle cx='16' cy='2' r='1.2' fill='%23aaaaaa'/%3E%3C/svg%3E");
+          }
+        }
         .resize-handle:hover {
-          opacity: 1;
           background-color: var(--card-hover-bg);
         }
 
@@ -424,17 +437,18 @@ const SIDEBAR_CSS = `
           flex-shrink: 0;
           cursor: ew-resize;
           background-color: var(--banner-border);
-          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='20'%3E%3Ccircle cx='2' cy='4' r='1.2' fill='%23999'/%3E%3Ccircle cx='2' cy='10' r='1.2' fill='%23999'/%3E%3Ccircle cx='2' cy='16' r='1.2' fill='%23999'/%3E%3C/svg%3E");
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='20'%3E%3Ccircle cx='2' cy='4' r='1.2' fill='%23666666'/%3E%3Ccircle cx='2' cy='10' r='1.2' fill='%23666666'/%3E%3Ccircle cx='2' cy='16' r='1.2' fill='%23666666'/%3E%3C/svg%3E");
           background-repeat: no-repeat;
           background-position: center;
-          opacity: 0.7;
-          transition: opacity 0.2s, background-color 0.2s;
-        }
-        .resize-handle {
+          transition: background-color 0.2s;
           touch-action: none;
         }
+        @media (prefers-color-scheme: dark) {
+          .resize-handle {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='20'%3E%3Ccircle cx='2' cy='4' r='1.2' fill='%23aaaaaa'/%3E%3Ccircle cx='2' cy='10' r='1.2' fill='%23aaaaaa'/%3E%3Ccircle cx='2' cy='16' r='1.2' fill='%23aaaaaa'/%3E%3C/svg%3E");
+          }
+        }
         .resize-handle:hover {
-          opacity: 1;
           background-color: var(--card-hover-bg);
         }
         .threads-wrapper {
@@ -744,7 +758,9 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       btnCancelLink: "Cancel",
       badgeManualLink: "Manually linked message",
       btnDetachLink: "Detach from thread",
-      confirmDetachPrompt: "Detach this message from the thread?"
+      confirmDetachPrompt: "Detach this message from the thread?",
+      optManualLinksDeletedFeedback: "Manual link deleted successfully.",
+      messageRoleDescription: "Message"
     };
 
     // =================================================================
@@ -840,18 +856,19 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
      * Le mode de navigation est lu via navState au moment du clic.
      * @returns {Element} le wrapper listitem prêt à insérer dans la liste
      */
-    function buildThreadItem(doc, msg, currentMessageId, labels, navState, isInitiallyFocusable) {
-      // Wrapper listitem : conserve la sémantique de liste, car l'item
-      // cliquable porte lui-même role="button" (un élément = un seul rôle)
+    function buildThreadItem(doc, msg, currentMessageId, labels, navState, isInitiallyFocusable, announceLive) {
+      // Wrapper listitem : conserve la sémantique de liste
       let listItem = doc.createElement("div");
       listItem.setAttribute("role", "listitem");
 
       let item = doc.createElement("div");
       item.className = "thread-item";
       item.dataset.messageId = String(msg.id);
-      // Chaque item de la liste est un bouton accessible au clavier et pour les lecteurs d'écran.
-      // Roving tabindex (WCAG AA) : seul l'item actif (ou le premier) est tabIndex=0.
-      item.setAttribute("role", "button");
+      // Élimination du contrôle interactif imbriqué (WCAG 4.1.2) :
+      // On utilise role="article" avec un descriptif de message au lieu de role="button"
+      // car l'élément peut contenir un second bouton d'action (.thread-detach-btn).
+      item.setAttribute("role", "article");
+      item.setAttribute("aria-roledescription", labels.messageRoleDescription || "Message");
       item.tabIndex = isInitiallyFocusable ? 0 : -1;
 
       if (msg.id === currentMessageId) {
@@ -910,9 +927,14 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           detachBtn.textContent = "\u00D7";
           detachBtn.title = labels.btnDetachLink || "Détacher du fil";
           detachBtn.setAttribute("aria-label", labels.btnDetachLink || "Détacher du fil");
+          // Roving tabindex étanche : seul le bouton de la carte active est dans le cycle Tab
+          detachBtn.tabIndex = isInitiallyFocusable ? 0 : -1;
           detachBtn.addEventListener("click", (e) => {
             e.stopPropagation();
             e.preventDefault();
+            if (announceLive) {
+              announceLive(labels.optManualLinksDeletedFeedback || "Message détaché");
+            }
             if (detachManualLinkFire) {
               detachManualLinkFire.async(msg.manualLinkId, msg.id, msg.headerMessageId);
             }
@@ -934,6 +956,8 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           let allItems = root.querySelectorAll(".thread-item");
           for (let it of allItems) {
             it.tabIndex = -1;
+            let d = it.querySelector(".thread-detach-btn");
+            if (d) d.tabIndex = -1;
             if (navState.mode === "currentTab") {
               it.classList.remove("current");
               it.removeAttribute("aria-current");
@@ -942,6 +966,9 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           }
         }
         item.tabIndex = 0;
+        let itemDetach = item.querySelector(".thread-detach-btn");
+        if (itemDetach) itemDetach.tabIndex = 0;
+
         // Retour visuel immédiat (Optimistic UI) uniquement en navigation intra-onglet
         if (navState.mode === "currentTab") {
           item.classList.add("current");
@@ -959,9 +986,15 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         let root = item.closest("#threads-list");
         if (root) {
           let allItems = root.querySelectorAll(".thread-item");
-          for (let it of allItems) it.tabIndex = -1;
+          for (let it of allItems) {
+            it.tabIndex = -1;
+            let d = it.querySelector(".thread-detach-btn");
+            if (d) d.tabIndex = -1;
+          }
         }
         item.tabIndex = 0;
+        let itemDetach = item.querySelector(".thread-detach-btn");
+        if (itemDetach) itemDetach.tabIndex = 0;
         if (item.classList.contains("current")) return;
         activate();
       });
@@ -972,6 +1005,15 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           e.preventDefault();
           if (item.classList.contains("current")) return;
           activate();
+        } else if (e.key === "Delete" || e.key === "Backspace") {
+          // Raccourci clavier de détachement direct sans obligation de tabuler
+          if (msg.isManualLink && msg.manualLinkId && detachManualLinkFire) {
+            e.preventDefault();
+            if (announceLive) {
+              announceLive(labels.optManualLinksDeletedFeedback || "Message détaché");
+            }
+            detachManualLinkFire.async(msg.manualLinkId, msg.id, msg.headerMessageId);
+          }
         } else if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Home" || e.key === "End") {
           // Navigation au clavier WCAG AA par touches directionnelles (Roving Tabindex)
           e.preventDefault();
@@ -992,8 +1034,14 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           }
           if (targetIndex !== currentIndex) {
             item.tabIndex = -1;
+            let currentDetach = item.querySelector(".thread-detach-btn");
+            if (currentDetach) currentDetach.tabIndex = -1;
+
             let targetItem = allItems[targetIndex];
             targetItem.tabIndex = 0;
+            let targetDetach = targetItem.querySelector(".thread-detach-btn");
+            if (targetDetach) targetDetach.tabIndex = 0;
+
             targetItem.focus();
             targetItem.scrollIntoView({ block: "nearest", behavior: "smooth" });
           }
@@ -1043,6 +1091,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         let msgData = threadData.find(m => m.id === msgId);
         let isCurrent = msgId === currentMessageId;
 
+        let isFocusable = isCurrent || (!hasCurrentInThread && i === 0);
         if (isCurrent) {
           item.classList.add("current");
           item.setAttribute("aria-current", "true");
@@ -1052,7 +1101,12 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           item.classList.remove("current");
           item.removeAttribute("aria-current");
           item.removeAttribute("aria-disabled");
-          item.tabIndex = (!hasCurrentInThread && i === 0) ? 0 : -1;
+          item.tabIndex = isFocusable ? 0 : -1;
+        }
+
+        let detachBtn = item.querySelector(".thread-detach-btn");
+        if (detachBtn) {
+          detachBtn.tabIndex = isFocusable ? 0 : -1;
         }
 
         // Mise à jour de l'état non-lu si le message est passé de non-lu à lu (ou réapparition du non-lu)
@@ -1163,18 +1217,37 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         }
       }
 
-      // Wrapper
+      // Wrapper (repère landmark WCAG 1.3.1)
       let wrapper = doc.createElement("div");
       wrapper.className = "threads-wrapper";
+      wrapper.setAttribute("role", "complementary");
+      let panelTitleAccessible = labels.panelTitle ? labels.panelTitle.replace("$COUNT$", threadData.length) : "Fil de discussion";
+      wrapper.setAttribute("aria-label", panelTitleAccessible);
       if (layoutMode === "sidebar") {
         wrapper.classList.add(sidebarPosition === "left" ? "sidebar-left" : "sidebar-right");
       }
+
+      // Région live pour annonces vocales accessibles (détachement, staging, etc.)
+      let liveRegion = doc.createElement("div");
+      liveRegion.id = "threads-live-region";
+      liveRegion.className = "visually-hidden";
+      liveRegion.setAttribute("role", "status");
+      liveRegion.setAttribute("aria-live", "polite");
+      liveRegion.setAttribute("aria-atomic", "true");
+      wrapper.appendChild(liveRegion);
+
+      let announceLive = (text) => {
+        if (!liveRegion) return;
+        liveRegion.textContent = "";
+        liveRegion.textContent = text;
+      };
 
       // Header
       let header = doc.createElement("div");
       header.className = "threads-header";
 
       let title = doc.createElement("span");
+      title.id = "threads-panel-title";
       title.className = "threads-title";
       title.setAttribute("role", "heading");
       title.setAttribute("aria-level", "2");
@@ -1244,6 +1317,8 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         if (isThread && count > 1) {
           let optionsDiv = doc.createElement("div");
           optionsDiv.className = "staging-options";
+          optionsDiv.setAttribute("role", "radiogroup");
+          optionsDiv.setAttribute("aria-label", labels.stagingBannerTitle || "Portée de l'association");
 
           // Option 1 : Fusion complète
           let optMergeLabel = doc.createElement("label");
@@ -1281,6 +1356,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         confirmBtn.textContent = labels.btnConfirmLink || "Confirmer l'association";
         confirmBtn.addEventListener("click", (e) => {
           e.stopPropagation();
+          announceLive(labels.btnConfirmLink || "Association confirmée");
           if (confirmManualLinkFire) {
             let currentMsg = threadData.find(m => m.id === currentMessageId) || threadData[0];
             let tid = hostEl?.dataset?.tabId ? Number(hostEl.dataset.tabId) : undefined;
@@ -1302,6 +1378,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         cancelBtn.textContent = labels.btnCancelLink || "Annuler";
         cancelBtn.addEventListener("click", (e) => {
           e.stopPropagation();
+          announceLive(labels.btnCancelLink || "Association annulée");
           if (cancelManualLinkFire) {
             cancelManualLinkFire.async();
           }
@@ -1317,6 +1394,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       list.id = "threads-list";
       list.className = "threads-list";
       list.setAttribute("role", "list");
+      list.setAttribute("aria-labelledby", "threads-panel-title");
 
       // Mode de navigation courant porté par un objet : buildThreadItem en lit
       // la valeur AU MOMENT du clic (liaison vivante après bascule du bouton).
@@ -1400,7 +1478,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       for (let i = 0; i < threadData.length; i++) {
         let msg = threadData[i];
         let isInitiallyFocusable = hasCurrentInThread ? (msg.id === currentMessageId) : (i === 0);
-        list.appendChild(buildThreadItem(doc, msg, currentMessageId, labels, navState, isInitiallyFocusable));
+        list.appendChild(buildThreadItem(doc, msg, currentMessageId, labels, navState, isInitiallyFocusable, announceLive));
       }
 
       wrapper.appendChild(list);

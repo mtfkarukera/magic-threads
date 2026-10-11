@@ -164,5 +164,133 @@
   "optGlodaDisabledWarning": {
     "message": "Die globale Suche (Gloda) ist in Thunderbird deaktiviert. Magic Threads kann keine Themenbäume aufbauen. Aktivieren Sie „Globale Suche und Nachrichtenindizierung aktivieren“ in den Thunderbird-Einstellungen.",
     "description": "Warning shown in options when the Gloda indexer is disabled"
+  },
+  "menuLinkToThread": {
+    "message": "Mit einem Thema verknüpfen...",
+    "description": "Context menu item to link a message to a thread"
+  },
+  "stagingBannerTitle": {
+    "message": "Themenverknüpfung wird ausgeführt",
+    "description": "Title of the staging banner"
+  },
+  "stagingBannerPromptSingle": {
+    "message": "Diese Nachricht mit der unten stehenden Konversation verknüpfen?",
+    "description": "Prompt for linking a single orphan message"
+  },
+  "stagingBannerPromptThread": {
+    "message": "Diese Konversation ({count} Nachrichten) mit dem Thema unten verknüpfen?",
+    "description": "Prompt for linking a message that has its own thread"
+  },
+  "stagingSourceLabel": {
+    "message": "Quelle:",
+    "description": "Label indicating source message"
+  },
+  "stagingOptionMergeThreads": {
+    "message": "Gesamte Themen zusammenführen (Empfohlen)",
+    "description": "Radio option to merge entire threads"
+  },
+  "stagingOptionSingleMsg": {
+    "message": "Nur diese spezifische Nachricht anhängen",
+    "description": "Radio option to attach single message only"
+  },
+  "btnConfirmLink": {
+    "message": "Verknüpfung bestätigen",
+    "description": "Button to confirm manual thread link"
+  },
+  "btnCancelLink": {
+    "message": "Abbrechen",
+    "description": "Button to cancel manual thread link"
+  },
+  "badgeManualLink": {
+    "message": "Manuell verknüpfte Nachricht",
+    "description": "Badge/tooltip for manually linked messages"
+  },
+  "btnDetachLink": {
+    "message": "Vom Thema trennen",
+    "description": "Button to detach message from thread"
+  },
+  "confirmDetachPrompt": {
+    "message": "Diese Nachricht vom Thema trennen?",
+    "description": "Confirmation prompt before detaching a message"
+  },
+  "optManualLinksGroupTitle": {
+    "message": "Manuell verknüpfte Themen:",
+    "description": "Title of manual links section in options"
+  },
+  "optManualLinksDesc": {
+    "message": "Liste der aktiven manuellen Verknüpfungen, die zum Gruppieren einzelner Nachrichten oder zum Zusammenführen geteilter Konversationen erstellt wurden.",
+    "description": "Description of manual links section in options"
+  },
+  "optManualLinksEmpty": {
+    "message": "Noch keine manuellen Verknüpfungen gespeichert.",
+    "description": "Notice shown when no manual links exist"
+  },
+  "optManualLinksColSource": {
+    "message": "Quellnachricht",
+    "description": "Table column header for source message"
+  },
+  "optManualLinksColTarget": {
+    "message": "Zielthema",
+    "description": "Table column header for target thread"
+  },
+  "optManualLinksColScope": {
+    "message": "Umfang",
+    "description": "Table column header for link scope"
+  },
+  "optManualLinksColDate": {
+    "message": "Datum",
+    "description": "Table column header for creation date"
+  },
+  "optManualLinksColAction": {
+    "message": "Aktionen",
+    "description": "Table column header for actions"
+  },
+  "optManualLinksScopeEntire": {
+    "message": "Gesamtes Thema",
+    "description": "Label for entire thread merge scope"
+  },
+  "optManualLinksScopeSingle": {
+    "message": "Einzelne Nachricht",
+    "description": "Label for single message link scope"
+  },
+  "optManualLinksBtnDelete": {
+    "message": "Verknüpfung löschen",
+    "description": "Tooltip / button label to delete manual link"
+  },
+  "optManualLinksConfirmDelete": {
+    "message": "Sind Sie sicher, dass Sie diese manuelle Verknüpfung löschen möchten?",
+    "description": "Confirmation prompt when deleting link in options"
+  },
+  "optManualLinksDeletedFeedback": {
+    "message": "Manuelle Verknüpfung erfolgreich gelöscht.",
+    "description": "Status feedback after deleting link in options"
+  },
+  "messageDisplayActionTitle": {
+    "message": "Magic Threads — Thema anzeigen / aktualisieren",
+    "description": "Tooltip for message display action button in resting mode"
+  },
+  "messageDisplayActionStagingTooltip": {
+    "message": "Themenverknüpfungsmodus aktiv: Zielthema auswählen oder zum Abbrechen klicken",
+    "description": "Tooltip for message display action button in staging mode"
+  },
+  "menuMergeSelectedMessages": {
+    "message": "🔗 Ausgewählte Nachrichten zusammenführen ($COUNT$)",
+    "description": "Context menu title to directly merge multiple selected messages",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "menuLinkSelectedToThread": {
+    "message": "🎯 Diese Auswahl ($COUNT$ Nachrichten) mit einem anderen Thema verknüpfen...",
+    "description": "Context menu title to stage multiple selected messages for linking",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
   }
 }

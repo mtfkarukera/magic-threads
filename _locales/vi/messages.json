@@ -164,5 +164,133 @@
   "optGlodaDisabledWarning": {
     "message": "Tìm kiếm toàn cục (Gloda) đang bị tắt trong Thunderbird. Magic Threads không thể dựng lại chuỗi thư. Hãy bật “Bật tìm kiếm toàn cục và lập chỉ mục thư” trong cài đặt Thunderbird.",
     "description": "Warning shown in options when the Gloda indexer is disabled"
+  },
+  "menuLinkToThread": {
+    "message": "Liên kết vào một luồng thư...",
+    "description": "Context menu item to link a message to a thread"
+  },
+  "stagingBannerTitle": {
+    "message": "Đang liên kết luồng thư",
+    "description": "Title of the staging banner"
+  },
+  "stagingBannerPromptSingle": {
+    "message": "Liên kết thư này vào cuộc trò chuyện bên dưới?",
+    "description": "Prompt for linking a single orphan message"
+  },
+  "stagingBannerPromptThread": {
+    "message": "Liên kết cuộc trò chuyện này ({count} thư) vào luồng bên dưới?",
+    "description": "Prompt for linking a message that has its own thread"
+  },
+  "stagingSourceLabel": {
+    "message": "Nguồn:",
+    "description": "Label indicating source message"
+  },
+  "stagingOptionMergeThreads": {
+    "message": "Hợp nhất toàn bộ các luồng (Khuyên dùng)",
+    "description": "Radio option to merge entire threads"
+  },
+  "stagingOptionSingleMsg": {
+    "message": "Chỉ gắn riêng thư cụ thể này",
+    "description": "Radio option to attach single message only"
+  },
+  "btnConfirmLink": {
+    "message": "Xác nhận liên kết",
+    "description": "Button to confirm manual thread link"
+  },
+  "btnCancelLink": {
+    "message": "Hủy bỏ",
+    "description": "Button to cancel manual thread link"
+  },
+  "badgeManualLink": {
+    "message": "Thư được liên kết thủ công",
+    "description": "Badge/tooltip for manually linked messages"
+  },
+  "btnDetachLink": {
+    "message": "Tách khỏi luồng",
+    "description": "Button to detach message from thread"
+  },
+  "confirmDetachPrompt": {
+    "message": "Tách thư này khỏi luồng?",
+    "description": "Confirmation prompt before detaching a message"
+  },
+  "optManualLinksGroupTitle": {
+    "message": "Các luồng được liên kết thủ công:",
+    "description": "Title of manual links section in options"
+  },
+  "optManualLinksDesc": {
+    "message": "Danh sách các liên kết thủ công đang hoạt động được tạo để nhóm các thư riêng lẻ hoặc hợp nhất các cuộc trò chuyện bị phân tách.",
+    "description": "Description of manual links section in options"
+  },
+  "optManualLinksEmpty": {
+    "message": "Chưa có liên kết thủ công nào được lưu.",
+    "description": "Notice shown when no manual links exist"
+  },
+  "optManualLinksColSource": {
+    "message": "Thư nguồn",
+    "description": "Table column header for source message"
+  },
+  "optManualLinksColTarget": {
+    "message": "Luồng đích",
+    "description": "Table column header for target thread"
+  },
+  "optManualLinksColScope": {
+    "message": "Phạm vi",
+    "description": "Table column header for link scope"
+  },
+  "optManualLinksColDate": {
+    "message": "Ngày tạo",
+    "description": "Table column header for creation date"
+  },
+  "optManualLinksColAction": {
+    "message": "Thao tác",
+    "description": "Table column header for actions"
+  },
+  "optManualLinksScopeEntire": {
+    "message": "Toàn bộ luồng",
+    "description": "Label for entire thread merge scope"
+  },
+  "optManualLinksScopeSingle": {
+    "message": "Thư đơn lẻ",
+    "description": "Label for single message link scope"
+  },
+  "optManualLinksBtnDelete": {
+    "message": "Xóa liên kết",
+    "description": "Tooltip / button label to delete manual link"
+  },
+  "optManualLinksConfirmDelete": {
+    "message": "Bạn có chắc chắn muốn xóa liên kết thủ công này không?",
+    "description": "Confirmation prompt when deleting link in options"
+  },
+  "optManualLinksDeletedFeedback": {
+    "message": "Đã xóa liên kết thủ công thành công.",
+    "description": "Status feedback after deleting link in options"
+  },
+  "messageDisplayActionTitle": {
+    "message": "Magic Threads — Hiển thị / làm mới luồng thư",
+    "description": "Tooltip for message display action button in resting mode"
+  },
+  "messageDisplayActionStagingTooltip": {
+    "message": "Chế độ liên kết luồng đang hoạt động: hãy chọn một luồng đích hoặc nhấp để hủy",
+    "description": "Tooltip for message display action button in staging mode"
+  },
+  "menuMergeSelectedMessages": {
+    "message": "🔗 Hợp nhất các thư đã chọn ($COUNT$)",
+    "description": "Context menu title to directly merge multiple selected messages",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "menuLinkSelectedToThread": {
+    "message": "🎯 Liên kết phần chọn này ($COUNT$ thư) vào một luồng khác...",
+    "description": "Context menu title to stage multiple selected messages for linking",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
   }
 }
