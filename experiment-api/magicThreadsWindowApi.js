@@ -914,7 +914,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
             e.stopPropagation();
             e.preventDefault();
             if (detachManualLinkFire) {
-              detachManualLinkFire.async(msg.manualLinkId);
+              detachManualLinkFire.async(msg.manualLinkId, msg.id, msg.headerMessageId);
             }
           });
           meta.appendChild(detachBtn);
@@ -954,7 +954,8 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         }
       };
 
-      item.addEventListener("click", () => {
+      item.addEventListener("click", (e) => {
+        if (e.target && e.target.classList.contains("thread-detach-btn")) return;
         let root = item.closest("#threads-list");
         if (root) {
           let allItems = root.querySelectorAll(".thread-item");
@@ -965,6 +966,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         activate();
       });
       item.addEventListener("keydown", (e) => {
+        if (e.target && e.target.classList.contains("thread-detach-btn")) return;
         if (e.key === "Enter" || e.key === " ") {
           // Espace ou Entrée : activer l'item
           e.preventDefault();

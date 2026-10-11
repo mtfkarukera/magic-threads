@@ -46,7 +46,7 @@ Point d'entrée de l'extension. Responsabilités :
 - **Détection du contexte** : distingue la vue 3-pane des onglets message
 - **Workflow de liaison manuelle (Staging)** : gère le menu contextuel `browser.menus` (`message_list`), conserve l'état de pré-liaison (`pendingStagingState`), maintient le panneau ouvert sur les messages cibles orphelins, et écoute les événements d'action (`onConfirmManualLink`, `onCancelManualLink`, `onDetachManualLink`)
 
-#### `background/manualLinksManager.js` (v2.7.1)
+#### `background/manualLinksManager.js` (v2.7.2)
 
 Gestionnaire CRUD de persistance pour l'Overlay Virtuel dans `browser.storage.local` basé sur un modèle de **Clusters de Conversation** (`ConversationCluster`) :
 
@@ -56,7 +56,8 @@ Gestionnaire CRUD de persistance pour l'Overlay Virtuel dans `browser.storage.lo
 - Support de la multi-sélection directe (`addMultiMessageCluster`) pour réunir plusieurs e-mails d'un seul clic
 - **Auto-consolidation (Self-Healing Overlay)** via `healCluster()` : réinjecte asynchronement dans le cluster les Message-IDs et ancres numériques nouvellement découverts lors des résolutions dynamiques de Gloda
 - **Recherche résiliente avec ancre de secours** : `getClustersForMessage()` et `getClustersForHeaderIds()` interrogent à la fois la collection de Message-IDs et l'identifiant numérique WebExtension d'ancre
-- Méthodes exposées : `getAllLinks()`, `addLink()`, `addMultiMessageCluster()`, `removeLink()`, `removeLinksByHeaderId()`, `getClustersForHeaderIds()`, `getClustersForMessage()`, `healCluster()`
+- **Déliaison intelligente & Découplage sémantique** via `detachMessageFromCluster()` (v2.7.2) : différencie le retrait chirurgical d'un message orphelin (seul ce message est extrait du cluster) du découplage de branches complètes (tous les messages du fil natif Gloda sont désolidarisés en bloc), avec dissolution automatique des clusters résiduels devenus orphelins
+- Méthodes exposées : `getAllLinks()`, `addLink()`, `addMultiMessageCluster()`, `removeLink()`, `removeLinksByHeaderId()`, `getClustersForHeaderIds()`, `getClustersForMessage()`, `healCluster()`, `detachMessageFromCluster()`
 
 #### `background/threadResolver.js` (v2.7.1)
 
@@ -276,9 +277,12 @@ flowchart TD
    - Offre une annulation ergonomique en un clic sans friction.
    - Cloisonnement par compte de messagerie (`sourceAccountId`) et expiration automatique avec TTL de 10 minutes pour prévenir toute association involontaire inter-comptes.
 5. **Fiabilisation de l'événement de confirmation** : Le Shadow DOM passe un `targetContext` explicite (`tabId`, `targetMessageId`, `targetHeaderId`, liste des en-têtes cibles) lors du clic sur `[Confirmer l'association]`, éliminant les devinettes asynchrones sur l'onglet actif.
-6. **Réversibilité instantanée** :
-   - Clic sur le bouton de détachement rapide `×` d'un message : déclenche `onDetachManualLink` et supprime la liaison correspondante.
-   - Tableau de gestion dans les Options : suppression unitaire avec rafraîchissement dynamique.
+6. **Réversibilité instantanée & Déliaison Intelligente (v2.7.2)** :
+   - Clic sur le bouton de détachement rapide `×` d'un message : déclenche `onDetachManualLink(manualLinkId, messageId, headerMessageId)`.
+   - Si le message est un e-mail orphelin, seul cet e-mail est extrait du cluster (retrait unitaire).
+   - Si le message appartient à un fil natif Thunderbird (taille > 1), l'ensemble de la branche native est découplée en bloc.
+   - Les clusters ne reliant plus qu'une seule entité native sont automatiquement dissous pour éviter tout cluster résiduel fantôme.
+   - Tableau de gestion dans les Options : suppression unitaire de cluster complet avec rafraîchissement dynamique.
 
 ## Distribution & Auto-Update Autonome
 

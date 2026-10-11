@@ -5,6 +5,16 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.7.2] - 2026-10-11
+
+### Corrigé
+- **Déliaison Intelligente & Découplage Sémantique ([manualLinksManager.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/manualLinksManager.js), [magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js), [magicThreadsWindowSchema.json](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowSchema.json), [background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js))** :
+  - **Détachement granulaire des messages orphelins (`detachMessageFromCluster`)** : sortir un e-mail orphelin d'une conversation ne supprime plus l'ensemble du cluster. Seul le message sélectionné est extrait unitairement de `storage.local`, préservant l'intégrité de tous les autres messages et fils rattachés.
+  - **Découplage propre des branches fusionnées** : lorsqu'un e-mail appartenant à un fil natif (taille > 1) est détaché, l'intégralité des messages de cette branche native est désolidarisée en bloc, restaurant l'indépendance mutuelle des deux conversations sans scission partielle artificielle.
+  - **Auto-dissolution des clusters résiduels** : détection et nettoyage automatique des clusters ne reliant plus qu'une seule entité native pour éliminer les liaisons fantômes orphelines.
+  - **Transmission du contexte de message** : enrichissement de l'événement `onDetachManualLink` avec `messageId` et `headerMessageId` pour cibler avec exactitude l'e-mail cliqué.
+  - **Accessibilité clavier [A11Y-01]** : correction de l'interception clavier pour permettre l'activation native du bouton détacher `×` via les touches Espace et Entrée.
+
 ## [2.7.1] - 2026-10-11
 
 ### Corrigé

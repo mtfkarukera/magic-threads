@@ -271,6 +271,18 @@
             "name": "manualLinkId",
             "type": "string",
             "description": "Identifiant de la liaison à révoquer."
+          },
+          {
+            "name": "messageId",
+            "type": "integer",
+            "optional": true,
+            "description": "Identifiant numérique du message cliqué."
+          },
+          {
+            "name": "headerMessageId",
+            "type": "string",
+            "optional": true,
+            "description": "En-tête Message-ID RFC 822 du message cliqué."
           }
         ]
       }

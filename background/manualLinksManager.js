@@ -243,6 +243,125 @@ export class ManualLinksManager {
   }
 
   /**
+   * Détache intelligemment un message ou une branche d'un cluster.
+   * - Si le message est orphelin (fil natif de taille 1) : seul ce message est retiré.
+   * - Si le message appartient à un fil natif (taille > 1) : l'ensemble des messages
+   *   de ce fil natif sont retirés (découplage de la branche).
+   * - Si le cluster résiduel ne relie plus au moins 2 entités distinctes, il est dissous.
+   *
+   * @param {object} params
+   * @param {string} params.clusterId - Identifiant du cluster.
+   * @param {number} [params.messageId] - Identifiant numérique WebExtension du message cliqué.
+   * @param {string} [params.headerMessageId] - En-tête RFC 822 du message cliqué.
+   * @returns {Promise<boolean>} True si le cluster a été modifié ou dissous.
+   */
+  static async detachMessageFromCluster({ clusterId, messageId, headerMessageId }) {
+    if (!clusterId) return false;
+
+    const normHeader = normalizeMessageId(headerMessageId);
+    const validMsgId = typeof messageId === "number" && messageId > 0 ? messageId : null;
+
+    // Si ni messageId ni headerMessageId ne sont fournis, repli sur la suppression globale
+    if (!validMsgId && !normHeader) {
+      return this.removeLink(clusterId);
+    }
+
+    const links = await this.getAllLinks();
+    const clusterIndex = links.findIndex(l => (l.clusterId || l.id) === clusterId);
+    if (clusterIndex === -1) {
+      return this.removeLink(clusterId);
+    }
+
+    const cluster = links[clusterIndex];
+
+    // Collecte des identifiants du fil natif du message cliqué
+    let headersToRemove = new Set();
+    let anchorsToRemove = new Set();
+
+    if (normHeader) headersToRemove.add(normHeader);
+    if (validMsgId) anchorsToRemove.add(validMsgId);
+
+    try {
+      let nativeMsgs = [];
+      if (validMsgId && browser.convGloda?.getThreadMessages) {
+        nativeMsgs = await browser.convGloda.getThreadMessages(validMsgId);
+      } else if (normHeader && browser.convGloda?.getThreadByHeaderId) {
+        nativeMsgs = await browser.convGloda.getThreadByHeaderId(normHeader);
+      }
+
+      if (Array.isArray(nativeMsgs) && nativeMsgs.length > 1) {
+        // Le message appartient à un fil natif complet (branche).
+        // On soustrait l'ensemble des messages de cette branche.
+        for (let m of nativeMsgs) {
+          let h = normalizeMessageId(m.headerMessageId);
+          if (h) headersToRemove.add(h);
+          if (typeof m.id === "number" && m.id > 0) anchorsToRemove.add(m.id);
+        }
+      }
+    } catch (err) {
+      console.warn("Magic Threads: Erreur lors de la résolution du fil natif pour détachement :", err);
+    }
+
+    // Soustraction des identifiants
+    let remainingHeaders = (cluster.allHeaderIds || [])
+      .map(normalizeMessageId)
+      .filter(h => h && !headersToRemove.has(h));
+
+    let remainingAnchors = (cluster.anchorMessageIds || [])
+      .filter(id => typeof id === "number" && id > 0 && !anchorsToRemove.has(id));
+
+    // Contrôle de viabilité résiduelle :
+    // Si la liste des en-têtes restants est <= 1, le cluster ne relie plus rien
+    if (remainingHeaders.length <= 1) {
+      links.splice(clusterIndex, 1);
+      await browser.storage.local.set({ [STORAGE_KEY]: links });
+      return true;
+    }
+
+    // Vérifier si tous les messages restants appartiennent au même fil natif
+    try {
+      let sampleAnchor = remainingAnchors[0];
+      let sampleHeader = remainingHeaders[0];
+      let remainingNative = [];
+
+      if (sampleAnchor && browser.convGloda?.getThreadMessages) {
+        remainingNative = await browser.convGloda.getThreadMessages(sampleAnchor);
+      } else if (sampleHeader && browser.convGloda?.getThreadByHeaderId) {
+        remainingNative = await browser.convGloda.getThreadByHeaderId(sampleHeader);
+      }
+
+      if (Array.isArray(remainingNative) && remainingNative.length > 0) {
+        let remainingNativeSet = new Set(
+          remainingNative.map(m => normalizeMessageId(m.headerMessageId)).filter(Boolean)
+        );
+        let allBelongToSameNativeThread = remainingHeaders.every(h => remainingNativeSet.has(h));
+        if (allBelongToSameNativeThread) {
+          // Tous les messages restants sont déjà naturellement groupés par Thunderbird,
+          // le cluster n'a plus lieu d'exister.
+          links.splice(clusterIndex, 1);
+          await browser.storage.local.set({ [STORAGE_KEY]: links });
+          return true;
+        }
+      }
+    } catch (err) {
+      console.warn("Magic Threads: Erreur lors du contrôle de viabilité résiduelle :", err);
+    }
+
+    // Le cluster contient encore au moins deux entités distinctes : sauvegarde
+    links[clusterIndex] = {
+      ...cluster,
+      sourceHeaderId: remainingHeaders[0],
+      targetHeaderId: remainingHeaders[1] || remainingHeaders[0],
+      allHeaderIds: remainingHeaders,
+      anchorMessageIds: remainingAnchors,
+      updatedAt: Date.now()
+    };
+
+    await browser.storage.local.set({ [STORAGE_KEY]: links });
+    return true;
+  }
+
+  /**
    * Supprime une liaison manuelle ou un cluster d'après son identifiant unique.
    * @param {string} linkId - Identifiant de la liaison ou du cluster.
    * @returns {Promise<boolean>} true si la liaison a été supprimée.

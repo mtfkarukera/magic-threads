@@ -596,21 +596,33 @@ browser.magicThreadsWindow.onCancelManualLink.addListener(async () => {
   }
 });
 
-browser.magicThreadsWindow.onDetachManualLink.addListener(async (manualLinkId) => {
+browser.magicThreadsWindow.onDetachManualLink.addListener(async (manualLinkId, messageId, headerMessageId) => {
   try {
     if (!manualLinkId) return;
-    await ManualLinksManager.removeLink(manualLinkId);
+    await ManualLinksManager.detachMessageFromCluster({
+      clusterId: manualLinkId,
+      messageId,
+      headerMessageId
+    });
     await updateActionState(false);
 
     let [activeTab] = await browser.tabs.query({ active: true, currentWindow: true }).catch(() => []);
     if (!activeTab) return;
+
+    let targetMsg = null;
     let targetMsgId = tabLastMessageId.get(activeTab.id);
     if (targetMsgId) {
-      let targetMsg = await browser.messages.get(targetMsgId).catch(() => null);
-      if (targetMsg) {
-        tabLastMessageId.delete(activeTab.id);
-        await showThreadForMessage(activeTab, targetMsg);
+      targetMsg = await browser.messages.get(targetMsgId).catch(() => null);
+    }
+    if (!targetMsg && browser.mailTabs?.getSelectedMessages) {
+      let selection = await browser.mailTabs.getSelectedMessages(activeTab.id).catch(() => null);
+      if (selection?.messages?.length > 0) {
+        targetMsg = selection.messages[0];
       }
+    }
+    if (targetMsg) {
+      tabLastMessageId.delete(activeTab.id);
+      await showThreadForMessage(activeTab, targetMsg);
     }
   } catch (e) {
     console.error("Magic Threads: Erreur lors de la dissociation :", e);
