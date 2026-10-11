@@ -116,8 +116,10 @@ magic-threads-b/
 │   ├── magicThreadsWindowApi.js           # Experiment API Window (DOM, Shadow DOM, Staging)
 │   └── magicThreadsWindowSchema.json      # Schéma de l'API Window
 ├── options/
-│   ├── options.html                       # Page de paramètres & gestionnaire de liaisons
-│   └── options.js                         # Persistance et suppression des liaisons
+│   ├── links.html                         # Gestionnaire dédié des liaisons manuelles (grand format)
+│   ├── links.js                           # Recherche instantanée et synchronisation temps réel
+│   ├── options.html                       # Page de paramètres & carte récapitulative
+│   └── options.js                         # Persistance et synchronisation des options
 ├── _locales/                              # Fichiers de traduction i18n
 ├── LICENSE                                # Mozilla Public License 2.0
 ├── README.md                              # Ce fichier

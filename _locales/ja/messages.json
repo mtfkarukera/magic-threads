@@ -292,5 +292,29 @@
         "example": "3"
       }
     }
+  },
+  "optManualLinksBtnOpenManager": {
+    "message": "手動リンクを管理",
+    "description": "Button label in options to open the dedicated manual links manager"
+  },
+  "linksPageTitle": {
+    "message": "手動スレッドリンクマネージャー",
+    "description": "Page heading for dedicated manual links manager"
+  },
+  "linksPageSearchPlaceholder": {
+    "message": "件名または送信者で絞り込み…",
+    "description": "Placeholder for search input in links manager"
+  },
+  "linksPageBackToOptions": {
+    "message": "← Magic Threads 設定",
+    "description": "Back link to options page"
+  },
+  "linksPageCountActive": {
+    "message": "件のアクティブなリンク",
+    "description": "Counter suffix for active links"
+  },
+  "linksPageEmptySearch": {
+    "message": "検索条件に一致するリンクはありません。",
+    "description": "Notice when search filter returns 0 results"
   }
 }

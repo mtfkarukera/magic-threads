@@ -292,5 +292,29 @@
         "example": "3"
       }
     }
+  },
+  "optManualLinksBtnOpenManager": {
+    "message": "Quản lý liên kết thủ công",
+    "description": "Button label in options to open the dedicated manual links manager"
+  },
+  "linksPageTitle": {
+    "message": "Trình quản lý liên kết luồng thủ công",
+    "description": "Page heading for dedicated manual links manager"
+  },
+  "linksPageSearchPlaceholder": {
+    "message": "Lọc theo chủ đề hoặc người gửi…",
+    "description": "Placeholder for search input in links manager"
+  },
+  "linksPageBackToOptions": {
+    "message": "← Tùy chọn Magic Threads",
+    "description": "Back link to options page"
+  },
+  "linksPageCountActive": {
+    "message": "liên kết đang hoạt động",
+    "description": "Counter suffix for active links"
+  },
+  "linksPageEmptySearch": {
+    "message": "Không có liên kết nào khớp với tìm kiếm của bạn.",
+    "description": "Notice when search filter returns 0 results"
   }
 }

@@ -292,5 +292,29 @@
         "example": "3"
       }
     }
+  },
+  "optManualLinksBtnOpenManager": {
+    "message": "Gestionar enlaces manuales",
+    "description": "Button label in options to open the dedicated manual links manager"
+  },
+  "linksPageTitle": {
+    "message": "Gestor de enlaces manuales de hilos",
+    "description": "Page heading for dedicated manual links manager"
+  },
+  "linksPageSearchPlaceholder": {
+    "message": "Filtrar por asunto o remitente…",
+    "description": "Placeholder for search input in links manager"
+  },
+  "linksPageBackToOptions": {
+    "message": "← Preferencias de Magic Threads",
+    "description": "Back link to options page"
+  },
+  "linksPageCountActive": {
+    "message": "enlace(s) activo(s)",
+    "description": "Counter suffix for active links"
+  },
+  "linksPageEmptySearch": {
+    "message": "Ningún enlace coincide con su búsqueda.",
+    "description": "Notice when search filter returns 0 results"
   }
 }

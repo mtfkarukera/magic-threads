@@ -4,6 +4,23 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
+## [2.10.0] - 2026-10-11
+
+### Ajouté
+- **Gestionnaire Dédié des Fils Associés Manuellement ([options/links.html](file:///Users/mtfkarukera/Scripts/magic-threads-b/options/links.html), [options/links.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/options/links.html))** :
+  - Création d'une page d'administration grand format (~1000px) dédiée à la consultation, la recherche et la gestion des liaisons de fils manuels.
+  - Champ de recherche instantané filtrant en temps réel sur les sujets et expéditeurs des messages sources et cibles.
+  - Compteur dynamique de liaisons actives et bouton retour rapide vers les préférences.
+  - Suppression unitaire avec retour vocal (`role="status"` / `aria-live="polite"`) et synchronisation temps réel inter-onglets via `browser.storage.onChanged`.
+- **Allègement de la Page d'Options Principale ([options/options.html](file:///Users/mtfkarukera/Scripts/magic-threads-b/options/options.html), [options/options.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/options/options.js))** :
+  - Remplacement de l'ancien tableau compressé de 600px par une carte récapitulative élégante affichant le nombre de liaisons actives et un bouton d'accès direct vers le gestionnaire complet.
+
+### Sécurité & Robustesse
+- **Conformité DOM & CSP Stricte (Règles 6, 11 & 12)** :
+  - Zéro injection `innerHTML`, `outerHTML` ou `insertAdjacentHTML` : 100% de la page et du tableau sont construits via des méthodes DOM pures (`createElement`, `createElementNS` et `textContent`).
+  - Zéro dialogue bloquant `window.confirm`/`window.alert` (Règle 14).
+  - Mutex transactionnel de stockage `withStorageLock` préservé lors des suppressions asynchrones.
+
 ## [2.9.3] - 2026-10-11
 
 ### Corrigé

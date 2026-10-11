@@ -292,5 +292,29 @@
         "example": "3"
       }
     }
+  },
+  "optManualLinksBtnOpenManager": {
+    "message": "Manuelle Verknüpfungen verwalten",
+    "description": "Button label in options to open the dedicated manual links manager"
+  },
+  "linksPageTitle": {
+    "message": "Manager für manuelle Thread-Verknüpfungen",
+    "description": "Page heading for dedicated manual links manager"
+  },
+  "linksPageSearchPlaceholder": {
+    "message": "Nach Betreff oder Absender filtern…",
+    "description": "Placeholder for search input in links manager"
+  },
+  "linksPageBackToOptions": {
+    "message": "← Magic Threads Einstellungen",
+    "description": "Back link to options page"
+  },
+  "linksPageCountActive": {
+    "message": "aktive Verknüpfung(en)",
+    "description": "Counter suffix for active links"
+  },
+  "linksPageEmptySearch": {
+    "message": "Keine Verknüpfungen entsprechen Ihrer Suche.",
+    "description": "Notice when search filter returns 0 results"
   }
 }

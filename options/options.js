@@ -3,28 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 const storage = browser.storage.sync || browser.storage.local;
-const SVG_NS = "http://www.w3.org/2000/svg";
 
-/**
- * Crée une icône poubelle SVG monochrome (14x14) sans innerHTML.
- */
-function createTrashIcon() {
-  const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("width", "14");
-  svg.setAttribute("height", "14");
-  svg.setAttribute("viewBox", "0 0 16 16");
-  svg.setAttribute("fill", "currentColor");
-  svg.setAttribute("aria-hidden", "true");
-  svg.setAttribute("focusable", "false");
-  svg.style.display = "inline-block";
-  svg.style.verticalAlign = "middle";
-
-  const path = document.createElementNS(SVG_NS, "path");
-  path.setAttribute("fill-rule", "evenodd");
-  path.setAttribute("d", "M5 3.25V4H2.75a.75.75 0 0 0 0 1.5h.3l.81 7.29A2 2 0 0 0 5.85 14.5h4.3a2 2 0 0 0 1.99-1.71l.81-7.29h.3a.75.75 0 0 0 0-1.5H11v-.75A1.75 1.75 0 0 0 9.25 1.5h-2.5A1.75 1.75 0 0 0 5 3.25zm1.5 0a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V4h-3v-.75zM4.56 5.5l.74 6.64a.5.5 0 0 0 .5.43h4.4a.5.5 0 0 0 .5-.43l.74-6.64H4.56z");
-  svg.appendChild(path);
-  return svg;
-}
 
 /**
  * Localise tous les éléments avec l'attribut data-i18n.
@@ -151,15 +130,11 @@ async function checkGlodaStatus() {
 }
 
 /**
- * Charge et affiche les liaisons manuelles actives dans le tableau de gestion.
+ * Met à jour le récapitulatif des liaisons manuelles dans la page d'options.
  */
 async function loadManualLinks() {
-  const container = document.getElementById("manual-links-container");
-  if (!container) return;
-
-  while (container.firstChild) {
-    container.firstChild.remove();
-  }
+  const countEl = document.getElementById("manual-links-count-text");
+  if (!countEl) return;
 
   try {
     let links = [];
@@ -175,116 +150,11 @@ async function loadManualLinks() {
     }
 
     if (links.length === 0) {
-      let emptyMsg = document.createElement("div");
-      emptyMsg.className = "empty-links-notice";
-      emptyMsg.textContent = browser.i18n.getMessage("optManualLinksEmpty") || "Aucune liaison manuelle enregistrée pour le moment.";
-      container.appendChild(emptyMsg);
-      return;
+      countEl.textContent = browser.i18n.getMessage("optManualLinksEmpty") || "Aucune liaison manuelle enregistrée pour le moment.";
+    } else {
+      const countSuffix = browser.i18n.getMessage("linksPageCountActive") || "liaison(s) active(s)";
+      countEl.textContent = `${links.length} ${countSuffix}`;
     }
-
-    let table = document.createElement("table");
-    table.className = "links-table";
-
-    let thead = document.createElement("thead");
-    let headerRow = document.createElement("tr");
-
-    const cols = [
-      browser.i18n.getMessage("optManualLinksColSource") || "Message Source",
-      browser.i18n.getMessage("optManualLinksColTarget") || "Fil Cible",
-      browser.i18n.getMessage("optManualLinksColScope") || "Portée",
-      browser.i18n.getMessage("optManualLinksColDate") || "Date",
-      browser.i18n.getMessage("optManualLinksColAction") || "Actions"
-    ];
-
-    for (let colText of cols) {
-      let th = document.createElement("th");
-      th.setAttribute("scope", "col");
-      th.textContent = colText;
-      headerRow.appendChild(th);
-    }
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-
-    let tbody = document.createElement("tbody");
-
-    for (let link of links) {
-      let row = document.createElement("tr");
-
-      // Source
-      let tdSource = document.createElement("td");
-      let sourceTitle = link.sourceSubject || link.sourceHeaderId || "?";
-      tdSource.textContent = sourceTitle + (link.sourceAuthor ? ` (${link.sourceAuthor})` : "");
-      row.appendChild(tdSource);
-
-      // Target
-      let tdTarget = document.createElement("td");
-      let targetTitle = link.targetSubject || link.targetHeaderId || "?";
-      tdTarget.textContent = targetTitle + (link.targetAuthor ? ` (${link.targetAuthor})` : "");
-      row.appendChild(tdTarget);
-
-      // Portée
-      let tdScope = document.createElement("td");
-      tdScope.textContent = link.scope === "entire_thread"
-        ? (browser.i18n.getMessage("optManualLinksScopeEntire") || "Fil complet")
-        : (browser.i18n.getMessage("optManualLinksScopeSingle") || "Message unique");
-      row.appendChild(tdScope);
-
-      // Date
-      let tdDate = document.createElement("td");
-      if (link.createdAt) {
-        let d = new Date(link.createdAt);
-        tdDate.textContent = d.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" });
-      } else {
-        tdDate.textContent = "-";
-      }
-      row.appendChild(tdDate);
-
-      // Action
-      let tdAction = document.createElement("td");
-      let delBtn = document.createElement("button");
-      delBtn.className = "delete-link-btn";
-      delBtn.appendChild(createTrashIcon());
-      delBtn.title = browser.i18n.getMessage("optManualLinksBtnDelete") || "Supprimer la liaison";
-      delBtn.setAttribute("aria-label", browser.i18n.getMessage("optManualLinksBtnDelete") || "Supprimer la liaison");
-      delBtn.addEventListener("click", async () => {
-        let success = false;
-        if (typeof browser.runtime?.sendMessage !== "undefined") {
-          let res = await browser.runtime.sendMessage({
-            action: "removeManualLink",
-            linkId: link.id
-          }).catch(() => null);
-          success = !!res?.success;
-        }
-
-        // Repli direct si le background n'est pas joignable
-        if (!success) {
-          let currentData = await browser.storage.local.get({ manualThreadLinks: [] });
-          let currentLinks = Array.isArray(currentData.manualThreadLinks) ? currentData.manualThreadLinks : [];
-          let updated = currentLinks.filter(l => l.id !== link.id);
-          await browser.storage.local.set({ manualThreadLinks: updated });
-          success = true;
-        }
-
-        const status = document.getElementById("status");
-        if (status && success) {
-          status.textContent = browser.i18n.getMessage("optManualLinksDeletedFeedback") || "Liaison supprimée avec succès.";
-          status.classList.add("show");
-          setTimeout(() => {
-            status.classList.remove("show");
-            status.textContent = "";
-          }, 2000);
-        }
-
-        loadManualLinks();
-      });
-      tdAction.appendChild(delBtn);
-      row.appendChild(tdAction);
-
-      tbody.appendChild(row);
-    }
-
-    table.appendChild(tbody);
-    container.appendChild(table);
   } catch (e) {
     console.error("Magic Threads: Erreur lors du chargement des liaisons manuelles:", e);
   }
@@ -308,5 +178,14 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll('input[name="threadOrder"]').forEach((radio) => {
     radio.addEventListener("change", saveOptions);
   });
+
+  // Synchronisation temps réel si les liaisons sont modifiées depuis le gestionnaire ou un volet
+  if (typeof browser.storage?.onChanged !== "undefined") {
+    browser.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName === "local" && changes.manualThreadLinks) {
+        loadManualLinks();
+      }
+    });
+  }
 });
 

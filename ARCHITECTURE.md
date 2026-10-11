@@ -146,8 +146,16 @@ Page de paramètres accessible depuis le gestionnaire de modules complémentaire
 - **Position du panneau** en vue 3-pane : bottom, gauche ou droite
 - **Ordre de tri** : antichronologique ou chronologique
 - **Toast Flottant Moderne (v2.9.0)** : Composant fixe animé (`position: fixed; bottom: 24px; right: 24px`) avec ombre douce et respect de `role="status"` (`aria-live="polite"`).
-- **Gestionnaire des liaisons manuelles (v2.6.0 & v2.9.0)** : Tableau accessible (WCAG 2.1 AA) listant l'intégralité des liaisons enregistrées (source, cible, portée, date) avec bouton de suppression SVG vectoriel et annonce vocale (`role="status"`).
-- Persistance des préférences via `browser.storage.sync` (avec fallback depuis `browser.storage.local`) et gestion directe des liaisons dans `browser.storage.local`.
+- **Carte Récapitulative des Liaisons (v2.10.0)** : Remplacement de l'ancien tableau compressé par une carte moderne affichant le nombre de liaisons actives et un bouton d'accès direct vers le gestionnaire dédié pleine page.
+- Persistance des préférences via `browser.storage.sync` (avec fallback depuis `browser.storage.local`) et synchronisation temps réel avec `browser.storage.onChanged`.
+
+#### `options/links.html` + `links.js` (v2.10.0)
+
+Gestionnaire dédié des fils associés manuellement (grand format ~1000px) :
+- **Interface Pleine Page Accessible** : Page dédiée ouverte dans un onglet autonome avec repères sémantiques complets (`nav`, `header`, `main`), tokens système Supernova (`Canvas`, `CanvasText`), en-tête avec bouton retour vers les options et compteur dynamique de liaisons.
+- **Recherche Instantanée In-Memory** : Filtrage en temps réel ultra-rapide sur le sujet et l'expéditeur des messages source et cible, insensible à la casse et protégé contre les dégradations de performance.
+- **Sécurité & Intégrité Strictes** : Rendu DOM 100% sécurisé (strictement aucun `innerHTML`, usage exclusif de `createElement` et `textContent`), conformité totale CSP MV2 (`script-src 'self'`).
+- **Opérations Atomiques** : Suppression de liaisons déléguée au background via `removeManualLink` avec synchronisation sous mutex `withStorageLock`, notifications de feedback via toast flottant et synchronisation instantanée inter-onglets via `browser.storage.onChanged`.
 
 ## Structure du Shadow DOM
 
