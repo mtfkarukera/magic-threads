@@ -4,6 +4,14 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
+## [2.9.3] - 2026-10-11
+
+### Corrigé
+- **Harmonisation des Indicateurs de Statut & Scannabilité des Cartes ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - Regroupement de l'indicateur de pièces jointes (`📎`) et du badge de lien manuel (`🔗`) au sein d'un conteneur flex unifié (`.thread-indicators`) occupant la cellule supérieure droite de l'en-tête de carte.
+  - Résolution de la création d'une ligne intermédiaire orpheline dans la grille CSS de la sidebar lorsque le message possédait à la fois une pièce jointe et un lien manuel.
+  - Garantie d'une hauteur d'en-tête rigoureusement constante de **2 lignes nettes** sur toutes les cartes, rétablissant un rythme vertical uniforme et une scannabilité visuelle instantanée.
+
 ## [2.9.2] - 2026-10-11
 
 ### Corrigé

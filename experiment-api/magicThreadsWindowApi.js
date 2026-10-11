@@ -309,21 +309,26 @@ const SHARED_CSS = `
           font-weight: 500;
         }
 
-        .thread-attachment {
-          display: inline-block;
-          font-size: 0.85em;
-          color: var(--text-muted);
+        .thread-indicators {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
           margin-left: 4px;
-          vertical-align: middle;
+          flex-shrink: 0;
+        }
+
+        .thread-attachment {
+          display: inline-flex;
+          align-items: center;
+          color: var(--text-muted);
+          line-height: 1;
         }
 
         .thread-badge-manual {
-          display: inline-block;
-          font-size: 0.85em;
+          display: inline-flex;
+          align-items: center;
           color: var(--accent-text);
-          font-weight: 500;
-          margin-left: 4px;
-          vertical-align: middle;
+          line-height: 1;
         }
 
         .thread-detach-btn {
@@ -540,10 +545,11 @@ const SIDEBAR_CSS = `
           text-overflow: ellipsis;
           white-space: nowrap;
         }
-        .thread-attachment {
+        .thread-indicators {
           grid-column: 2;
           grid-row: 1;
           justify-self: end;
+          margin-left: 0;
         }
         .thread-date {
           grid-column: 1;
@@ -1055,12 +1061,21 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       folderBadge.textContent = getFolderLabel(msg.folder, labels);
       meta.appendChild(folderBadge);
 
+      let indicators = null;
+      let ensureIndicators = () => {
+        if (!indicators) {
+          indicators = doc.createElement("span");
+          indicators.className = "thread-indicators";
+        }
+        return indicators;
+      };
+
       if (msg.hasAttachments) {
         let clip = doc.createElement("span");
         clip.className = "thread-attachment";
         clip.title = labels.tooltipAttachment;
         clip.appendChild(createPaperclipIcon(doc));
-        meta.appendChild(clip);
+        ensureIndicators().appendChild(clip);
       }
 
       if (msg.isManualLink) {
@@ -1069,7 +1084,11 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         linkBadge.title = labels.badgeManualLink || "Message rattaché manuellement";
         linkBadge.setAttribute("aria-label", labels.badgeManualLink || "Message rattaché manuellement");
         linkBadge.appendChild(createLinkIcon(doc));
-        meta.appendChild(linkBadge);
+        ensureIndicators().appendChild(linkBadge);
+      }
+
+      if (indicators) {
+        meta.appendChild(indicators);
       }
 
       item.appendChild(meta);
