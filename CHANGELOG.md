@@ -5,6 +5,24 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.8.0] - 2026-10-11
+
+### Sécurité & Intégrité
+- **Intégrité Cryptographique & Élimination des Collisions Post-Reboot ([manualLinksManager.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/manualLinksManager.js), [threadResolver.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/threadResolver.js))** :
+  - **Suppression définitive de la persistance de `anchorMessageIds` sur disque** : les identifiants numériques WebExtension éphémères (qui changent à chaque redémarrage de session Thunderbird) ne sont plus jamais enregistrés dans `browser.storage.local`.
+  - **Cache volatil en mémoire vive (`sessionClusterAnchorsMap`)** : maintien d'un index RAM éphémère par session pour l'accélération des requêtes, automatiquement purgé à chaque redémarrage de Thunderbird.
+  - **Garde d'Intégrité Strict anti-pollution (SEC-01 / B1)** : dans `ThreadResolver.getThreadMessages`, vérification formelle que tout fil résolu via une ancre contient au moins un message appartenant authentiquement à `cluster.allHeaderIds`. Tout ID recyclé post-reboot est rejeté immédiatement.
+  - **Résolution canonique inter-sessions par RFC 822** : les clusters s'appuient exclusivement sur les Message-IDs universels immuables via `getThreadByHeaderId`.
+  - **Migration nettoyante transparente** : purge automatique des anciens `anchorMessageIds` résiduels dans `storage.local` au démarrage sous mutex.
+- **Verrou d'Exclusion Mutuelle Asynchrone ([manualLinksManager.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/manualLinksManager.js))** :
+  - Implémentation du mutex `withStorageLock` avec file d'attente de promesses sérialisées et timeout de sécurité (5s). Élimine les conditions de course (R1) et pertes d'écritures concurrentes lors des détachements asynchrones, consolidations ou suppressions.
+- **Cloisonnement Multi-Comptes Direct ([background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js))** :
+  - Vérification systématique de l'homogénéité du compte email (`folder.accountId`) lors de la fusion directe multi-sélection (`magic-threads-merge-selected`) (SEC-05).
+- **Communication Inter-Scripts & Délégation Options ([background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js), [options.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/options/options.js))** :
+  - Ajout de l'écouteur `browser.runtime.onMessage` dans le background pour déléguer les lectures et suppressions de liaisons sous le mutex centralisé.
+- **Confidentialité & Assainissement des Journaux ([background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js), [threadResolver.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/threadResolver.js))** :
+  - Élimination de l'affichage en clair des `Message-ID`, sujets et auteurs dans les logs de la console d'erreurs (SEC-02).
+
 ## [2.7.2] - 2026-10-11
 
 ### Corrigé

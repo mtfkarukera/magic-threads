@@ -140,8 +140,17 @@ async function loadManualLinks() {
   }
 
   try {
-    const data = await browser.storage.local.get({ manualThreadLinks: [] });
-    const links = Array.isArray(data.manualThreadLinks) ? data.manualThreadLinks : [];
+    let links = [];
+    if (typeof browser.runtime?.sendMessage !== "undefined") {
+      let res = await browser.runtime.sendMessage({ action: "getManualLinks" }).catch(() => null);
+      if (res && Array.isArray(res.links)) {
+        links = res.links;
+      }
+    }
+    if (links.length === 0) {
+      const data = await browser.storage.local.get({ manualThreadLinks: [] });
+      links = Array.isArray(data.manualThreadLinks) ? data.manualThreadLinks : [];
+    }
 
     if (links.length === 0) {
       let emptyMsg = document.createElement("div");
@@ -216,13 +225,26 @@ async function loadManualLinks() {
       delBtn.title = browser.i18n.getMessage("optManualLinksBtnDelete") || "Supprimer la liaison";
       delBtn.setAttribute("aria-label", browser.i18n.getMessage("optManualLinksBtnDelete") || "Supprimer la liaison");
       delBtn.addEventListener("click", async () => {
-        let currentData = await browser.storage.local.get({ manualThreadLinks: [] });
-        let currentLinks = Array.isArray(currentData.manualThreadLinks) ? currentData.manualThreadLinks : [];
-        let updated = currentLinks.filter(l => l.id !== link.id);
-        await browser.storage.local.set({ manualThreadLinks: updated });
+        let success = false;
+        if (typeof browser.runtime?.sendMessage !== "undefined") {
+          let res = await browser.runtime.sendMessage({
+            action: "removeManualLink",
+            linkId: link.id
+          }).catch(() => null);
+          success = !!res?.success;
+        }
+
+        // Repli direct si le background n'est pas joignable
+        if (!success) {
+          let currentData = await browser.storage.local.get({ manualThreadLinks: [] });
+          let currentLinks = Array.isArray(currentData.manualThreadLinks) ? currentData.manualThreadLinks : [];
+          let updated = currentLinks.filter(l => l.id !== link.id);
+          await browser.storage.local.set({ manualThreadLinks: updated });
+          success = true;
+        }
 
         const status = document.getElementById("status");
-        if (status) {
+        if (status && success) {
           status.textContent = browser.i18n.getMessage("optManualLinksDeletedFeedback") || "Liaison supprimée avec succès.";
           status.classList.add("show");
           setTimeout(() => {

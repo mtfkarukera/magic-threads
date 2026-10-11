@@ -8,7 +8,9 @@
  * Ce module persiste les associations de fils de discussion dans browser.storage.local
  * sans altérer la base Gloda ou les dossiers locaux de Thunderbird.
  * Les liaisons sont modélisées sous forme de Clusters de Conversation bidirectionnels
- * pour garantir que TOUS les messages des branches réunies bénéficient de la fusion.
+ * fondés exclusivement sur les identifiants immuables RFC 822 (Message-ID).
+ * Les identifiants numériques WebExtension (message.id) ne sont JAMAIS persistés sur disque
+ * pour éviter toute collision après redémarrage de session (SEC-01 / B1).
  */
 
 const STORAGE_KEY = "manualThreadLinks";
@@ -23,10 +25,90 @@ export function normalizeMessageId(id) {
   return id.trim().toLowerCase().replace(/^</, "").replace(/>$/, "");
 }
 
+/**
+ * File d'attente de promesses pour le verrou d'exclusion mutuelle (Mutex).
+ * Garantit que toutes les écritures dans browser.storage.local sont strictement sérialisées.
+ */
+let storageLockPromise = Promise.resolve();
+
+/**
+ * Exécute une opération asynchrone sous un verrou d'exclusion mutuelle (Mutex).
+ * Élimine les conditions de course et pertes d'écritures concurrentes (R1).
+ * Comporte un garde-fou de temporisation (timeout 5s) pour prévenir tout deadlock.
+ *
+ * @param {Function} fn - Fonction asynchrone à exécuter sous verrou.
+ * @returns {Promise<*>} Résultat de la fonction.
+ */
+export function withStorageLock(fn) {
+  let release;
+  const lock = new Promise(resolve => { release = resolve; });
+  const wait = storageLockPromise;
+  storageLockPromise = lock;
+
+  return wait.then(async () => {
+    let timeoutId;
+    const safetyTimeout = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error("Magic Threads: Délai d'attente du verrou de stockage dépassé (5s)"));
+      }, 5000);
+    });
+
+    try {
+      return await Promise.race([fn(), safetyTimeout]);
+    } finally {
+      clearTimeout(timeoutId);
+      release();
+    }
+  });
+}
+
+/**
+ * Cache volatil en mémoire vive (RAM) associant chaque cluster aux IDs numériques
+ * des messages consultés ou liés durant la SESSION COURANTE de Thunderbird.
+ * Réinitialisé à chaque fermeture de session : zéro risque de collision post-reboot.
+ * Structure : clusterId -> Set<number>
+ */
+const sessionClusterAnchorsMap = new Map();
+
 export class ManualLinksManager {
   /**
+   * Retourne les ancres numériques WebExtension valides pour la session courante en RAM.
+   * @param {string} clusterId - Identifiant du cluster.
+   * @returns {Set<number>} Ensemble des identifiants numériques de la session.
+   */
+  static getSessionAnchors(clusterId) {
+    return sessionClusterAnchorsMap.get(clusterId) || new Set();
+  }
+
+  /**
+   * Enregistre un identifiant numérique WebExtension dans la mémoire vive de session.
+   * @param {string} clusterId - Identifiant du cluster.
+   * @param {number} messageId - Identifiant numérique WebExtension.
+   */
+  static addSessionAnchor(clusterId, messageId) {
+    if (!clusterId || typeof messageId !== "number" || messageId <= 0) return;
+    if (!sessionClusterAnchorsMap.has(clusterId)) {
+      sessionClusterAnchorsMap.set(clusterId, new Set());
+    }
+    sessionClusterAnchorsMap.get(clusterId).add(messageId);
+  }
+
+  /**
+   * Supprime un identifiant numérique de la mémoire vive de session.
+   * @param {string} clusterId - Identifiant du cluster.
+   * @param {number} messageId - Identifiant numérique WebExtension.
+   */
+  static removeSessionAnchor(clusterId, messageId) {
+    if (!clusterId || !sessionClusterAnchorsMap.has(clusterId)) return;
+    if (typeof messageId === "number") {
+      sessionClusterAnchorsMap.get(clusterId).delete(messageId);
+    }
+  }
+
+  /**
    * Récupère l'intégralité des liaisons manuelles enregistrées.
-   * Migre de manière transparente les anciens liens vers le schéma à base de cluster.
+   * Migre de manière transparente les anciens liens vers le schéma à base de cluster
+   * et purge en tâche de fond les anciennes clés anchorMessageIds persistées (SEC-01).
    * @returns {Promise<Array<object>>} Liste des liaisons et clusters ordonnés par date de création.
    */
   static async getAllLinks() {
@@ -35,8 +117,10 @@ export class ManualLinksManager {
       const rawLinks = data[STORAGE_KEY];
       if (!Array.isArray(rawLinks)) return [];
 
-      // Migration transparente des anciens objets de liaison vers le modèle de cluster
-      return rawLinks.map(link => {
+      let needsCleanup = false;
+      const sanitizedLinks = [];
+
+      for (let link of rawLinks) {
         let normSource = normalizeMessageId(link.sourceHeaderId);
         let normTarget = normalizeMessageId(link.targetHeaderId);
         let allIds = Array.isArray(link.allHeaderIds) ? link.allHeaderIds.map(normalizeMessageId).filter(Boolean) : [];
@@ -46,17 +130,40 @@ export class ManualLinksManager {
           if (normTarget && normTarget !== normSource) allIds.push(normTarget);
         }
 
-        let anchors = Array.isArray(link.anchorMessageIds)
-          ? link.anchorMessageIds.filter(id => typeof id === "number" && id > 0)
-          : [];
+        if (Object.prototype.hasOwnProperty.call(link, "anchorMessageIds")) {
+          needsCleanup = true;
+        }
 
-        return {
+        const clusterId = link.clusterId || link.id;
+        const sessionAnchors = sessionClusterAnchorsMap.get(clusterId) || new Set();
+
+        const cleanLink = {
           ...link,
-          clusterId: link.clusterId || link.id,
+          clusterId,
           allHeaderIds: Array.from(new Set(allIds)),
-          anchorMessageIds: Array.from(new Set(anchors))
+          // Les ancres ne proviennent que de la mémoire vive volatile de la session
+          anchorMessageIds: Array.from(sessionAnchors)
         };
-      });
+        sanitizedLinks.push(cleanLink);
+      }
+
+      if (needsCleanup) {
+        // Migration assainissante en tâche de fond sous mutex
+        withStorageLock(async () => {
+          const freshData = await browser.storage.local.get({ [STORAGE_KEY]: [] });
+          const freshLinks = freshData[STORAGE_KEY];
+          if (Array.isArray(freshLinks)) {
+            const purged = freshLinks.map(l => {
+              const copy = { ...l };
+              delete copy.anchorMessageIds;
+              return copy;
+            });
+            await browser.storage.local.set({ [STORAGE_KEY]: purged });
+          }
+        }).catch(() => {});
+      }
+
+      return sanitizedLinks;
     } catch (e) {
       console.error("Magic Threads: Erreur lors de la lecture des liaisons manuelles :", e);
       return [];
@@ -65,18 +172,20 @@ export class ManualLinksManager {
 
   /**
    * Ajoute ou met à jour une liaison / un cluster entre un fil source et un fil cible.
+   * Opération entièrement sérialisée sous le verrou withStorageLock.
    *
    * @param {object} params
    * @param {string} params.sourceHeaderId - Message-ID pivot du message source.
    * @param {string} [params.sourceSubject=""] - Objet du message source.
    * @param {string} [params.sourceAuthor=""] - Expéditeur du message source.
    * @param {Array<string>} [params.sourceThreadHeaderIds=[]] - Tous les en-têtes du fil source.
-   * @param {number} [params.sourceMsgId] - Identifiant WebExtension du message source.
+   * @param {number} [params.sourceMsgId] - Identifiant WebExtension du message source (RAM uniquement).
    * @param {string} params.targetHeaderId - Message-ID pivot du message cible.
    * @param {string} [params.targetSubject=""] - Objet du fil cible.
    * @param {string} [params.targetAuthor=""] - Expéditeur du fil cible.
    * @param {Array<string>} [params.targetThreadHeaderIds=[]] - Tous les en-têtes du fil cible.
-   * @param {number} [params.targetMsgId] - Identifiant WebExtension du message cible.
+   * @param {number} [params.targetMsgId] - Identifiant WebExtension du message cible (RAM uniquement).
+   * @param {Array<number>} [params.anchorMessageIds=[]] - Ancres de session supplémentaires (RAM uniquement).
    * @param {string} [params.scope="entire_thread"] - "entire_thread" ou "single_message".
    * @returns {Promise<object>} L'objet de liaison enregistré.
    */
@@ -101,103 +210,127 @@ export class ManualLinksManager {
       throw new Error("Message-IDs source et cible invalides ou identiques.");
     }
 
-    const links = await this.getAllLinks();
+    return withStorageLock(async () => {
+      const links = await this.getAllLinks();
 
-    // Constitution de l'ensemble d'en-têtes réunis pour ce cluster
-    let newHeaderIds = new Set();
-    if (scope === "entire_thread") {
-      for (let hid of sourceThreadHeaderIds) {
+      // Constitution de l'ensemble d'en-têtes réunis pour ce cluster
+      let newHeaderIds = new Set();
+      if (scope === "entire_thread") {
+        for (let hid of sourceThreadHeaderIds) {
+          let n = normalizeMessageId(hid);
+          if (n) newHeaderIds.add(n);
+        }
+      }
+      newHeaderIds.add(normSource);
+
+      for (let hid of targetThreadHeaderIds) {
         let n = normalizeMessageId(hid);
         if (n) newHeaderIds.add(n);
       }
-    }
-    newHeaderIds.add(normSource);
+      newHeaderIds.add(normTarget);
 
-    for (let hid of targetThreadHeaderIds) {
-      let n = normalizeMessageId(hid);
-      if (n) newHeaderIds.add(n);
-    }
-    newHeaderIds.add(normTarget);
-
-    // Constitution des ancres WebExtension connues
-    let newAnchors = new Set();
-    if (typeof sourceMsgId === "number" && sourceMsgId > 0) newAnchors.add(sourceMsgId);
-    if (typeof targetMsgId === "number" && targetMsgId > 0) newAnchors.add(targetMsgId);
-    if (Array.isArray(anchorMessageIds)) {
-      for (let anc of anchorMessageIds) {
-        if (typeof anc === "number" && anc > 0) newAnchors.add(anc);
-      }
-    }
-
-    // Recherche de clusters existants se recoupant avec ces en-têtes (Union-Find)
-    let overlappingIndexes = [];
-    for (let i = 0; i < links.length; i++) {
-      let l = links[i];
-      let hasOverlap = l.allHeaderIds.some(id => newHeaderIds.has(id)) ||
-                       normalizeMessageId(l.sourceHeaderId) === normSource ||
-                       normalizeMessageId(l.targetHeaderId) === normTarget ||
-                       normalizeMessageId(l.sourceHeaderId) === normTarget ||
-                       normalizeMessageId(l.targetHeaderId) === normSource;
-      if (hasOverlap) {
-        overlappingIndexes.push(i);
-      }
-    }
-
-    const now = Date.now();
-    let linkObj;
-
-    if (overlappingIndexes.length > 0) {
-      // Fusion dans le premier cluster recoupé
-      let primaryIndex = overlappingIndexes[0];
-      let primary = links[primaryIndex];
-
-      // Absorber les en-têtes et ancres de tous les clusters recoupés
-      for (let idx of overlappingIndexes) {
-        let other = links[idx];
-        for (let hid of other.allHeaderIds) newHeaderIds.add(hid);
-        for (let anc of (other.anchorMessageIds || [])) newAnchors.add(anc);
+      // Constitution des ancres WebExtension connues pour la session RAM
+      let sessionAnchors = new Set();
+      if (typeof sourceMsgId === "number" && sourceMsgId > 0) sessionAnchors.add(sourceMsgId);
+      if (typeof targetMsgId === "number" && targetMsgId > 0) sessionAnchors.add(targetMsgId);
+      if (Array.isArray(anchorMessageIds)) {
+        for (let anc of anchorMessageIds) {
+          if (typeof anc === "number" && anc > 0) sessionAnchors.add(anc);
+        }
       }
 
-      linkObj = {
-        ...primary,
-        sourceSubject: sourceSubject || primary.sourceSubject,
-        sourceAuthor: sourceAuthor || primary.sourceAuthor,
-        targetSubject: targetSubject || primary.targetSubject,
-        targetAuthor: targetAuthor || primary.targetAuthor,
-        scope,
-        allHeaderIds: Array.from(newHeaderIds),
-        anchorMessageIds: Array.from(newAnchors),
-        updatedAt: now
+      // Recherche de clusters existants se recoupant avec ces en-têtes (Union-Find)
+      let overlappingIndexes = [];
+      for (let i = 0; i < links.length; i++) {
+        let l = links[i];
+        let hasOverlap = l.allHeaderIds.some(id => newHeaderIds.has(id)) ||
+                         normalizeMessageId(l.sourceHeaderId) === normSource ||
+                         normalizeMessageId(l.targetHeaderId) === normTarget ||
+                         normalizeMessageId(l.sourceHeaderId) === normTarget ||
+                         normalizeMessageId(l.targetHeaderId) === normSource;
+        if (hasOverlap) {
+          overlappingIndexes.push(i);
+        }
+      }
+
+      const now = Date.now();
+      let linkObj;
+
+      if (overlappingIndexes.length > 0) {
+        // Fusion dans le premier cluster recoupé
+        let primaryIndex = overlappingIndexes[0];
+        let primary = links[primaryIndex];
+        let primaryClusterId = primary.clusterId || primary.id;
+
+        // Absorber les en-têtes et les ancres de session de tous les clusters recoupés
+        for (let idx of overlappingIndexes) {
+          let other = links[idx];
+          for (let hid of other.allHeaderIds) newHeaderIds.add(hid);
+          let otherClusterId = other.clusterId || other.id;
+          let otherAnchors = sessionClusterAnchorsMap.get(otherClusterId);
+          if (otherAnchors) {
+            for (let a of otherAnchors) sessionAnchors.add(a);
+            if (otherClusterId !== primaryClusterId) {
+              sessionClusterAnchorsMap.delete(otherClusterId);
+            }
+          }
+        }
+
+        linkObj = {
+          ...primary,
+          sourceSubject: sourceSubject || primary.sourceSubject,
+          sourceAuthor: sourceAuthor || primary.sourceAuthor,
+          targetSubject: targetSubject || primary.targetSubject,
+          targetAuthor: targetAuthor || primary.targetAuthor,
+          scope,
+          allHeaderIds: Array.from(newHeaderIds),
+          updatedAt: now
+        };
+        delete linkObj.anchorMessageIds;
+
+        links[primaryIndex] = linkObj;
+        for (let j = overlappingIndexes.length - 1; j >= 1; j--) {
+          links.splice(overlappingIndexes[j], 1);
+        }
+      } else {
+        // Nouveau cluster autonome
+        const linkId = "link_" + now + "_" + Math.random().toString(36).substring(2, 8);
+        linkObj = {
+          id: linkId,
+          clusterId: linkId,
+          createdAt: now,
+          updatedAt: now,
+          sourceHeaderId: normSource,
+          sourceSubject: (sourceSubject || "").trim(),
+          sourceAuthor: (sourceAuthor || "").trim(),
+          targetHeaderId: normTarget,
+          targetSubject: (targetSubject || "").trim(),
+          targetAuthor: (targetAuthor || "").trim(),
+          scope,
+          allHeaderIds: Array.from(newHeaderIds)
+        };
+        links.push(linkObj);
+      }
+
+      // Enregistrer les ancres en mémoire vive pour la session active
+      const finalClusterId = linkObj.clusterId || linkObj.id;
+      for (let a of sessionAnchors) {
+        this.addSessionAnchor(finalClusterId, a);
+      }
+
+      // Persistance sur disque SANS aucun identifiant numérique
+      const toSave = links.map(l => {
+        const c = { ...l };
+        delete c.anchorMessageIds;
+        return c;
+      });
+      await browser.storage.local.set({ [STORAGE_KEY]: toSave });
+
+      return {
+        ...linkObj,
+        anchorMessageIds: Array.from(sessionClusterAnchorsMap.get(finalClusterId) || [])
       };
-
-      // Remplacer le premier et supprimer les autres clusters désormais fusionnés
-      links[primaryIndex] = linkObj;
-      for (let j = overlappingIndexes.length - 1; j >= 1; j--) {
-        links.splice(overlappingIndexes[j], 1);
-      }
-    } else {
-      // Nouveau cluster autonome
-      const linkId = "link_" + now + "_" + Math.random().toString(36).substring(2, 8);
-      linkObj = {
-        id: linkId,
-        clusterId: linkId,
-        createdAt: now,
-        updatedAt: now,
-        sourceHeaderId: normSource,
-        sourceSubject: (sourceSubject || "").trim(),
-        sourceAuthor: (sourceAuthor || "").trim(),
-        targetHeaderId: normTarget,
-        targetSubject: (targetSubject || "").trim(),
-        targetAuthor: (targetAuthor || "").trim(),
-        scope,
-        allHeaderIds: Array.from(newHeaderIds),
-        anchorMessageIds: Array.from(newAnchors)
-      };
-      links.push(linkObj);
-    }
-
-    await browser.storage.local.set({ [STORAGE_KEY]: links });
-    return linkObj;
+    });
   }
 
   /**
@@ -266,99 +399,104 @@ export class ManualLinksManager {
       return this.removeLink(clusterId);
     }
 
-    const links = await this.getAllLinks();
-    const clusterIndex = links.findIndex(l => (l.clusterId || l.id) === clusterId);
-    if (clusterIndex === -1) {
-      return this.removeLink(clusterId);
+    if (validMsgId) {
+      this.removeSessionAnchor(clusterId, validMsgId);
     }
 
-    const cluster = links[clusterIndex];
-
-    // Collecte des identifiants du fil natif du message cliqué
-    let headersToRemove = new Set();
-    let anchorsToRemove = new Set();
-
-    if (normHeader) headersToRemove.add(normHeader);
-    if (validMsgId) anchorsToRemove.add(validMsgId);
-
-    try {
-      let nativeMsgs = [];
-      if (validMsgId && browser.convGloda?.getThreadMessages) {
-        nativeMsgs = await browser.convGloda.getThreadMessages(validMsgId);
-      } else if (normHeader && browser.convGloda?.getThreadByHeaderId) {
-        nativeMsgs = await browser.convGloda.getThreadByHeaderId(normHeader);
+    return withStorageLock(async () => {
+      const links = await this.getAllLinks();
+      const clusterIndex = links.findIndex(l => (l.clusterId || l.id) === clusterId);
+      if (clusterIndex === -1) {
+        return this.removeLink(clusterId);
       }
 
-      if (Array.isArray(nativeMsgs) && nativeMsgs.length > 1) {
-        // Le message appartient à un fil natif complet (branche).
-        // On soustrait l'ensemble des messages de cette branche.
-        for (let m of nativeMsgs) {
-          let h = normalizeMessageId(m.headerMessageId);
-          if (h) headersToRemove.add(h);
-          if (typeof m.id === "number" && m.id > 0) anchorsToRemove.add(m.id);
+      const cluster = links[clusterIndex];
+
+      // Collecte des identifiants du fil natif du message cliqué
+      let headersToRemove = new Set();
+      if (normHeader) headersToRemove.add(normHeader);
+
+      try {
+        let nativeMsgs = [];
+        if (validMsgId && browser.convGloda?.getThreadMessages) {
+          nativeMsgs = await browser.convGloda.getThreadMessages(validMsgId);
+        } else if (normHeader && browser.convGloda?.getThreadByHeaderId) {
+          nativeMsgs = await browser.convGloda.getThreadByHeaderId(normHeader);
         }
+
+        if (Array.isArray(nativeMsgs) && nativeMsgs.length > 1) {
+          // Le message appartient à un fil natif complet (branche).
+          // On soustrait l'ensemble des messages de cette branche.
+          for (let m of nativeMsgs) {
+            let h = normalizeMessageId(m.headerMessageId);
+            if (h) headersToRemove.add(h);
+            if (typeof m.id === "number" && m.id > 0) {
+              this.removeSessionAnchor(clusterId, m.id);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Magic Threads: Erreur lors de la résolution du fil natif pour détachement :", err?.message || err);
       }
-    } catch (err) {
-      console.warn("Magic Threads: Erreur lors de la résolution du fil natif pour détachement :", err);
-    }
 
-    // Soustraction des identifiants
-    let remainingHeaders = (cluster.allHeaderIds || [])
-      .map(normalizeMessageId)
-      .filter(h => h && !headersToRemove.has(h));
+      // Soustraction des en-têtes
+      let remainingHeaders = (cluster.allHeaderIds || [])
+        .map(normalizeMessageId)
+        .filter(h => h && !headersToRemove.has(h));
 
-    let remainingAnchors = (cluster.anchorMessageIds || [])
-      .filter(id => typeof id === "number" && id > 0 && !anchorsToRemove.has(id));
+      // Contrôle de viabilité résiduelle :
+      // Si la liste des en-têtes restants est <= 1, le cluster ne relie plus rien
+      if (remainingHeaders.length <= 1) {
+        links.splice(clusterIndex, 1);
+        const toSave = links.map(l => { const c = { ...l }; delete c.anchorMessageIds; return c; });
+        await browser.storage.local.set({ [STORAGE_KEY]: toSave });
+        sessionClusterAnchorsMap.delete(clusterId);
+        return true;
+      }
 
-    // Contrôle de viabilité résiduelle :
-    // Si la liste des en-têtes restants est <= 1, le cluster ne relie plus rien
-    if (remainingHeaders.length <= 1) {
-      links.splice(clusterIndex, 1);
-      await browser.storage.local.set({ [STORAGE_KEY]: links });
+      // Vérifier si tous les messages restants appartiennent au même fil natif
+      try {
+        let sampleHeader = remainingHeaders[0];
+        let remainingNative = [];
+
+        if (sampleHeader && browser.convGloda?.getThreadByHeaderId) {
+          remainingNative = await browser.convGloda.getThreadByHeaderId(sampleHeader);
+        }
+
+        if (Array.isArray(remainingNative) && remainingNative.length > 0) {
+          let remainingNativeSet = new Set(
+            remainingNative.map(m => normalizeMessageId(m.headerMessageId)).filter(Boolean)
+          );
+          let allBelongToSameNativeThread = remainingHeaders.every(h => remainingNativeSet.has(h));
+          if (allBelongToSameNativeThread) {
+            // Tous les messages restants sont déjà naturellement groupés par Thunderbird,
+            // le cluster n'a plus lieu d'exister.
+            links.splice(clusterIndex, 1);
+            const toSave = links.map(l => { const c = { ...l }; delete c.anchorMessageIds; return c; });
+            await browser.storage.local.set({ [STORAGE_KEY]: toSave });
+            sessionClusterAnchorsMap.delete(clusterId);
+            return true;
+          }
+        }
+      } catch (err) {
+        console.warn("Magic Threads: Erreur lors du contrôle de viabilité résiduelle :", err?.message || err);
+      }
+
+      // Le cluster contient encore au moins deux entités distinctes : sauvegarde
+      const updatedCluster = {
+        ...cluster,
+        sourceHeaderId: remainingHeaders[0],
+        targetHeaderId: remainingHeaders[1] || remainingHeaders[0],
+        allHeaderIds: remainingHeaders,
+        updatedAt: Date.now()
+      };
+      delete updatedCluster.anchorMessageIds;
+
+      links[clusterIndex] = updatedCluster;
+      const toSave = links.map(l => { const c = { ...l }; delete c.anchorMessageIds; return c; });
+      await browser.storage.local.set({ [STORAGE_KEY]: toSave });
       return true;
-    }
-
-    // Vérifier si tous les messages restants appartiennent au même fil natif
-    try {
-      let sampleAnchor = remainingAnchors[0];
-      let sampleHeader = remainingHeaders[0];
-      let remainingNative = [];
-
-      if (sampleAnchor && browser.convGloda?.getThreadMessages) {
-        remainingNative = await browser.convGloda.getThreadMessages(sampleAnchor);
-      } else if (sampleHeader && browser.convGloda?.getThreadByHeaderId) {
-        remainingNative = await browser.convGloda.getThreadByHeaderId(sampleHeader);
-      }
-
-      if (Array.isArray(remainingNative) && remainingNative.length > 0) {
-        let remainingNativeSet = new Set(
-          remainingNative.map(m => normalizeMessageId(m.headerMessageId)).filter(Boolean)
-        );
-        let allBelongToSameNativeThread = remainingHeaders.every(h => remainingNativeSet.has(h));
-        if (allBelongToSameNativeThread) {
-          // Tous les messages restants sont déjà naturellement groupés par Thunderbird,
-          // le cluster n'a plus lieu d'exister.
-          links.splice(clusterIndex, 1);
-          await browser.storage.local.set({ [STORAGE_KEY]: links });
-          return true;
-        }
-      }
-    } catch (err) {
-      console.warn("Magic Threads: Erreur lors du contrôle de viabilité résiduelle :", err);
-    }
-
-    // Le cluster contient encore au moins deux entités distinctes : sauvegarde
-    links[clusterIndex] = {
-      ...cluster,
-      sourceHeaderId: remainingHeaders[0],
-      targetHeaderId: remainingHeaders[1] || remainingHeaders[0],
-      allHeaderIds: remainingHeaders,
-      anchorMessageIds: remainingAnchors,
-      updatedAt: Date.now()
-    };
-
-    await browser.storage.local.set({ [STORAGE_KEY]: links });
-    return true;
+    });
   }
 
   /**
@@ -368,13 +506,18 @@ export class ManualLinksManager {
    */
   static async removeLink(linkId) {
     if (!linkId) return false;
-    const links = await this.getAllLinks();
-    const filtered = links.filter(l => l.id !== linkId && l.clusterId !== linkId);
-    if (filtered.length !== links.length) {
-      await browser.storage.local.set({ [STORAGE_KEY]: filtered });
-      return true;
-    }
-    return false;
+    return withStorageLock(async () => {
+      const data = await browser.storage.local.get({ [STORAGE_KEY]: [] });
+      const links = Array.isArray(data[STORAGE_KEY]) ? data[STORAGE_KEY] : [];
+      const filtered = links.filter(l => l.id !== linkId && l.clusterId !== linkId);
+      sessionClusterAnchorsMap.delete(linkId);
+      if (filtered.length !== links.length) {
+        const toSave = filtered.map(l => { const c = { ...l }; delete c.anchorMessageIds; return c; });
+        await browser.storage.local.set({ [STORAGE_KEY]: toSave });
+        return true;
+      }
+      return false;
+    });
   }
 
   /**
@@ -385,24 +528,28 @@ export class ManualLinksManager {
   static async removeLinksByHeaderId(headerId) {
     const normId = normalizeMessageId(headerId);
     if (!normId) return false;
-    const links = await this.getAllLinks();
-    const filtered = links.filter(l =>
-      !l.allHeaderIds.includes(normId) &&
-      normalizeMessageId(l.sourceHeaderId) !== normId &&
-      normalizeMessageId(l.targetHeaderId) !== normId
-    );
-    if (filtered.length !== links.length) {
-      await browser.storage.local.set({ [STORAGE_KEY]: filtered });
-      return true;
-    }
-    return false;
+    return withStorageLock(async () => {
+      const data = await browser.storage.local.get({ [STORAGE_KEY]: [] });
+      const links = Array.isArray(data[STORAGE_KEY]) ? data[STORAGE_KEY] : [];
+      const filtered = links.filter(l =>
+        !l.allHeaderIds.includes(normId) &&
+        normalizeMessageId(l.sourceHeaderId) !== normId &&
+        normalizeMessageId(l.targetHeaderId) !== normId
+      );
+      if (filtered.length !== links.length) {
+        const toSave = filtered.map(l => { const c = { ...l }; delete c.anchorMessageIds; return c; });
+        await browser.storage.local.set({ [STORAGE_KEY]: toSave });
+        return true;
+      }
+      return false;
+    });
   }
 
   /**
    * Trouve tous les clusters ou liaisons connectés à une collection de Message-IDs
-   * ou à un identifiant d'ancre numérique de secours.
+   * ou à un identifiant d'ancre numérique de session courante en RAM.
    * @param {Array<string>|Set<string>} headerIds - Collection de Message-IDs.
-   * @param {number|null} [anchorMessageId=null] - Identifiant WebExtension de secours.
+   * @param {number|null} [anchorMessageId=null] - Identifiant WebExtension de secours en session active.
    * @returns {Promise<Array<object>>} Clusters concernés.
    */
   static async getClustersForHeaderIds(headerIds, anchorMessageId = null) {
@@ -419,9 +566,14 @@ export class ManualLinksManager {
 
     const allLinks = await this.getAllLinks();
     return allLinks.filter(l => {
-      // 1. Correspondance par ancre numérique (secours immédiat si Message-ID non encore indexé)
-      if (hasAnchor && Array.isArray(l.anchorMessageIds) && l.anchorMessageIds.includes(anchorMessageId)) {
-        return true;
+      const clusterId = l.clusterId || l.id;
+
+      // 1. Correspondance par ancre de session volatile en RAM (zéro risque d'ID recyclé post-reboot)
+      if (hasAnchor) {
+        const sessionAnchors = sessionClusterAnchorsMap.get(clusterId);
+        if (sessionAnchors && sessionAnchors.has(anchorMessageId)) {
+          return true;
+        }
       }
 
       if (idSet.size === 0) return false;
@@ -438,7 +590,7 @@ export class ManualLinksManager {
   }
 
   /**
-   * Trouve les clusters pour un message donné (par ses en-têtes et son ancre).
+   * Trouve les clusters pour un message donné (par ses en-têtes et son ancre de session).
    * @param {object} params
    * @param {Array<string>|Set<string>} [params.headerIds]
    * @param {number} [params.messageId]
@@ -450,12 +602,13 @@ export class ManualLinksManager {
 
   /**
    * Auto-consolidation d'un cluster existant (Self-Healing Overlay).
-   * Persiste les nouveaux en-têtes et ancres découverts lors de la résolution Gloda
+   * Persiste les nouveaux en-têtes découverts lors de la résolution Gloda
    * pour assurer une bidirectionnalité parfaite de la navigation.
+   * Les ancres numériques découvertes sont enregistrées en RAM uniquement pour la session.
    *
    * @param {string} clusterId - Identifiant du cluster à consolider.
    * @param {Array<string>} [discoveredHeaderIds=[]] - Nouveaux en-têtes Message-ID découverts.
-   * @param {Array<number>} [discoveredAnchorIds=[]] - Nouvelles ancres numériques découvertes.
+   * @param {Array<number>} [discoveredAnchorIds=[]] - Nouvelles ancres numériques de session.
    * @returns {Promise<boolean>} True si le cluster a été mis à jour et persisté.
    */
   static async healCluster(clusterId, discoveredHeaderIds = [], discoveredAnchorIds = []) {
@@ -468,63 +621,62 @@ export class ManualLinksManager {
       ? discoveredAnchorIds.filter(id => typeof id === "number" && id > 0)
       : [];
 
-    if (normHeaders.length === 0 && validAnchors.length === 0) {
+    // Enregistrer immédiatement les ancres de session en RAM (aucune persistance sur disque)
+    for (let a of validAnchors) {
+      this.addSessionAnchor(clusterId, a);
+    }
+
+    if (normHeaders.length === 0) {
       return false;
     }
 
-    try {
-      const data = await browser.storage.local.get({ [STORAGE_KEY]: [] });
-      let links = Array.isArray(data[STORAGE_KEY]) ? data[STORAGE_KEY] : [];
-      let targetIndex = links.findIndex(l => (l.clusterId || l.id) === clusterId);
+    return withStorageLock(async () => {
+      try {
+        const data = await browser.storage.local.get({ [STORAGE_KEY]: [] });
+        let links = Array.isArray(data[STORAGE_KEY]) ? data[STORAGE_KEY] : [];
+        let targetIndex = links.findIndex(l => (l.clusterId || l.id) === clusterId);
 
-      if (targetIndex === -1) {
+        if (targetIndex === -1) {
+          return false;
+        }
+
+        let cluster = links[targetIndex];
+        let existingHeaders = new Set(
+          Array.isArray(cluster.allHeaderIds) ? cluster.allHeaderIds.map(normalizeMessageId).filter(Boolean) : []
+        );
+        if (cluster.sourceHeaderId) existingHeaders.add(normalizeMessageId(cluster.sourceHeaderId));
+        if (cluster.targetHeaderId) existingHeaders.add(normalizeMessageId(cluster.targetHeaderId));
+
+        let changed = false;
+
+        for (let h of normHeaders) {
+          if (!existingHeaders.has(h)) {
+            existingHeaders.add(h);
+            changed = true;
+          }
+        }
+
+        if (!changed) {
+          return false;
+        }
+
+        const updatedCluster = {
+          ...cluster,
+          allHeaderIds: Array.from(existingHeaders),
+          updatedAt: Date.now()
+        };
+        delete updatedCluster.anchorMessageIds;
+
+        links[targetIndex] = updatedCluster;
+
+        const toSave = links.map(l => { const c = { ...l }; delete c.anchorMessageIds; return c; });
+        await browser.storage.local.set({ [STORAGE_KEY]: toSave });
+        return true;
+      } catch (e) {
+        console.warn("Magic Threads: Échec de l'auto-consolidation du cluster :", e?.message || e);
         return false;
       }
-
-      let cluster = links[targetIndex];
-      let existingHeaders = new Set(
-        Array.isArray(cluster.allHeaderIds) ? cluster.allHeaderIds.map(normalizeMessageId).filter(Boolean) : []
-      );
-      if (cluster.sourceHeaderId) existingHeaders.add(normalizeMessageId(cluster.sourceHeaderId));
-      if (cluster.targetHeaderId) existingHeaders.add(normalizeMessageId(cluster.targetHeaderId));
-
-      let existingAnchors = new Set(
-        Array.isArray(cluster.anchorMessageIds) ? cluster.anchorMessageIds.filter(id => typeof id === "number" && id > 0) : []
-      );
-
-      let changed = false;
-
-      for (let h of normHeaders) {
-        if (!existingHeaders.has(h)) {
-          existingHeaders.add(h);
-          changed = true;
-        }
-      }
-
-      for (let a of validAnchors) {
-        if (!existingAnchors.has(a)) {
-          existingAnchors.add(a);
-          changed = true;
-        }
-      }
-
-      if (!changed) {
-        return false;
-      }
-
-      links[targetIndex] = {
-        ...cluster,
-        allHeaderIds: Array.from(existingHeaders),
-        anchorMessageIds: Array.from(existingAnchors),
-        updatedAt: Date.now()
-      };
-
-      await browser.storage.local.set({ [STORAGE_KEY]: links });
-      return true;
-    } catch (e) {
-      console.warn("Magic Threads: Échec de l'auto-consolidation du cluster :", clusterId, e);
-      return false;
-    }
+    });
   }
 
   /**

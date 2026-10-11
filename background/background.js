@@ -405,8 +405,15 @@ browser.menus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === "magic-threads-merge-selected") {
     // Intention 1 : Fusion directe immédiate des messages sélectionnés dans un cluster
     try {
-      let cluster = await ManualLinksManager.addMultiMessageCluster(selectedMessages, "entire_thread");
-      console.log("Magic Threads: Cluster direct créé pour", selectedMessages.length, "messages:", cluster.id);
+      let firstAccount = selectedMessages[0]?.folder?.accountId;
+      let isSameAccount = selectedMessages.every(m => !m.folder?.accountId || !firstAccount || m.folder.accountId === firstAccount);
+      if (!isSameAccount) {
+        console.warn("Magic Threads: Refus de fusion directe - les messages sélectionnés appartiennent à des comptes différents.");
+        return;
+      }
+
+      await ManualLinksManager.addMultiMessageCluster(selectedMessages, "entire_thread");
+      console.log("Magic Threads: Cluster direct créé pour", selectedMessages.length, "messages.");
 
       if (tab?.id) {
         tabLastMessageId.delete(tab.id);
@@ -461,7 +468,7 @@ browser.menus.onClicked.addListener(async (info, tab) => {
       };
 
       await updateActionState(true, selectedMessages.length);
-      console.log("Magic Threads: mode liaison activé pour", selectedMessages.length, "message(s), headerId:", headerId);
+      console.log("Magic Threads: mode liaison activé pour", selectedMessages.length, "message(s).");
     } catch (e) {
       console.error("Magic Threads: Erreur lors de l'activation du mode liaison :", e);
     }
@@ -557,7 +564,7 @@ browser.magicThreadsWindow.onConfirmManualLink.addListener(async (scope, targetC
       scope: scope || "entire_thread"
     });
 
-    console.log("Magic Threads: Association confirmée avec succès vers", targetHeaderId);
+    console.log("Magic Threads: Association confirmée avec succès.");
     pendingStagingState = null;
     await updateActionState(false);
 
@@ -735,4 +742,28 @@ async function handleOpenMessage(messageId, mode) {
     }
   }
 }
+
+// ---- Communication inter-scripts (Options -> Background) ----
+if (typeof browser.runtime?.onMessage !== "undefined") {
+  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message?.action === "removeManualLink") {
+      ManualLinksManager.removeLink(message.linkId).then(success => {
+        sendResponse({ success });
+      }).catch(err => {
+        sendResponse({ success: false, error: err?.message || String(err) });
+      });
+      return true; // Retour synchrone obligatoire pour traitement asynchrone (Règle 13)
+    }
+
+    if (message?.action === "getManualLinks") {
+      ManualLinksManager.getAllLinks().then(links => {
+        sendResponse({ links });
+      }).catch(() => {
+        sendResponse({ links: [] });
+      });
+      return true; // Retour synchrone obligatoire pour traitement asynchrone (Règle 13)
+    }
+  });
+}
+
 

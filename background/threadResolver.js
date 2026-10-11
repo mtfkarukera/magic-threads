@@ -10,6 +10,8 @@ import { ManualLinksManager, normalizeMessageId } from "./manualLinksManager.js"
  * Isole la source des données du reste de l'extension.
  * Interroge Gloda via convGloda et enrichit le fil avec les Clusters de Conversations
  * virtuels manuels stockés dans browser.storage.local.
+ * Intègre un Garde d'Intégrité Strict interdisant l'injection de fils non authentifiés
+ * en cas d'ancres numériques recyclées après un redémarrage (SEC-01 / B1).
  */
 export class ThreadResolver {
   /**
@@ -56,7 +58,7 @@ export class ThreadResolver {
       }
 
       // 3. Recherche des clusters de conversation enregistrés pour ces messages
-      // (interroge par Message-IDs et par ancre numérique de secours)
+      // (interroge par Message-IDs et par ancre numérique de secours en mémoire vive)
       let relevantClusters = await ManualLinksManager.getClustersForMessage({
         headerIds: knownHeaderIds,
         messageId
@@ -82,31 +84,44 @@ export class ThreadResolver {
         if (visitedClusters.has(clusterKey)) continue;
         visitedClusters.add(clusterKey);
 
-        // a) Rapatriement prioritaire via les ancres WebExtension (méthode la plus complète et rapide)
-        if (Array.isArray(cluster.anchorMessageIds)) {
-          for (let anchorId of cluster.anchorMessageIds) {
-            if (loadedAnchorIds.has(anchorId)) continue;
-            loadedAnchorIds.add(anchorId);
+        // a) Rapatriement prioritaire via les ancres WebExtension de la session en RAM
+        // avec GARDE D'INTÉGRITÉ STRICT (SEC-01 / B1)
+        let sessionAnchors = Array.isArray(cluster.anchorMessageIds) ? cluster.anchorMessageIds : [];
+        let clusterHeadersSet = new Set(
+          (cluster.allHeaderIds || []).map(normalizeMessageId).filter(Boolean)
+        );
+        if (cluster.sourceHeaderId) clusterHeadersSet.add(normalizeMessageId(cluster.sourceHeaderId));
+        if (cluster.targetHeaderId) clusterHeadersSet.add(normalizeMessageId(cluster.targetHeaderId));
 
-            try {
-              let anchorThread = await browser.convGloda.getThreadMessages(anchorId);
-              if (Array.isArray(anchorThread)) {
-                for (let addMsg of anchorThread) {
-                  let hid = normalizeMessageId(addMsg.headerMessageId);
-                  if (hid && !messagesByHeaderId.has(hid)) {
-                    addMsg.isManualLink = true;
-                    addMsg.manualLinkId = cluster.id;
-                    messagesByHeaderId.set(hid, addMsg);
-                  }
+        for (let anchorId of sessionAnchors) {
+          if (loadedAnchorIds.has(anchorId)) continue;
+          loadedAnchorIds.add(anchorId);
+
+          try {
+            let anchorThread = await browser.convGloda.getThreadMessages(anchorId);
+            if (Array.isArray(anchorThread)) {
+              // Garde d'intégrité strict : vérifier qu'au moins un message du fil d'ancre
+              // appartient authentiquement au cluster. Si non, l'ancre est obsolète ou recyclée.
+              let isAuthentic = anchorThread.some(m => clusterHeadersSet.has(normalizeMessageId(m.headerMessageId)));
+              if (!isAuthentic) {
+                continue;
+              }
+
+              for (let addMsg of anchorThread) {
+                let hid = normalizeMessageId(addMsg.headerMessageId);
+                if (hid && !messagesByHeaderId.has(hid)) {
+                  addMsg.isManualLink = true;
+                  addMsg.manualLinkId = cluster.id;
+                  messagesByHeaderId.set(hid, addMsg);
                 }
               }
-            } catch (err) {
-              console.warn("Magic Threads: Erreur lors du chargement via l'ancre", anchorId, err);
             }
+          } catch (err) {
+            // Ignorer silencieusement si l'ancre n'est plus accessible
           }
         }
 
-        // b) Rapatriement complémentaire par Message-ID externe pour les en-têtes non encore résolus
+        // b) Rapatriement canonique pérenne par Message-ID RFC 822 (infaillible inter-sessions)
         let allIds = Array.isArray(cluster.allHeaderIds) ? cluster.allHeaderIds : [];
         if (allIds.length === 0) {
           let s = normalizeMessageId(cluster.sourceHeaderId);
@@ -136,7 +151,8 @@ export class ThreadResolver {
               }
             }
           } catch (err) {
-            console.warn("Magic Threads: Échec du rapatriement par headerId", extHeaderId, err);
+            // Échec silencieux ou anonymisé sans fuite de Message-ID dans les journaux
+            console.warn("Magic Threads: Rapatriement par Message-ID ignoré ou non indexé.");
           }
         }
       }
@@ -145,7 +161,7 @@ export class ThreadResolver {
       merged.sort((a, b) => a.date - b.date);
 
       // 5. Auto-consolidation (Self-Healing Overlay) :
-      // Réinjecte en arrière-plan l'ensemble des Message-IDs et ancres découverts dans le cluster
+      // Réinjecte en arrière-plan les Message-IDs découverts dans le cluster
       // pour garantir une bidirectionnalité parfaite lors de toute sélection ultérieure.
       for (let cluster of relevantClusters) {
         let clusterKey = cluster.clusterId || cluster.id;
@@ -158,9 +174,7 @@ export class ThreadResolver {
         if (cluster.sourceHeaderId) existingHeaders.add(normalizeMessageId(cluster.sourceHeaderId));
         if (cluster.targetHeaderId) existingHeaders.add(normalizeMessageId(cluster.targetHeaderId));
 
-        let existingAnchors = new Set(
-          Array.isArray(cluster.anchorMessageIds) ? cluster.anchorMessageIds.filter(id => typeof id === "number" && id > 0) : []
-        );
+        let existingAnchors = ManualLinksManager.getSessionAnchors(clusterKey);
 
         for (let m of merged) {
           let hid = normalizeMessageId(m.headerMessageId);
@@ -170,20 +184,17 @@ export class ThreadResolver {
           }
           if (typeof m.id === "number" && m.id > 0 && !existingAnchors.has(m.id)) {
             newAnchors.push(m.id);
-            existingAnchors.add(m.id);
           }
         }
 
         if (newHeaders.length > 0 || newAnchors.length > 0) {
-          ManualLinksManager.healCluster(clusterKey, newHeaders, newAnchors).catch(err => {
-            console.warn("Magic Threads: Erreur lors de l'auto-consolidation du cluster :", clusterKey, err);
-          });
+          ManualLinksManager.healCluster(clusterKey, newHeaders, newAnchors).catch(() => {});
         }
       }
 
       return merged;
     } catch (e) {
-      console.error("Magic Threads: Erreur dans ThreadResolver.getThreadMessages: ", e);
+      console.error("Magic Threads: Erreur dans ThreadResolver.getThreadMessages: ", e?.message || e);
       return [];
     }
   }

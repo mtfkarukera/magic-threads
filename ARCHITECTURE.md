@@ -46,31 +46,34 @@ Point d'entrée de l'extension. Responsabilités :
 - **Détection du contexte** : distingue la vue 3-pane des onglets message
 - **Workflow de liaison manuelle (Staging)** : gère le menu contextuel `browser.menus` (`message_list`), conserve l'état de pré-liaison (`pendingStagingState`), maintient le panneau ouvert sur les messages cibles orphelins, et écoute les événements d'action (`onConfirmManualLink`, `onCancelManualLink`, `onDetachManualLink`)
 
-#### `background/manualLinksManager.js` (v2.7.2)
+#### `background/manualLinksManager.js` (v2.8.0)
 
-Gestionnaire CRUD de persistance pour l'Overlay Virtuel dans `browser.storage.local` basé sur un modèle de **Clusters de Conversation** (`ConversationCluster`) :
+Gestionnaire CRUD de persistance pour l'Overlay Virtuel dans `browser.storage.local` basé sur un modèle de **Clusters de Conversation** (`ConversationCluster`) et immunisé contre les collisions de redémarrage :
 
-- Modélise les associations sous forme de clusters bidirectionnels regroupant l'ensemble des Message-IDs de toutes les conversations fusionnées (`allHeaderIds`) ainsi que les identifiants numériques WebExtension d'ancres (`anchorMessageIds`)
+- **Exclusion mutuelle asynchrone (`withStorageLock`)** : sérialise toutes les mutations de `storage.local` via une file de promesses pour éliminer toute condition de course (R1) ou écrasement concurrent (timeout de sécurité 5s anti-blocage)
+- **Persistance pure RFC 822 (SEC-01 / B1)** : les identifiants numériques de session (`message.id`) ne sont JAMAIS enregistrés sur disque, éliminant tout risque de collision avec des e-mails tiers après redémarrage de Thunderbird
+- **Gestionnaire d'ancres en mémoire vive (`sessionClusterAnchorsMap`)** : maintien d'une table volatile en RAM reliant les clusters aux IDs numériques actifs pour la session en cours, purgée automatiquement à la fermeture
+- **Migration nettoyante transparente** : suppression automatique en arrière-plan des anciens `anchorMessageIds` résiduels dans `storage.local` au démarrage
 - Clés universelles basées sur les `headerMessageId` RFC 822 normalisés (sans chevrons)
 - Fusion automatique des clusters connexes (Union-Find) : si deux fils liés rejoignent un autre fil, l'ensemble des branches est consolidé sans rupture
 - Support de la multi-sélection directe (`addMultiMessageCluster`) pour réunir plusieurs e-mails d'un seul clic
-- **Auto-consolidation (Self-Healing Overlay)** via `healCluster()` : réinjecte asynchronement dans le cluster les Message-IDs et ancres numériques nouvellement découverts lors des résolutions dynamiques de Gloda
-- **Recherche résiliente avec ancre de secours** : `getClustersForMessage()` et `getClustersForHeaderIds()` interrogent à la fois la collection de Message-IDs et l'identifiant numérique WebExtension d'ancre
-- **Déliaison intelligente & Découplage sémantique** via `detachMessageFromCluster()` (v2.7.2) : différencie le retrait chirurgical d'un message orphelin (seul ce message est extrait du cluster) du découplage de branches complètes (tous les messages du fil natif Gloda sont désolidarisés en bloc), avec dissolution automatique des clusters résiduels devenus orphelins
-- Méthodes exposées : `getAllLinks()`, `addLink()`, `addMultiMessageCluster()`, `removeLink()`, `removeLinksByHeaderId()`, `getClustersForHeaderIds()`, `getClustersForMessage()`, `healCluster()`, `detachMessageFromCluster()`
+- **Auto-consolidation (Self-Healing Overlay)** via `healCluster()` : réinjecte asynchronement dans le cluster les seuls Message-IDs authentifiés découverts lors des résolutions dynamiques de Gloda
+- **Recherche résiliente** : `getClustersForMessage()` et `getClustersForHeaderIds()` interrogent à la fois la collection de Message-IDs et les ancres de la session active en RAM
+- **Déliaison intelligente & Découplage sémantique** via `detachMessageFromCluster()` : différencie le retrait chirurgical d'un message orphelin du découplage de branches complètes, avec dissolution automatique des clusters résiduels
+- Méthodes exposées : `getAllLinks()`, `addLink()`, `addMultiMessageCluster()`, `removeLink()`, `removeLinksByHeaderId()`, `getClustersForHeaderIds()`, `getClustersForMessage()`, `healCluster()`, `detachMessageFromCluster()`, `withStorageLock()`, `getSessionAnchors()`
 
-#### `background/threadResolver.js` (v2.7.1)
+#### `background/threadResolver.js` (v2.8.0)
 
-Couche d'accès aux données (DAL) unifiant Gloda et les Clusters de Conversation :
+Couche d'accès aux données (DAL) unifiant Gloda et les Clusters de Conversation avec Garde d'Intégrité Strict :
 
 - Appelle `browser.convGloda.getThreadMessages()` avec l'identifiant du message sélectionné
-- Interroge les clusters actifs via `ManualLinksManager.getClustersForMessage()` (en-têtes et ancre de secours)
-- Rapatrie en priorité les branches distantes via les identifiants d'ancres WebExtension (`convGloda.getThreadMessages`), garantissant une résolution complète et instantanée
-- Fallback automatique par en-tête Gloda (`convGloda.getThreadByHeaderId`) pour les messages sans ancre active
+- Interroge les clusters actifs via `ManualLinksManager.getClustersForMessage()` (en-têtes RFC 822 et ancres de session en RAM)
+- **Garde d'Intégrité Strict (SEC-01 / B1)** : lors de la résolution via une ancre de session, valide systématiquement qu'au moins un message retourné correspond aux `allHeaderIds` du cluster. Si l'ancre est invalide ou recyclée, le fil est rejeté immédiatement
+- **Résolution canonique inter-sessions par RFC 822** : s'appuie sur `convGloda.getThreadByHeaderId` pour restaurer les conversations de manière infaillible après un redémarrage
 - Fusionne les ensembles de messages, élimine les doublons stricts par `headerMessageId`, et marque les messages rattachés (`isManualLink: true`, `manualLinkId`)
 - Trie l'ensemble chronologiquement de manière uniforme
-- **Déclenchement du Self-Healing** : après consolidation du fil fusionné, notifie `ManualLinksManager.healCluster()` pour persister immédiatement l'intégralité des participants découverts dans `storage.local`
-- Garantit une visibilité totale et symétrique de la fusion quel que soit le message cliqué dans l'une quelconque des conversations réunies
+- **Auto-consolidation (Self-Healing)** : notifie `ManualLinksManager.healCluster()` pour mémoriser les nouveaux Message-IDs découverts (et enregistrer les ancres numériques en RAM uniquement)
+- **Assainissement des journaux (SEC-02)** : aucun Message-ID, sujet ou auteur n'est exposé en clair dans les logs console en cas d'erreur de résolution
 
 ### 2. Experiment APIs (contexte chrome)
 
