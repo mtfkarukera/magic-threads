@@ -388,6 +388,15 @@ browser.magicThreadsWindow.onBannerItemClicked.addListener(async (messageId, mod
   }
 });
 
+// ---- Écouteur de bascule du mode de navigation ----
+browser.magicThreadsWindow.onNavigationModeChanged.addListener(async (newMode) => {
+  try {
+    await storage.set({ navigationMode: newMode });
+  } catch (e) {
+    console.error("Magic Threads: error updating navigationMode:", e);
+  }
+});
+
 // ---- Menus contextuels pour la gestion des liaisons de fils ----
 try {
   browser.menus.create({

@@ -18,11 +18,11 @@
     }
   },
   "modeCurrentTab": {
-    "message": "Pestaña actual 🔁",
+    "message": "Pestaña actual",
     "description": "Navigation mode indicator: open in current tab"
   },
   "modeNewTab": {
-    "message": "Nueva pestaña ↗️",
+    "message": "Nueva pestaña",
     "description": "Navigation mode indicator: open in new tab"
   },
   "tooltipCurrentTab": {

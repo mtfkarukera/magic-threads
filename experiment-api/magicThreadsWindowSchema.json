@@ -287,6 +287,19 @@
             "description": "En-tête Message-ID RFC 822 du message cliqué."
           }
         ]
+      },
+      {
+        "name": "onNavigationModeChanged",
+        "type": "function",
+        "description": "Déclenché quand l'utilisateur bascule le mode de navigation (onglet courant vs nouvel onglet).",
+        "parameters": [
+          {
+            "name": "newMode",
+            "type": "string",
+            "enum": ["currentTab", "newTab"],
+            "description": "Nouveau mode de navigation sélectionné."
+          }
+        ]
       }
     ]
   }

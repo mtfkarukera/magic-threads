@@ -18,11 +18,11 @@
     }
   },
   "modeCurrentTab": {
-    "message": "現在のタブ 🔁",
+    "message": "現在のタブ",
     "description": "Navigation mode indicator: open in current tab"
   },
   "modeNewTab": {
-    "message": "新しいタブ ↗️",
+    "message": "新しいタブ",
     "description": "Navigation mode indicator: open in new tab"
   },
   "tooltipCurrentTab": {

@@ -4,6 +4,19 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
+## [2.9.1] - 2026-10-11
+
+### Corrigé
+- **Unification & Responsivité du Sélecteur de Navigation ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - Remplacement de l'ancien couple inerte `<span>` (« Onglet courant ») + bouton engrenage ambigu `⚙️` par un bouton toggle interactif unique `<button class="threads-nav-mode-btn">`.
+  - Résolution de la disparition en volet latéral étroit (< 260px) : la Container Query masque désormais uniquement le libellé textuel `.threads-nav-mode-label`. Le bouton et son icône SVG restent visibles, centrés et cliquables en permanence dans la sidebar.
+  - Intégration de deux icônes SVG dédiées : commutation intra-onglet (flèches en boucle) et nouvel onglet (flèche externe ↗️).
+- **Persistance & Synchronisation Globale Immédiate ([background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js), [magicThreadsWindowSchema.json](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowSchema.json))** :
+  - Déclaration de l'événement `onNavigationModeChanged` dans le schéma de l'Experiment API.
+  - Sauvegarde immédiate du mode sélectionné dans `browser.storage.local` au clic sur le bouton, réactualisant tous les volets ouverts et la page d'options en temps réel via `storage.onChanged`.
+- **Éradication des Emojis Résiduels dans l'i18n ([_locales/](file:///Users/mtfkarukera/Scripts/magic-threads-b/_locales/))** :
+  - Nettoyage des emojis `🔁` et `↗️` dans les libellés `modeCurrentTab` et `modeNewTab` pour les 7 catalogues de langues, désormais pris en charge par le rendu vectoriel SVG monochrome.
+
 ## [2.9.0] - 2026-10-11
 
 ### Performance & Réactivité

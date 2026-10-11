@@ -18,11 +18,11 @@
     }
   },
   "modeCurrentTab": {
-    "message": "Onglet courant 🔁",
+    "message": "Onglet courant",
     "description": "Navigation mode indicator: open in current tab"
   },
   "modeNewTab": {
-    "message": "Nouvel onglet ↗️",
+    "message": "Nouvel onglet",
     "description": "Navigation mode indicator: open in new tab"
   },
   "tooltipCurrentTab": {

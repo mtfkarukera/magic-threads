@@ -81,8 +81,12 @@ const SHARED_CSS = `
             flex-wrap: wrap;
             gap: 4px;
           }
-          .threads-mode-indicator {
+          .threads-nav-mode-btn .threads-nav-mode-label {
             display: none !important;
+          }
+          .threads-nav-mode-btn {
+            padding: 2px 6px;
+            border-radius: 4px;
           }
           .threads-title {
             font-size: 0.875em;
@@ -138,32 +142,44 @@ const SHARED_CSS = `
           gap: 8px;
         }
 
-        .threads-mode-indicator {
-          font-size: 0.85em;
-          color: var(--text-muted);
-          background-color: var(--card-bg);
-          border: 1px solid var(--banner-border);
-          padding: 2px 8px;
-          border-radius: 12px;
-          transition: all 0.2s ease;
-        }
-
-        .threads-toggle-btn,
+        .threads-nav-mode-btn,
         .threads-collapse-btn {
           background: none;
           border: 1px solid var(--banner-border);
           color: var(--text-main);
           cursor: pointer;
-          padding: 2px 6px;
           border-radius: 4px;
           background-color: var(--card-bg);
-          font-size: 0.9em;
-          transition: background-color 0.2s;
+          font-size: 0.85em;
+          transition: background-color 0.2s, border-color 0.2s, color 0.2s;
         }
 
-        .threads-toggle-btn:hover,
+        .threads-nav-mode-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 2px 8px;
+          border-radius: 12px;
+          color: var(--text-muted);
+        }
+
+        .threads-nav-mode-btn svg {
+          flex-shrink: 0;
+          pointer-events: none;
+        }
+
+        .threads-nav-mode-btn:hover,
         .threads-collapse-btn:hover {
           background-color: var(--card-hover-bg);
+          color: var(--text-main);
+        }
+
+        .threads-nav-mode-btn:hover {
+          border-color: var(--accent-border);
+        }
+
+        .threads-collapse-btn {
+          padding: 2px 6px;
         }
 
         .threads-list {
@@ -204,7 +220,7 @@ const SHARED_CSS = `
         /* Focus clavier nettement visible (items du fil, boutons, poignée).
            Offset négatif : l'anneau reste visible dans la liste défilante. */
         .thread-item:focus-visible,
-        .threads-toggle-btn:focus-visible,
+        .threads-nav-mode-btn:focus-visible,
         .threads-collapse-btn:focus-visible,
         .resize-handle:focus-visible,
         .thread-detach-btn:focus-visible,
@@ -487,8 +503,7 @@ const SIDEBAR_CSS = `
           padding: 0 4px;
         }
         .threads-wrapper.collapsed .threads-title,
-        .threads-wrapper.collapsed .threads-mode-indicator,
-        .threads-wrapper.collapsed .threads-toggle-btn {
+        .threads-wrapper.collapsed .threads-nav-mode-btn {
           display: none;
         }
         .threads-wrapper.collapsed .threads-header {
@@ -595,18 +610,52 @@ function createSvg(doc, width, height, viewBox) {
 }
 
 /**
- * Crée une icône d'options / engrenage SVG monochrome (14x14).
+ * Crée une icône commutation / onglet courant SVG monochrome (14x14).
+ * Représente la bascule intra-onglet (flèches opposées en boucle).
  */
-function createGearIcon(doc) {
+function createCurrentTabIcon(doc) {
   let svg = createSvg(doc, 14, 14, "0 0 16 16");
   let path = doc.createElementNS(SVG_NS, "path");
-  path.setAttribute("d", "M8 4.75a3.25 3.25 0 1 0 0 6.5 3.25 3.25 0 0 0 0-6.5zM9.5 8a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z");
-  let path2 = doc.createElementNS(SVG_NS, "path");
-  path2.setAttribute("fill-rule", "evenodd");
-  path2.setAttribute("d", "M6.5 1.5a1 1 0 0 0-.96.72l-.33 1.15a5.52 5.52 0 0 0-1.1.64l-1.12-.47a1 1 0 0 0-1.2.45l-1 1.73a1 1 0 0 0 .23 1.25l.93.79c-.04.28-.04.57 0 .86l-.93.79a1 1 0 0 0-.23 1.25l1 1.73a1 1 0 0 0 1.2.45l1.12-.47c.33.25.7.47 1.1.64l.33 1.15a1 1 0 0 0 .96.72h2a1 1 0 0 0 .96-.72l.33-1.15c.4-.17.77-.39 1.1-.64l1.12.47a1 1 0 0 0 1.2-.45l1-1.73a1 1 0 0 0-.23-1.25l-.93-.79c.04-.29.04-.57 0-.86l.93-.79a1 1 0 0 0 .23-1.25l-1-1.73a1 1 0 0 0-1.2-.45l-1.12.47a5.52 5.52 0 0 0-1.1-.64l-.33-1.15A1 1 0 0 0 9.5 1.5h-2zm-1.3 2.57.26-.9a.25.25 0 0 1 .24-.17h1.6a.25.25 0 0 1 .24.17l.26.9.43.18c.36.16.7.36 1 .6l.4.3.89-.37a.25.25 0 0 1 .3.11l.8 1.39a.25.25 0 0 1-.06.31l-.74.63.1.48c.04.3.04.6 0 .9l-.1.48.74.63a.25.25 0 0 1 .06.31l-.8 1.39a.25.25 0 0 1-.3.11l-.89-.37-.4.3c-.3.24-.64.44-1 .6l-.43.18-.26.9a.25.25 0 0 1-.24.17h-1.6a.25.25 0 0 1-.24-.17l-.26-.9-.43-.18a4.7 4.7 0 0 1-1-.6l-.4-.3-.89.37a.25.25 0 0 1-.3-.11l-.8-1.39a.25.25 0 0 1 .06-.31l.74-.63-.1-.48a4.9 4.9 0 0 1 0-.9l.1-.48-.74-.63a.25.25 0 0 1-.06-.31l.8-1.39a.25.25 0 0 1 .3-.11l.89.37.4-.3c.3-.24.64-.44 1-.6l.43-.18z");
+  path.setAttribute("fill-rule", "evenodd");
+  path.setAttribute("d", "M5.22 1.47a.75.75 0 0 1 1.06 0l2.25 2.25a.75.75 0 0 1 0 1.06l-2.25 2.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L6.44 4.75H2.75a.75.75 0 0 1 0-1.5h3.69L5.22 2.53a.75.75 0 0 1 0-1.06zm5.56 8a.75.75 0 0 1 0 1.06l-1.22 1.22h3.69a.75.75 0 0 1 0 1.5h-3.69l1.22 1.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215l-2.25-2.25a.75.75 0 0 1 0-1.06l2.25-2.25a.75.75 0 0 1 1.06 0z");
   svg.appendChild(path);
-  svg.appendChild(path2);
   return svg;
+}
+
+/**
+ * Crée une icône nouvel onglet / flèche externe SVG monochrome (14x14).
+ */
+function createNewTabIcon(doc) {
+  let svg = createSvg(doc, 14, 14, "0 0 16 16");
+  let path = doc.createElementNS(SVG_NS, "path");
+  path.setAttribute("fill-rule", "evenodd");
+  path.setAttribute("d", "M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2zm6.88-1a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0V3.31l-5.47 5.47a.75.75 0 0 1-1.06-1.06l5.47-5.47H11.38a.75.75 0 0 1-.75-.75z");
+  svg.appendChild(path);
+  return svg;
+}
+
+/**
+ * Met à jour le bouton de mode de navigation avec l'icône SVG et le libellé textuel.
+ */
+function updateNavModeButton(btn, mode, labels, doc) {
+  while (btn.firstChild) {
+    btn.firstChild.remove();
+  }
+  let isCurrent = mode === "currentTab";
+  let labelText = isCurrent ? (labels.modeCurrentTab || "Current tab") : (labels.modeNewTab || "New tab");
+  let tooltipText = isCurrent ? (labels.tooltipCurrentTab || "Click switches the message in the active tab") : (labels.tooltipNewTab || "Click opens the message in a new tab");
+
+  let icon = isCurrent ? createCurrentTabIcon(doc) : createNewTabIcon(doc);
+  btn.appendChild(icon);
+
+  let labelSpan = doc.createElement("span");
+  labelSpan.className = "threads-nav-mode-label";
+  labelSpan.textContent = labelText;
+  btn.appendChild(labelSpan);
+
+  btn.title = tooltipText;
+  btn.setAttribute("aria-label", tooltipText + " (" + labelText + ")");
+  btn.dataset.mode = mode;
 }
 
 /**
@@ -830,12 +879,13 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
     let confirmManualLinkFire = null;
     let cancelManualLinkFire = null;
     let detachManualLinkFire = null;
+    let toggleNavigationModeFire = null;
 
     // Labels par défaut (fallback en anglais si non fournis, alignés sur _locales/en)
     const DEFAULT_LABELS = {
       panelTitle: "🧵 Thread ($COUNT$)",
-      modeCurrentTab: "Current tab 🔁",
-      modeNewTab: "New tab ↗️",
+      modeCurrentTab: "Current tab",
+      modeNewTab: "New tab",
       tooltipCurrentTab: "Click switches the message in the active tab",
       tooltipNewTab: "Click opens the message in a new tab",
       tooltipToggleMode: "Change navigation mode",
@@ -938,15 +988,6 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       return parts[parts.length - 1] || folder.path;
     }
 
-    function updateModeIndicator(elem, mode, labels) {
-      if (mode === "currentTab") {
-        elem.textContent = labels.modeCurrentTab;
-        elem.title = labels.tooltipCurrentTab;
-      } else {
-        elem.textContent = labels.modeNewTab;
-        elem.title = labels.tooltipNewTab;
-      }
-    }
 
     // =================================================================
     // DOM Builder (i18n-aware)
@@ -1242,9 +1283,13 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       }
 
       // Mise à jour du mode
-      let modeIndicator = shadowRoot.querySelector("#threads-mode-indicator");
-      if (modeIndicator) {
-        updateModeIndicator(modeIndicator, navigationMode, labels);
+      let navModeBtn = shadowRoot.querySelector(".threads-nav-mode-btn");
+      if (navModeBtn) {
+        let doc = shadowRoot.ownerDocument || hostEl.ownerDocument;
+        updateNavModeButton(navModeBtn, navigationMode, labels, doc);
+        if (hostEl._magicThreadsNavState) {
+          hostEl._magicThreadsNavState.mode = navigationMode;
+        }
       }
 
       // Scroll doux vers l'élément sélectionné si nécessaire
@@ -1359,20 +1404,10 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       let actionsDiv = doc.createElement("div");
       actionsDiv.className = "threads-actions";
 
-      let modeIndicator = doc.createElement("span");
-      modeIndicator.id = "threads-mode-indicator";
-      modeIndicator.className = "threads-mode-indicator";
-      modeIndicator.setAttribute("aria-live", "polite");
-      updateModeIndicator(modeIndicator, navigationMode, labels);
-      actionsDiv.appendChild(modeIndicator);
-
-      let toggleBtn = doc.createElement("button");
-      toggleBtn.className = "threads-toggle-btn";
-      toggleBtn.title = labels.tooltipToggleMode;
-      toggleBtn.setAttribute("aria-label", labels.tooltipToggleMode);
-      toggleBtn.setAttribute("aria-describedby", "threads-mode-indicator");
-      toggleBtn.appendChild(createGearIcon(doc));
-      actionsDiv.appendChild(toggleBtn);
+      let navModeBtn = doc.createElement("button");
+      navModeBtn.className = "threads-nav-mode-btn";
+      updateNavModeButton(navModeBtn, navigationMode, labels, doc);
+      actionsDiv.appendChild(navModeBtn);
 
       let collapseBtn = doc.createElement("button");
       collapseBtn.className = "threads-collapse-btn";
@@ -1501,14 +1536,21 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       list.setAttribute("role", "list");
       list.setAttribute("aria-labelledby", "threads-panel-title");
 
-      // Mode de navigation courant porté par un objet : buildThreadItem en lit
-      // la valeur AU MOMENT du clic (liaison vivante après bascule du bouton).
       let navState = { mode: navigationMode };
+      if (shadowRoot.host) {
+        shadowRoot.host._magicThreadsNavState = navState;
+      }
 
-      toggleBtn.addEventListener("click", (e) => {
+      navModeBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         navState.mode = navState.mode === "currentTab" ? "newTab" : "currentTab";
-        updateModeIndicator(modeIndicator, navState.mode, labels);
+        updateNavModeButton(navModeBtn, navState.mode, labels, doc);
+        if (announceLive) {
+          announceLive(navState.mode === "currentTab" ? (labels.modeCurrentTab || "Onglet courant") : (labels.modeNewTab || "Nouvel onglet"));
+        }
+        if (toggleNavigationModeFire) {
+          toggleNavigationModeFire.async(navState.mode);
+        }
       });
 
       collapseBtn.addEventListener("click", (e) => {
@@ -2013,6 +2055,17 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
             detachManualLinkFire = fire;
             return function () {
               detachManualLinkFire = null;
+            };
+          },
+        }).api(),
+
+        onNavigationModeChanged: new ExtensionCommon.EventManager({
+          context,
+          name: "magicThreadsWindow.onNavigationModeChanged",
+          register(fire) {
+            toggleNavigationModeFire = fire;
+            return function () {
+              toggleNavigationModeFire = null;
             };
           },
         }).api(),

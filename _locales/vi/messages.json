@@ -18,11 +18,11 @@
     }
   },
   "modeCurrentTab": {
-    "message": "Thẻ hiện tại 🔁",
+    "message": "Thẻ hiện tại",
     "description": "Navigation mode indicator: open in current tab"
   },
   "modeNewTab": {
-    "message": "Thẻ mới ↗️",
+    "message": "Thẻ mới",
     "description": "Navigation mode indicator: open in new tab"
   },
   "tooltipCurrentTab": {

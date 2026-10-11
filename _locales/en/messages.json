@@ -18,11 +18,11 @@
     }
   },
   "modeCurrentTab": {
-    "message": "Current tab 🔁",
+    "message": "Current tab",
     "description": "Navigation mode indicator: open in current tab"
   },
   "modeNewTab": {
-    "message": "New tab ↗️",
+    "message": "New tab",
     "description": "Navigation mode indicator: open in new tab"
   },
   "tooltipCurrentTab": {

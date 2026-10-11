@@ -109,7 +109,7 @@ flowchart LR
 - Expose aussi `isGlodaAvailable()` (v2.3.0) : vérifie la préférence `mailnews.database.global.indexer.enabled` et le chargement du module Gloda — utilisé par la page d'options pour avertir si l'index est désactivé
 - Schéma défini dans `glodaSchema.json`
 
-#### `experiment-api/magicThreadsWindowApi.js` (v2.8.1)
+#### `experiment-api/magicThreadsWindowApi.js` (v2.9.1)
 
 Experiment API pour l'injection DOM :
 
@@ -119,7 +119,8 @@ Experiment API pour l'injection DOM :
 - Injecte les styles CSS dans le Shadow DOM
 - **Bannière d'association en Staging (v2.6.0)** : Construit et insère en tête de panneau l'interface de pré-liaison interactive avec prévisualisation du message source, choix de la portée (`entire_thread` / `single_message`) dans un conteneur sémantique `role="radiogroup"` et boutons `[Confirmer l'association]` et `[Annuler]`.
 - **Badges et dissociation rapide (v2.6.0)** : Affiche le badge de lien manuel et le bouton `×` de détachement direct sur les cartes liées, sans dialogue bloquant (conforme Règle 14).
-- **Communication bidirectionnelle d'événements** : Expose les événements `onConfirmManualLink`, `onCancelManualLink` et `onDetachManualLink` via `EventManager` pour notifier le background.
+- **Communication bidirectionnelle d'événements** : Expose les événements `onConfirmManualLink`, `onCancelManualLink`, `onDetachManualLink` et `onNavigationModeChanged` via `EventManager` pour notifier le background.
+- **Bouton de navigation unifié et réactif (v2.9.1)** : Remplacement de l'ancien couple indicateur inerte + engrenage par un unique bouton toggle interactif `<button class="threads-nav-mode-btn">` avec icônes SVG contextuelles (switch / external-tab). La Container Query compacte élégamment le bouton en masquant son texte sous 260px sans jamais faire disparaître le contrôle. L'événement `onNavigationModeChanged` persiste immédiatement le mode dans `browser.storage.local` et synchronise toutes les fenêtres ouvertes.
 - **Accessibilité WCAG 2.1 AA (v2.8.1)** :
   - **Élimination du contrôle interactif imbriqué (WCAG 4.1.2)** : Les cartes de messages utilisent `role="article"` avec `aria-roledescription="message"` au lieu de `role="button"` parent, permettant la cohabitation sémantique légale du bouton de détachement interne.
   - **Roving Tabindex étanche** : Seule la carte active et son éventuel bouton de détachement possèdent `tabIndex = 0` ; les cartes inactives et leurs boutons restent à `tabIndex = -1` pour préserver le cycle de tabulation clavier.
@@ -127,7 +128,7 @@ Experiment API pour l'injection DOM :
   - **Repère sémantique Landmark & Région vocale** : Déclaration de `role="complementary"` sur le conteneur du volet et région `aria-live="polite"` pour annoncer vocalement les confirmations et détachements.
   - **Conformité des contrastes (WCAG 1.4.3 & 1.4.11)** : Bouton de confirmation dark mode à ratio 4.95:1, poignée de redimensionnement sans opacité avec points contrastés $\ge 3:1$, badge manuel sur `--accent-text` ($\ge 4{,}98:1$).
   - **Typographie adaptative (WCAG 1.4.4)** : Unités relatives `em` s'adaptant fidèlement à la taille de police définie dans Thunderbird.
-- **Intégration Visuelle Supernova & Modernisation (v2.9.0)** :
+- **Intégration Visuelle Supernova & Modernisation (v2.9.0 - v2.9.1)** :
   - **Responsivité Volet Étroit via Container Queries** : Déclaration de `container-type: inline-size` sur `.threads-wrapper` et règle `@container (max-width: 260px)` compactant automatiquement l'en-tête et les métadonnées sur sidebar étroite (150px-260px).
   - **Colorimétrie Moderne** : Factorisation CSS de la palette `:host` avec les fonctions standard `color-scheme: light dark;`, `light-dark()` et `color-mix()` calquées sur les tokens natifs Thunderbird.
   - **Icônes Vectorielles SVG Monochromes** : Remplacement de tous les emojis par des glyphes SVG sécurisés (`createElementNS`) adoptant la couleur courante (`currentColor`).
