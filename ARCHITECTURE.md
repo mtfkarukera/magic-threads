@@ -127,7 +127,7 @@ Experiment API pour l'injection DOM :
   - **Conformité des contrastes (WCAG 1.4.3 & 1.4.11)** : Bouton de confirmation dark mode à ratio 4.95:1, poignée de redimensionnement sans opacité avec points contrastés $\ge 3:1$, badge manuel sur `--accent-text` ($\ge 4{,}98:1$).
   - **Typographie adaptative (WCAG 1.4.4)** : Unités relatives `em` s'adaptant fidèlement à la taille de police définie dans Thunderbird.
 - Gère le nettoyage du DOM quand le message change
-- Schéma défini dans `magicThreadsWindowSchema.json`
+- Schéma défini dans `magicThreadsWindowSchema.json` (avec typage strict des labels i18n et validation conforme Gecko `ExtensionParent.sys.mjs` v2.8.2)
 
 ### 3. Options (contexte WebExtension)
 

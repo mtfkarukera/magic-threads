@@ -4,6 +4,13 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
+## [2.8.2] - 2026-10-11
+
+### Corrigé
+- **Restauration de la conformité du schéma Experiment API (`showBanner`) ([magicThreadsWindowSchema.json](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowSchema.json))** :
+  - Déclaration explicite des propriétés `optManualLinksDeletedFeedback` et `messageRoleDescription` dans la liste blanche `properties` du paramètre `labels` sous `showBanner`.
+  - Résolution d'un `TypeError` bloquant levé par le validateur de schéma WebExtension de Gecko (`ExtensionParent.sys.mjs:329:38`) qui empêchait l'affichage du volet lors de la sélection d'un e-mail.
+
 ## [2.8.1] - 2026-10-11
 
 ### Internationalisation (i18n)
