@@ -197,6 +197,7 @@ const SHARED_CSS = `
         }
 
         .thread-item {
+          position: relative;
           background-color: var(--card-bg);
           border: 1px solid var(--banner-border);
           border-radius: 6px;
@@ -326,20 +327,27 @@ const SHARED_CSS = `
         }
 
         .thread-detach-btn {
+          position: absolute;
+          right: 6px;
+          bottom: 5px;
           background: none;
           border: none;
-          padding: 0 4px;
-          margin-left: auto;
+          padding: 2px 5px;
           cursor: pointer;
           color: var(--text-muted);
-          font-size: 1.08em;
+          font-size: 1.1em;
           line-height: 1;
-          border-radius: 3px;
+          border-radius: 4px;
+          transition: color 0.15s ease, background-color 0.15s ease;
         }
 
         .thread-detach-btn:hover {
           color: #ff3b30;
-          background-color: rgba(255, 59, 48, 0.1);
+          background-color: rgba(255, 59, 48, 0.12);
+        }
+
+        .thread-item.has-manual-link .thread-snippet {
+          padding-right: 20px;
         }
 
         .staging-banner {
@@ -1062,7 +1070,17 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         linkBadge.setAttribute("aria-label", labels.badgeManualLink || "Message rattaché manuellement");
         linkBadge.appendChild(createLinkIcon(doc));
         meta.appendChild(linkBadge);
+      }
 
+      item.appendChild(meta);
+
+      let snippet = doc.createElement("div");
+      snippet.className = "thread-snippet";
+      snippet.textContent = msg.snippet;
+      item.appendChild(snippet);
+
+      if (msg.isManualLink) {
+        item.classList.add("has-manual-link");
         if (msg.manualLinkId) {
           let detachBtn = doc.createElement("button");
           detachBtn.className = "thread-detach-btn";
@@ -1081,16 +1099,9 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
               detachManualLinkFire.async(msg.manualLinkId, msg.id, msg.headerMessageId);
             }
           });
-          meta.appendChild(detachBtn);
+          item.appendChild(detachBtn);
         }
       }
-
-      item.appendChild(meta);
-
-      let snippet = doc.createElement("div");
-      snippet.className = "thread-snippet";
-      snippet.textContent = msg.snippet;
-      item.appendChild(snippet);
 
       let activate = () => {
         let root = item.closest("#threads-list");

@@ -4,6 +4,15 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
+## [2.9.2] - 2026-10-11
+
+### Corrigé
+- **Ancrage & Ergonomie du Bouton de Détachement ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - Positionnement absolu constant de la croix de dissociation (`×`) dans le coin inférieur droit de chaque carte de message (`.thread-item`), quel que soit le mode d'affichage (Bottom panel ou Sidebar latérale à gauche/droite).
+  - Résolution du problème de disposition en Sidebar latérale où le bouton flottait sur une ligne orpheline intermédiaire dans la grille CSS.
+  - Ajout d'une marge de protection de sécurité (`padding-right: 20px`) sur le snippet de texte des messages rattachés manuellement pour empêcher tout chevauchement textuel avec la croix.
+  - Préservation intégrale de l'accessibilité clavier (roving tabindex, touches `Suppr` / `Backspace` directes, focus visible contrasté).
+
 ## [2.9.1] - 2026-10-11
 
 ### Corrigé
