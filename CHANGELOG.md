@@ -4,6 +4,26 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
+## [2.9.0] - 2026-10-11
+
+### Performance & Réactivité
+- **Debounce Intelligent sur la Navigation Clavier ([background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js))** :
+  - Temporisation de 120 ms sur `mailTabs.onSelectedMessagesChanged` lors des défilements rapides au clavier.
+  - Élimination des requêtes intermédiaires redondantes vers l'indexeur XPCOM de Gloda, tout en préservant le masquage immédiat (`hideBanner`) sur désélection ou multi-sélection.
+- **Réactivité Temps Réel des Options ([background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js))** :
+  - Intégration d'un écouteur `browser.storage.onChanged` réactualisant immédiatement les volets actifs ouverts lors de la modification des préférences (mode de navigation, position du volet, tri chronologique) ou des liaisons manuelles, sans nécessiter de re-sélectionner un e-mail.
+
+### Interface & Design Natif Supernova
+- **Responsivité Sidebar Étroite via Container Queries ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - Déclaration de `container-type: inline-size` sur `.threads-wrapper` et règle `@container (max-width: 260px)`.
+  - Adaptation fluide du volet latéral sur les petites largeurs (jusqu'à la borne minimale de 150px) avec compactage de l'en-tête et masquage élégant des indicateurs superflus.
+- **Modernisation CSS (`light-dark()`, `color-mix()`) ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - Factorisation de la palette CSS `:host` exploitant les fonctions standard `color-scheme: light dark;`, `light-dark()` et `color-mix()`, adossées aux tokens natifs de Thunderbird Supernova.
+- **Icônes SVG Vectorielles Monochromes ([magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js), [options.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/options/options.js))** :
+  - Remplacement de tous les emojis système (⚙️, ◀, ▶, ▼, ▲, 🔗, 📎, 🗑️) par des glyphes SVG vectoriels monochromes (`currentColor`) créés de manière sécurisée via `createElementNS` (zéro `innerHTML`, conformité CSP stricte).
+- **Toast Flottant Moderne dans les Options ([options.html](file:///Users/mtfkarukera/Scripts/magic-threads-b/options/options.html), [options.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/options/options.js))** :
+  - Transformation de l'indicateur de statut en composant toast flottant (`position: fixed; bottom: 24px; right: 24px`) avec ombre douce et animation d'apparition fluide, tout en préservant le rôle sémantique `role="status"` pour l'accessibilité vocale.
+
 ## [2.8.2] - 2026-10-11
 
 ### Corrigé

@@ -35,30 +35,29 @@ const SHARED_CSS = `
           display: flex;
           flex-direction: column;
           box-sizing: border-box;
+          color-scheme: light dark;
 
-          /* Palette adossée aux variables de thème Thunderbird (--layout-*, --color-*,
-             --focus-outline-color) héritées du document hôte, avec fallbacks
-             conformes WCAG AA (texte secondaire ≥ 4,5:1 sur les fonds utilisés).
-             Déclarée sur :host pour être visible de tout le shadow tree
-             (y compris la poignée de redimensionnement, hors .threads-wrapper). */
-          --banner-bg: var(--layout-background-1, #f5f7f8);
-          --banner-border: var(--layout-border-0, #e1e4e6);
-          --card-bg: var(--layout-background-0, #ffffff);
-          --card-hover-bg: var(--layout-background-2, #edf2f7);
-          --text-main: var(--layout-color-1, #1a202c);
-          --text-muted: var(--layout-color-2, #5a6675);
-          --accent-border: var(--color-accent-primary, #3182ce);
-          --accent-bg: #ebf8ff;
-          --accent-text: #2b6cb0;
+          /* Palette moderne adossée aux tokens Thunderbird Supernova (--layout-*, --color-*)
+             avec fonctions standard light-dark() et color-mix() conformes WCAG 2.1 AA.
+             Déclarée sur :host pour être visible de tout le shadow tree. */
+          --banner-bg: var(--layout-background-1, light-dark(#f5f7f8, #1e222b));
+          --banner-border: var(--layout-border-0, light-dark(#e1e4e6, #3e4451));
+          --card-bg: var(--layout-background-0, light-dark(#ffffff, #282c34));
+          --card-hover-bg: var(--layout-background-2, light-dark(#edf2f7, #353b45));
+          --text-main: var(--layout-color-1, light-dark(#1a202c, #abb2bf));
+          --text-muted: var(--layout-color-2, light-dark(#5a6675, #9fa8b7));
+          --accent-border: var(--color-accent-primary, light-dark(#3182ce, #528bff));
+          --accent-bg: light-dark(color-mix(in srgb, var(--accent-border) 10%, #ffffff), color-mix(in srgb, var(--accent-border) 18%, #1e222b));
+          --accent-text: light-dark(#2b6cb0, #82aaff);
           --focus-color: var(--focus-outline-color, var(--accent-border));
-          --folder-bg: #edf2f7;
-          --folder-text: #4a5568;
-          --inbox-bg: #ebf8ff;
-          --inbox-text: #2b6cb0;
-          --sent-bg: #f0fff4;
-          --sent-text: #276f4a;
-          --archive-bg: #fefcbf;
-          --archive-text: #8f5700;
+          --folder-bg: light-dark(#edf2f7, #2d3139);
+          --folder-text: light-dark(#4a5568, #abb2bf);
+          --inbox-bg: light-dark(#ebf8ff, #1e3a5f);
+          --inbox-text: light-dark(#2b6cb0, #82aaff);
+          --sent-bg: light-dark(#f0fff4, #1b4d3e);
+          --sent-text: light-dark(#276f4a, #a3e635);
+          --archive-bg: light-dark(#fefcbf, #4d3d1b);
+          --archive-text: light-dark(#8f5700, #fbbf24);
         }
         :host([hidden]) {
           display: none !important;
@@ -72,6 +71,26 @@ const SHARED_CSS = `
           display: flex;
           flex-direction: column;
           overflow: hidden;
+          container-type: inline-size;
+          container-name: threadspanel;
+        }
+
+        /* Responsivité du volet étroit (<260px) via Container Queries native */
+        @container threadspanel (max-width: 260px) {
+          .threads-header {
+            flex-wrap: wrap;
+            gap: 4px;
+          }
+          .threads-mode-indicator {
+            display: none !important;
+          }
+          .threads-title {
+            font-size: 0.875em;
+          }
+          .thread-meta {
+            flex-wrap: wrap;
+            gap: 2px 4px;
+          }
         }
 
         @media (prefers-color-scheme: dark) {
@@ -557,21 +576,103 @@ function cleanupInjectedDoc(contentDoc) {
   container.remove();
 }
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+
 /**
- * Retourne le glyphe directionnel approprié pour le bouton de repli selon le mode et le côté.
- * @param {boolean} isCollapsed - État replié ou déplié
- * @param {string} layout - "bottom" ou "sidebar"
- * @param {string} side - "left" ou "right"
- * @returns {string}
+ * Crée un élément SVG standard sécurisé via createElementNS.
  */
-function getCollapseIcon(isCollapsed, layout, side) {
+function createSvg(doc, width, height, viewBox) {
+  let svg = doc.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("width", String(width));
+  svg.setAttribute("height", String(height));
+  svg.setAttribute("viewBox", viewBox);
+  svg.setAttribute("fill", "currentColor");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  svg.style.display = "inline-block";
+  svg.style.verticalAlign = "middle";
+  return svg;
+}
+
+/**
+ * Crée une icône d'options / engrenage SVG monochrome (14x14).
+ */
+function createGearIcon(doc) {
+  let svg = createSvg(doc, 14, 14, "0 0 16 16");
+  let path = doc.createElementNS(SVG_NS, "path");
+  path.setAttribute("d", "M8 4.75a3.25 3.25 0 1 0 0 6.5 3.25 3.25 0 0 0 0-6.5zM9.5 8a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z");
+  let path2 = doc.createElementNS(SVG_NS, "path");
+  path2.setAttribute("fill-rule", "evenodd");
+  path2.setAttribute("d", "M6.5 1.5a1 1 0 0 0-.96.72l-.33 1.15a5.52 5.52 0 0 0-1.1.64l-1.12-.47a1 1 0 0 0-1.2.45l-1 1.73a1 1 0 0 0 .23 1.25l.93.79c-.04.28-.04.57 0 .86l-.93.79a1 1 0 0 0-.23 1.25l1 1.73a1 1 0 0 0 1.2.45l1.12-.47c.33.25.7.47 1.1.64l.33 1.15a1 1 0 0 0 .96.72h2a1 1 0 0 0 .96-.72l.33-1.15c.4-.17.77-.39 1.1-.64l1.12.47a1 1 0 0 0 1.2-.45l1-1.73a1 1 0 0 0-.23-1.25l-.93-.79c.04-.29.04-.57 0-.86l.93-.79a1 1 0 0 0 .23-1.25l-1-1.73a1 1 0 0 0-1.2-.45l-1.12.47a5.52 5.52 0 0 0-1.1-.64l-.33-1.15A1 1 0 0 0 9.5 1.5h-2zm-1.3 2.57.26-.9a.25.25 0 0 1 .24-.17h1.6a.25.25 0 0 1 .24.17l.26.9.43.18c.36.16.7.36 1 .6l.4.3.89-.37a.25.25 0 0 1 .3.11l.8 1.39a.25.25 0 0 1-.06.31l-.74.63.1.48c.04.3.04.6 0 .9l-.1.48.74.63a.25.25 0 0 1 .06.31l-.8 1.39a.25.25 0 0 1-.3.11l-.89-.37-.4.3c-.3.24-.64.44-1 .6l-.43.18-.26.9a.25.25 0 0 1-.24.17h-1.6a.25.25 0 0 1-.24-.17l-.26-.9-.43-.18a4.7 4.7 0 0 1-1-.6l-.4-.3-.89.37a.25.25 0 0 1-.3-.11l-.8-1.39a.25.25 0 0 1 .06-.31l.74-.63-.1-.48a4.9 4.9 0 0 1 0-.9l.1-.48-.74-.63a.25.25 0 0 1-.06-.31l.8-1.39a.25.25 0 0 1 .3-.11l.89.37.4-.3c.3-.24.64-.44 1-.6l.43-.18z");
+  svg.appendChild(path);
+  svg.appendChild(path2);
+  return svg;
+}
+
+/**
+ * Crée une icône chevron directionnelle SVG monochrome (14x14).
+ * @param {Document} doc
+ * @param {"up"|"down"|"left"|"right"} direction
+ */
+function createChevronIcon(doc, direction) {
+  let svg = createSvg(doc, 14, 14, "0 0 16 16");
+  let path = doc.createElementNS(SVG_NS, "path");
+  path.setAttribute("fill-rule", "evenodd");
+  let d = "";
+  if (direction === "up") {
+    d = "M3.2 10.3a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 1 1-1.06 1.06L8 6.56l-3.72 3.74a.75.75 0 0 1-1.08 0z";
+  } else if (direction === "down") {
+    d = "M3.2 5.7a.75.75 0 0 0 0 1.06l4.25 4.25a.75.75 0 0 0 1.06 0l4.25-4.25a.75.75 0 1 0-1.06-1.06L8 9.44 4.28 5.7a.75.75 0 0 0-1.08 0z";
+  } else if (direction === "left") {
+    d = "M10.3 12.8a.75.75 0 0 1-1.06 0l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 1.06L6.56 8l3.74 3.72a.75.75 0 0 1 0 1.08z";
+  } else {
+    d = "M5.7 3.2a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 1 1-1.06-1.06L9.44 8 5.7 4.28a.75.75 0 0 1 0-1.08z";
+  }
+  path.setAttribute("d", d);
+  svg.appendChild(path);
+  return svg;
+}
+
+/**
+ * Crée une icône trombone (pièce jointe) SVG monochrome (12x12).
+ */
+function createPaperclipIcon(doc) {
+  let svg = createSvg(doc, 12, 12, "0 0 16 16");
+  let path = doc.createElementNS(SVG_NS, "path");
+  path.setAttribute("fill-rule", "evenodd");
+  path.setAttribute("d", "M4.5 3a2.5 2.5 0 0 1 5 0v7a1.5 1.5 0 0 1-3 0V4a.5.5 0 0 1 1 0v6a.5.5 0 0 0 1 0V3a1.5 1.5 0 1 0-3 0v7.5a2.5 2.5 0 0 0 5 0V4a.5.5 0 0 1 1 0v6.5a3.5 3.5 0 1 1-7 0V3z");
+  svg.appendChild(path);
+  return svg;
+}
+
+/**
+ * Crée une icône lien (maillon) SVG monochrome (12x12).
+ */
+function createLinkIcon(doc) {
+  let svg = createSvg(doc, 12, 12, "0 0 16 16");
+  let path = doc.createElementNS(SVG_NS, "path");
+  path.setAttribute("fill-rule", "evenodd");
+  path.setAttribute("d", "M7.775 3.275a.75.75 0 0 0 1.06 1.06l1.25-1.25a2 2 0 1 1 2.83 2.83l-2.5 2.5a2 2 0 0 1-2.83 0 .75.75 0 0 0-1.06 1.06 3.5 3.5 0 0 0 4.95 0l2.5-2.5a3.5 3.5 0 0 0-4.95-4.95l-1.25 1.25zm-1.55 4.95a.75.75 0 0 0-1.06-1.06l-1.25 1.25a2 2 0 0 0 2.83 2.83l2.5-2.5a2 2 0 0 0 0-2.83.75.75 0 0 0-1.06-1.06 3.5 3.5 0 0 1 0 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95-4.95l1.25-1.25z");
+  svg.appendChild(path);
+  return svg;
+}
+
+/**
+ * Met à jour le bouton de repli avec l'icône chevron directionnelle adaptée.
+ */
+function updateCollapseButton(btn, isCollapsed, layout, side, doc) {
+  while (btn.firstChild) {
+    btn.firstChild.remove();
+  }
+  let direction;
   if (layout === "bottom") {
-    return isCollapsed ? "\u25B2" : "\u25BC";
+    direction = isCollapsed ? "up" : "down";
+  } else if (side === "left") {
+    direction = isCollapsed ? "right" : "left";
+  } else {
+    direction = isCollapsed ? "left" : "right";
   }
-  if (side === "left") {
-    return isCollapsed ? "\u25B6" : "\u25C0";
-  }
-  return isCollapsed ? "\u25C0" : "\u25B6";
+  btn.appendChild(createChevronIcon(doc, direction));
 }
 
 /**
@@ -908,17 +1009,17 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       if (msg.hasAttachments) {
         let clip = doc.createElement("span");
         clip.className = "thread-attachment";
-        clip.textContent = "\uD83D\uDCCE";
         clip.title = labels.tooltipAttachment;
+        clip.appendChild(createPaperclipIcon(doc));
         meta.appendChild(clip);
       }
 
       if (msg.isManualLink) {
         let linkBadge = doc.createElement("span");
         linkBadge.className = "thread-badge-manual";
-        linkBadge.textContent = "\uD83D\uDD17";
         linkBadge.title = labels.badgeManualLink || "Message rattaché manuellement";
         linkBadge.setAttribute("aria-label", labels.badgeManualLink || "Message rattaché manuellement");
+        linkBadge.appendChild(createLinkIcon(doc));
         meta.appendChild(linkBadge);
 
         if (msg.manualLinkId) {
@@ -1270,12 +1371,12 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       toggleBtn.title = labels.tooltipToggleMode;
       toggleBtn.setAttribute("aria-label", labels.tooltipToggleMode);
       toggleBtn.setAttribute("aria-describedby", "threads-mode-indicator");
-      toggleBtn.textContent = "\u2699\uFE0F";
+      toggleBtn.appendChild(createGearIcon(doc));
       actionsDiv.appendChild(toggleBtn);
 
       let collapseBtn = doc.createElement("button");
       collapseBtn.className = "threads-collapse-btn";
-      collapseBtn.textContent = getCollapseIcon(false, layoutMode, sidebarPosition);
+      updateCollapseButton(collapseBtn, false, layoutMode, sidebarPosition, doc);
       collapseBtn.title = labels.tooltipCollapseExpand;
       collapseBtn.setAttribute("aria-label", labels.tooltipCollapseExpand);
       collapseBtn.setAttribute("aria-controls", "threads-list");
@@ -1301,7 +1402,11 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         let promptText = isThread && count > 1
           ? promptTemplate.replace("{count}", String(count)).replace("$COUNT$", String(count))
           : (labels.stagingBannerPromptSingle || "Rattacher ce message à la conversation ci-dessous ?");
-        stagingTitle.textContent = "\uD83D\uDD17 " + promptText;
+        stagingTitle.appendChild(createLinkIcon(doc));
+        let promptSpan = doc.createElement("span");
+        promptSpan.style.marginInlineStart = "6px";
+        promptSpan.textContent = promptText;
+        stagingTitle.appendChild(promptSpan);
         stagingDiv.appendChild(stagingTitle);
 
         if (stagingData.sourceSubject) {
@@ -1411,7 +1516,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         let isCollapsed = list.classList.toggle("collapsed");
         wrapper.classList.toggle("collapsed", isCollapsed);
         let sidePos = sidebarPosition || "right";
-        collapseBtn.textContent = getCollapseIcon(isCollapsed, layoutMode, sidePos);
+        updateCollapseButton(collapseBtn, isCollapsed, layoutMode, sidePos, doc);
         collapseBtn.setAttribute("aria-expanded", String(!isCollapsed));
 
         let hostEl = shadowRoot.host;

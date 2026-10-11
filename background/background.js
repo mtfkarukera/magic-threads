@@ -164,6 +164,9 @@ function getLabels(count) {
 // requête plus récente (ou un masquage) concernant le même onglet.
 const tabRequestIds = new Map();
 const tabLastMessageId = new Map();
+// Minuteries de temporisation (debounce) par onglet pour filtrer les défilements clavier rapides
+const tabSelectionDebounceTimers = new Map();
+const SELECTION_DEBOUNCE_DELAY_MS = 120;
 
 function nextRequestId(tabId) {
   const id = (tabRequestIds.get(tabId) || 0) + 1;
@@ -180,6 +183,11 @@ function invalidateRequests(tabId) {
 browser.tabs.onRemoved.addListener((tabId) => {
   tabRequestIds.delete(tabId);
   tabLastMessageId.delete(tabId);
+  const debounceTimer = tabSelectionDebounceTimers.get(tabId);
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+    tabSelectionDebounceTimers.delete(tabId);
+  }
   if (pendingStagingState && pendingStagingState.sourceTabId === tabId) {
     pendingStagingState = null;
     updateActionState(false).catch(() => {});
@@ -292,9 +300,16 @@ async function showThreadForMessage(tab, message) {
   );
 }
 
-// ---- Écouteur 3-pane : changement de sélection de messages ----
+// ---- Écouteur 3-pane : changement de sélection de messages (avec debounce clavier) ----
 browser.mailTabs.onSelectedMessagesChanged.addListener(async (tab, messageList) => {
   try {
+    // Annuler tout debounce précédent sur cet onglet
+    const existingTimer = tabSelectionDebounceTimers.get(tab.id);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      tabSelectionDebounceTimers.delete(tab.id);
+    }
+
     if (!messageList || !messageList.messages || messageList.messages.length === 0) {
       // Invalider les requêtes en vol : sinon un fil parti avant la
       // désélection pourrait réafficher le panneau après le masquage.
@@ -309,9 +324,49 @@ browser.mailTabs.onSelectedMessagesChanged.addListener(async (tab, messageList) 
       await browser.magicThreadsWindow.hideBanner(tab.id).catch(() => {});
       return;
     }
-    await showThreadForMessage(tab, messageList.messages[0]);
+
+    // Temporisation (debounce) pour filtrer les défilements clavier rapides
+    const targetMsg = messageList.messages[0];
+    const timer = setTimeout(async () => {
+      tabSelectionDebounceTimers.delete(tab.id);
+      try {
+        await showThreadForMessage(tab, targetMsg);
+      } catch (e) {
+        console.error("Magic Threads: error in showThreadForMessage (debounced):", e);
+      }
+    }, SELECTION_DEBOUNCE_DELAY_MS);
+    tabSelectionDebounceTimers.set(tab.id, timer);
   } catch (e) {
     console.error("Magic Threads: error in onSelectedMessagesChanged:", e);
+  }
+});
+
+// ---- Écouteur de modifications du stockage (Options & Liaisons manuelles) ----
+browser.storage.onChanged.addListener(async (changes) => {
+  try {
+    const watchedKeys = [
+      "navigationMode",
+      "sidebarPosition",
+      "mainViewPosition",
+      "threadOrder",
+      "manualThreadLinks"
+    ];
+    const hasWatchedKey = watchedKeys.some(k => k in changes);
+    if (!hasWatchedKey) {
+      return;
+    }
+
+    // Réactualiser tous les onglets actifs affichant actuellement un fil
+    for (const [tabId, msgId] of Array.from(tabLastMessageId.entries())) {
+      tabLastMessageId.delete(tabId);
+      const tab = await browser.tabs.get(tabId).catch(() => null);
+      const msg = await browser.messages.get(msgId).catch(() => null);
+      if (tab && msg) {
+        await showThreadForMessage(tab, msg);
+      }
+    }
+  } catch (e) {
+    console.error("Magic Threads: error in storage.onChanged handler:", e);
   }
 });
 

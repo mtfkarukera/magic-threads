@@ -39,7 +39,8 @@ désélection) et `messageDisplay.onMessageDisplayed` pour les onglets message.
 
 Point d'entrée de l'extension. Responsabilités :
 
-- **Écoute des événements** : `browser.messageDisplay.onMessageDisplayed` et `mailTabs.onSelectedMessagesChanged` pour détecter la sélection d'un message
+- **Écoute des événements & Debounce (v2.9.0)** : `browser.messageDisplay.onMessageDisplayed` et `mailTabs.onSelectedMessagesChanged` avec temporisation intelligente de 120 ms par onglet pour filtrer les défilements clavier rapides
+- **Réactivité Temps Réel (v2.9.0)** : écouteur `browser.storage.onChanged` réactualisant immédiatement les volets ouverts lors de la modification des options ou des liaisons manuelles
 - **Coordination** : orchestre les appels entre le ThreadResolver et l'API Window
 - **Préférences** : lit et applique les paramètres utilisateur via `browser.storage.sync` (avec fallback depuis `browser.storage.local`)
 - **Navigation** : gère les clics sur les messages du fil (intra-onglet ou nouvel onglet)
@@ -126,6 +127,10 @@ Experiment API pour l'injection DOM :
   - **Repère sémantique Landmark & Région vocale** : Déclaration de `role="complementary"` sur le conteneur du volet et région `aria-live="polite"` pour annoncer vocalement les confirmations et détachements.
   - **Conformité des contrastes (WCAG 1.4.3 & 1.4.11)** : Bouton de confirmation dark mode à ratio 4.95:1, poignée de redimensionnement sans opacité avec points contrastés $\ge 3:1$, badge manuel sur `--accent-text` ($\ge 4{,}98:1$).
   - **Typographie adaptative (WCAG 1.4.4)** : Unités relatives `em` s'adaptant fidèlement à la taille de police définie dans Thunderbird.
+- **Intégration Visuelle Supernova & Modernisation (v2.9.0)** :
+  - **Responsivité Volet Étroit via Container Queries** : Déclaration de `container-type: inline-size` sur `.threads-wrapper` et règle `@container (max-width: 260px)` compactant automatiquement l'en-tête et les métadonnées sur sidebar étroite (150px-260px).
+  - **Colorimétrie Moderne** : Factorisation CSS de la palette `:host` avec les fonctions standard `color-scheme: light dark;`, `light-dark()` et `color-mix()` calquées sur les tokens natifs Thunderbird.
+  - **Icônes Vectorielles SVG Monochromes** : Remplacement de tous les emojis par des glyphes SVG sécurisés (`createElementNS`) adoptant la couleur courante (`currentColor`).
 - Gère le nettoyage du DOM quand le message change
 - Schéma défini dans `magicThreadsWindowSchema.json` (avec typage strict des labels i18n et validation conforme Gecko `ExtensionParent.sys.mjs` v2.8.2)
 
@@ -139,7 +144,8 @@ Page de paramètres accessible depuis le gestionnaire de modules complémentaire
 - **Position du sidebar** en onglet message : gauche ou droite
 - **Position du panneau** en vue 3-pane : bottom, gauche ou droite
 - **Ordre de tri** : antichronologique ou chronologique
-- **Gestionnaire des liaisons manuelles (v2.6.0)** : Tableau accessible (WCAG 2.1 AA) listant l'intégralité des liaisons enregistrées (source, cible, portée, date) avec suppression unitaire dynamique 🗑️ et annonce vocale (`role="status"`).
+- **Toast Flottant Moderne (v2.9.0)** : Composant fixe animé (`position: fixed; bottom: 24px; right: 24px`) avec ombre douce et respect de `role="status"` (`aria-live="polite"`).
+- **Gestionnaire des liaisons manuelles (v2.6.0 & v2.9.0)** : Tableau accessible (WCAG 2.1 AA) listant l'intégralité des liaisons enregistrées (source, cible, portée, date) avec bouton de suppression SVG vectoriel et annonce vocale (`role="status"`).
 - Persistance des préférences via `browser.storage.sync` (avec fallback depuis `browser.storage.local`) et gestion directe des liaisons dans `browser.storage.local`.
 
 ## Structure du Shadow DOM

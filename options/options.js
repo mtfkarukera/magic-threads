@@ -3,6 +3,28 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 const storage = browser.storage.sync || browser.storage.local;
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+/**
+ * Crée une icône poubelle SVG monochrome (14x14) sans innerHTML.
+ */
+function createTrashIcon() {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("width", "14");
+  svg.setAttribute("height", "14");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("fill", "currentColor");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  svg.style.display = "inline-block";
+  svg.style.verticalAlign = "middle";
+
+  const path = document.createElementNS(SVG_NS, "path");
+  path.setAttribute("fill-rule", "evenodd");
+  path.setAttribute("d", "M5 3.25V4H2.75a.75.75 0 0 0 0 1.5h.3l.81 7.29A2 2 0 0 0 5.85 14.5h4.3a2 2 0 0 0 1.99-1.71l.81-7.29h.3a.75.75 0 0 0 0-1.5H11v-.75A1.75 1.75 0 0 0 9.25 1.5h-2.5A1.75 1.75 0 0 0 5 3.25zm1.5 0a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V4h-3v-.75zM4.56 5.5l.74 6.64a.5.5 0 0 0 .5.43h4.4a.5.5 0 0 0 .5-.43l.74-6.64H4.56z");
+  svg.appendChild(path);
+  return svg;
+}
 
 /**
  * Localise tous les éléments avec l'attribut data-i18n.
@@ -221,7 +243,7 @@ async function loadManualLinks() {
       let tdAction = document.createElement("td");
       let delBtn = document.createElement("button");
       delBtn.className = "delete-link-btn";
-      delBtn.textContent = "\uD83D\uDDD1\uFE0F"; // 🗑️
+      delBtn.appendChild(createTrashIcon());
       delBtn.title = browser.i18n.getMessage("optManualLinksBtnDelete") || "Supprimer la liaison";
       delBtn.setAttribute("aria-label", browser.i18n.getMessage("optManualLinksBtnDelete") || "Supprimer la liaison");
       delBtn.addEventListener("click", async () => {
