@@ -19,7 +19,7 @@ const STORAGE_KEY = "manualThreadLinks";
  * @returns {string} Message-ID normalisé.
  */
 export function normalizeMessageId(id) {
-  if (!id) return "";
+  if (typeof id !== "string" || !id.trim()) return "";
   return id.trim().toLowerCase().replace(/^</, "").replace(/>$/, "");
 }
 
@@ -280,35 +280,141 @@ export class ManualLinksManager {
   }
 
   /**
-   * Trouve tous les clusters ou liaisons connectés à une collection de Message-IDs.
+   * Trouve tous les clusters ou liaisons connectés à une collection de Message-IDs
+   * ou à un identifiant d'ancre numérique de secours.
    * @param {Array<string>|Set<string>} headerIds - Collection de Message-IDs.
+   * @param {number|null} [anchorMessageId=null] - Identifiant WebExtension de secours.
    * @returns {Promise<Array<object>>} Clusters concernés.
    */
-  static async getClustersForHeaderIds(headerIds) {
-    if (!headerIds || (Array.isArray(headerIds) && headerIds.length === 0)) {
+  static async getClustersForHeaderIds(headerIds, anchorMessageId = null) {
+    const hasHeaders = headerIds && (Array.isArray(headerIds) ? headerIds.length > 0 : headerIds.size > 0);
+    const hasAnchor = typeof anchorMessageId === "number" && anchorMessageId > 0;
+
+    if (!hasHeaders && !hasAnchor) {
       return [];
     }
+
     const idSet = new Set(
-      Array.from(headerIds).map(id => normalizeMessageId(id)).filter(Boolean)
+      hasHeaders ? Array.from(headerIds).map(id => normalizeMessageId(id)).filter(Boolean) : []
     );
-    if (idSet.size === 0) return [];
 
     const allLinks = await this.getAllLinks();
     return allLinks.filter(l => {
+      // 1. Correspondance par ancre numérique (secours immédiat si Message-ID non encore indexé)
+      if (hasAnchor && Array.isArray(l.anchorMessageIds) && l.anchorMessageIds.includes(anchorMessageId)) {
+        return true;
+      }
+
+      if (idSet.size === 0) return false;
+
+      // 2. Correspondance par l'ensemble des Message-IDs réunis dans le cluster
       if (Array.isArray(l.allHeaderIds) && l.allHeaderIds.some(id => idSet.has(id))) {
         return true;
       }
+
+      // 3. Correspondance par pivots source / target
       return idSet.has(normalizeMessageId(l.sourceHeaderId)) ||
              idSet.has(normalizeMessageId(l.targetHeaderId));
     });
   }
 
   /**
-   * Alias de rétro-compatibilité pour getClustersForHeaderIds.
-   * @param {Array<string>|Set<string>} headerIds
+   * Trouve les clusters pour un message donné (par ses en-têtes et son ancre).
+   * @param {object} params
+   * @param {Array<string>|Set<string>} [params.headerIds]
+   * @param {number} [params.messageId]
    * @returns {Promise<Array<object>>}
    */
-  static async getLinksForHeaderIds(headerIds) {
-    return this.getClustersForHeaderIds(headerIds);
+  static async getClustersForMessage({ headerIds, messageId }) {
+    return this.getClustersForHeaderIds(headerIds, messageId);
+  }
+
+  /**
+   * Auto-consolidation d'un cluster existant (Self-Healing Overlay).
+   * Persiste les nouveaux en-têtes et ancres découverts lors de la résolution Gloda
+   * pour assurer une bidirectionnalité parfaite de la navigation.
+   *
+   * @param {string} clusterId - Identifiant du cluster à consolider.
+   * @param {Array<string>} [discoveredHeaderIds=[]] - Nouveaux en-têtes Message-ID découverts.
+   * @param {Array<number>} [discoveredAnchorIds=[]] - Nouvelles ancres numériques découvertes.
+   * @returns {Promise<boolean>} True si le cluster a été mis à jour et persisté.
+   */
+  static async healCluster(clusterId, discoveredHeaderIds = [], discoveredAnchorIds = []) {
+    if (!clusterId) return false;
+
+    const normHeaders = Array.isArray(discoveredHeaderIds)
+      ? discoveredHeaderIds.map(normalizeMessageId).filter(Boolean)
+      : [];
+    const validAnchors = Array.isArray(discoveredAnchorIds)
+      ? discoveredAnchorIds.filter(id => typeof id === "number" && id > 0)
+      : [];
+
+    if (normHeaders.length === 0 && validAnchors.length === 0) {
+      return false;
+    }
+
+    try {
+      const data = await browser.storage.local.get({ [STORAGE_KEY]: [] });
+      let links = Array.isArray(data[STORAGE_KEY]) ? data[STORAGE_KEY] : [];
+      let targetIndex = links.findIndex(l => (l.clusterId || l.id) === clusterId);
+
+      if (targetIndex === -1) {
+        return false;
+      }
+
+      let cluster = links[targetIndex];
+      let existingHeaders = new Set(
+        Array.isArray(cluster.allHeaderIds) ? cluster.allHeaderIds.map(normalizeMessageId).filter(Boolean) : []
+      );
+      if (cluster.sourceHeaderId) existingHeaders.add(normalizeMessageId(cluster.sourceHeaderId));
+      if (cluster.targetHeaderId) existingHeaders.add(normalizeMessageId(cluster.targetHeaderId));
+
+      let existingAnchors = new Set(
+        Array.isArray(cluster.anchorMessageIds) ? cluster.anchorMessageIds.filter(id => typeof id === "number" && id > 0) : []
+      );
+
+      let changed = false;
+
+      for (let h of normHeaders) {
+        if (!existingHeaders.has(h)) {
+          existingHeaders.add(h);
+          changed = true;
+        }
+      }
+
+      for (let a of validAnchors) {
+        if (!existingAnchors.has(a)) {
+          existingAnchors.add(a);
+          changed = true;
+        }
+      }
+
+      if (!changed) {
+        return false;
+      }
+
+      links[targetIndex] = {
+        ...cluster,
+        allHeaderIds: Array.from(existingHeaders),
+        anchorMessageIds: Array.from(existingAnchors),
+        updatedAt: Date.now()
+      };
+
+      await browser.storage.local.set({ [STORAGE_KEY]: links });
+      return true;
+    } catch (e) {
+      console.warn("Magic Threads: Échec de l'auto-consolidation du cluster :", clusterId, e);
+      return false;
+    }
+  }
+
+  /**
+   * Alias de rétro-compatibilité pour getClustersForHeaderIds.
+   * @param {Array<string>|Set<string>} headerIds
+   * @param {number|null} [anchorMessageId=null]
+   * @returns {Promise<Array<object>>}
+   */
+  static async getLinksForHeaderIds(headerIds, anchorMessageId = null) {
+    return this.getClustersForHeaderIds(headerIds, anchorMessageId);
   }
 }

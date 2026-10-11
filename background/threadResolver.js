@@ -51,12 +51,16 @@ export class ThreadResolver {
         }
       }
 
-      if (knownHeaderIds.size === 0) {
+      if (knownHeaderIds.size === 0 && !messageId) {
         return baseMessages;
       }
 
       // 3. Recherche des clusters de conversation enregistrés pour ces messages
-      let relevantClusters = await ManualLinksManager.getClustersForHeaderIds(knownHeaderIds);
+      // (interroge par Message-IDs et par ancre numérique de secours)
+      let relevantClusters = await ManualLinksManager.getClustersForMessage({
+        headerIds: knownHeaderIds,
+        messageId
+      });
       if (!relevantClusters || relevantClusters.length === 0) {
         return baseMessages;
       }
@@ -139,6 +143,44 @@ export class ThreadResolver {
 
       let merged = Array.from(messagesByHeaderId.values());
       merged.sort((a, b) => a.date - b.date);
+
+      // 5. Auto-consolidation (Self-Healing Overlay) :
+      // Réinjecte en arrière-plan l'ensemble des Message-IDs et ancres découverts dans le cluster
+      // pour garantir une bidirectionnalité parfaite lors de toute sélection ultérieure.
+      for (let cluster of relevantClusters) {
+        let clusterKey = cluster.clusterId || cluster.id;
+        let newHeaders = [];
+        let newAnchors = [];
+
+        let existingHeaders = new Set(
+          Array.isArray(cluster.allHeaderIds) ? cluster.allHeaderIds.map(normalizeMessageId).filter(Boolean) : []
+        );
+        if (cluster.sourceHeaderId) existingHeaders.add(normalizeMessageId(cluster.sourceHeaderId));
+        if (cluster.targetHeaderId) existingHeaders.add(normalizeMessageId(cluster.targetHeaderId));
+
+        let existingAnchors = new Set(
+          Array.isArray(cluster.anchorMessageIds) ? cluster.anchorMessageIds.filter(id => typeof id === "number" && id > 0) : []
+        );
+
+        for (let m of merged) {
+          let hid = normalizeMessageId(m.headerMessageId);
+          if (hid && !existingHeaders.has(hid)) {
+            newHeaders.push(hid);
+            existingHeaders.add(hid);
+          }
+          if (typeof m.id === "number" && m.id > 0 && !existingAnchors.has(m.id)) {
+            newAnchors.push(m.id);
+            existingAnchors.add(m.id);
+          }
+        }
+
+        if (newHeaders.length > 0 || newAnchors.length > 0) {
+          ManualLinksManager.healCluster(clusterKey, newHeaders, newAnchors).catch(err => {
+            console.warn("Magic Threads: Erreur lors de l'auto-consolidation du cluster :", clusterKey, err);
+          });
+        }
+      }
+
       return merged;
     } catch (e) {
       console.error("Magic Threads: Erreur dans ThreadResolver.getThreadMessages: ", e);

@@ -42,7 +42,7 @@ function safeClearTimeout(timerId) {
 }
 
 function normalizeMessageId(id) {
-  if (!id) return "";
+  if (typeof id !== "string" || !id.trim()) return "";
   return id.trim().toLowerCase().replace(/^</, "").replace(/>$/, "");
 }
 

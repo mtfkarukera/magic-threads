@@ -5,6 +5,21 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.7.1] - 2026-10-11
+
+### Corrigé
+- **Self-Healing Overlay & Résolution Bidirectionnelle Totale ([manualLinksManager.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/manualLinksManager.js), [threadResolver.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/threadResolver.js))** :
+  - **Auto-consolidation dynamique (`healCluster`)** : réinjection asynchrone dans `browser.storage.local` de l'intégralité des Message-IDs et ancres numériques découverts lors de la résolution Gloda d'un fil unifié. Élimine la disparition du panneau lors du clic ultérieur sur un message rattaché manuellement.
+  - **Recherche par ancre numérique de secours** : `getClustersForHeaderIds` et `getClustersForMessage` interrogent désormais en parallèle les identifiants d'ancres numériques WebExtension pour identifier immédiatement le cluster même si Gloda n'a pas encore indexé le Message-ID du message actif.
+  - **Harmonisation et symétrie du graphe de conversation** : traitement équilibré de l'ensemble des branches associées lors de la fusion pour garantir la navigabilité quel que soit le sens de la liaison initiale.
+- **Sécurisation de la navigation et invalidation de cache ([background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js))** :
+  - Invalidation systématique du cache `tabLastMessageId` lors d'un clic de navigation dans le volet afin d'imposer un recalcul frais et complet du fil consolidé.
+  - Transmission exhaustive de l'ensemble des ancres source et cible lors de la confirmation d'association.
+- **Durcissement de type et sécurité ([manualLinksManager.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/manualLinksManager.js), [glodaApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/glodaApi.js), [background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js))** :
+  - Protection de `normalizeMessageId` contre les arguments non-string pour écarter tout risque de `TypeError` inattendu.
+  - Cloisonnement du mode staging par compte email (`sourceAccountId`) et ajout d'un TTL d'expiration automatique de 10 minutes.
+  - Nettoyage automatique de l'état de staging orphelin dans `tabs.onRemoved`.
+
 ## [2.7.0] - 2026-10-10
 
 ### Ajouté

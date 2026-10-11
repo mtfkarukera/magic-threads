@@ -175,10 +175,14 @@ function invalidateRequests(tabId) {
   nextRequestId(tabId);
 }
 
-// Éviter que les Maps ne grossissent indéfiniment
+// Éviter que les Maps ne grossissent indéfiniment et nettoyer l'état de staging orphelin
 browser.tabs.onRemoved.addListener((tabId) => {
   tabRequestIds.delete(tabId);
   tabLastMessageId.delete(tabId);
+  if (pendingStagingState && pendingStagingState.sourceTabId === tabId) {
+    pendingStagingState = null;
+    updateActionState(false).catch(() => {});
+  }
 });
 
 async function showThreadForMessage(tab, message) {
@@ -209,6 +213,18 @@ async function showThreadForMessage(tab, message) {
     return;
   }
 
+  // Vérification de la validité temporelle du mode staging (TTL 10 min)
+  const STAGING_TTL_MS = 10 * 60 * 1000;
+  if (pendingStagingState && pendingStagingState.createdAt && (Date.now() - pendingStagingState.createdAt > STAGING_TTL_MS)) {
+    pendingStagingState = null;
+    updateActionState(false).catch(() => {});
+  }
+
+  // Vérifier le cloisonnement par compte : le staging n'est actif que sur le même compte email
+  let isSameAccount = !pendingStagingState || !pendingStagingState.sourceAccountId ||
+                      !message.folder || !message.folder.accountId ||
+                      message.folder.accountId === pendingStagingState.sourceAccountId;
+
   // Déterminer si le message en cours d'affichage est la source de la liaison en cours
   let isCurrentSource = pendingStagingState && (
     (pendingStagingState.sourceMsgId && message.id === pendingStagingState.sourceMsgId) ||
@@ -216,8 +232,8 @@ async function showThreadForMessage(tab, message) {
       normalizeMessageId(message.headerMessageId) === normalizeMessageId(pendingStagingState.sourceHeaderId))
   );
 
-  // La bannière de staging n'est active que sur un message de destination différent de la source
-  let stagingPayload = (pendingStagingState && !isCurrentSource) ? {
+  // La bannière de staging n'est active que sur un message de destination différent de la source et sur le même compte
+  let stagingPayload = (pendingStagingState && !isCurrentSource && isSameAccount) ? {
     sourceHeaderId: pendingStagingState.sourceHeaderId,
     sourceSubject: pendingStagingState.sourceSubject,
     sourceAuthor: pendingStagingState.sourceAuthor,
@@ -413,19 +429,25 @@ browser.menus.onClicked.addListener(async (info, tab) => {
       let hasThread = Array.isArray(sourceThread) && sourceThread.length > 1;
 
       let allSourceHeaders = new Set();
+      let allSourceAnchors = new Set();
       if (hasThread) {
         for (let m of sourceThread) {
           let h = normalizeMessageId(m.headerMessageId);
           if (h) allSourceHeaders.add(h);
+          if (typeof m.id === "number" && m.id > 0) allSourceAnchors.add(m.id);
         }
       }
       for (let m of selectedMessages) {
         let h = normalizeMessageId(m.headerMessageId || m.messageId);
         if (h) allSourceHeaders.add(h);
+        if (typeof m.id === "number" && m.id > 0) allSourceAnchors.add(m.id);
       }
       if (headerId) allSourceHeaders.add(headerId);
+      if (typeof primaryMsg.id === "number" && primaryMsg.id > 0) allSourceAnchors.add(primaryMsg.id);
 
       pendingStagingState = {
+        sourceTabId: tab?.id,
+        sourceAccountId: primaryMsg.folder?.accountId || fullMsg.folder?.accountId || "",
         sourceMsgId: primaryMsg.id,
         sourceHeaderId: headerId,
         sourceSubject: fullMsg.subject || primaryMsg.subject || "",
@@ -433,7 +455,9 @@ browser.menus.onClicked.addListener(async (info, tab) => {
         sourceCount: selectedMessages.length,
         isSourceInThread: hasThread,
         sourceThreadCount: hasThread ? sourceThread.length : selectedMessages.length,
-        sourceThreadHeaderIds: Array.from(allSourceHeaders)
+        sourceThreadHeaderIds: Array.from(allSourceHeaders),
+        sourceThreadAnchorIds: Array.from(allSourceAnchors),
+        createdAt: Date.now()
       };
 
       await updateActionState(true, selectedMessages.length);
@@ -490,15 +514,32 @@ browser.magicThreadsWindow.onConfirmManualLink.addListener(async (scope, targetC
       return;
     }
 
+    let targetAnchors = new Set();
+    if (targetMsgId) targetAnchors.add(targetMsgId);
+    if (targetMsg?.id) targetAnchors.add(targetMsg.id);
+
     if (targetThreadHeaders.length === 0 && targetMsg) {
       let thread = await ThreadResolver.getThreadMessages(targetMsg.id).catch(() => []);
       for (let m of thread) {
         let h = normalizeMessageId(m.headerMessageId);
         if (h) targetThreadHeaders.push(h);
+        if (typeof m.id === "number" && m.id > 0) targetAnchors.add(m.id);
       }
     }
     if (!targetThreadHeaders.includes(targetHeaderId)) {
       targetThreadHeaders.push(targetHeaderId);
+    }
+
+    let combinedAnchors = new Set([
+      ...(pendingStagingState.sourceThreadAnchorIds || []),
+      ...targetAnchors
+    ]);
+    if (typeof pendingStagingState.sourceMsgId === "number" && pendingStagingState.sourceMsgId > 0) {
+      combinedAnchors.add(pendingStagingState.sourceMsgId);
+    }
+    let effTargetMsgId = targetMsgId || targetMsg?.id;
+    if (typeof effTargetMsgId === "number" && effTargetMsgId > 0) {
+      combinedAnchors.add(effTargetMsgId);
     }
 
     await ManualLinksManager.addLink({
@@ -511,7 +552,8 @@ browser.magicThreadsWindow.onConfirmManualLink.addListener(async (scope, targetC
       targetSubject: targetContext?.targetSubject || targetMsg?.subject || "",
       targetAuthor: targetContext?.targetAuthor || targetMsg?.author || "",
       targetThreadHeaderIds: targetThreadHeaders,
-      targetMsgId: targetMsgId || targetMsg?.id,
+      targetMsgId: effTargetMsgId,
+      anchorMessageIds: Array.from(combinedAnchors),
       scope: scope || "entire_thread"
     });
 
@@ -664,7 +706,10 @@ async function handleOpenMessage(messageId, mode) {
 
   // Sélection avec tolérance différenciée (immédiate si même dossier, retry si changement de dossier)
   let selected = await setSelectedMessagesWithRetry(mailTab.id, messageId, isFolderChange);
-  if (!selected) {
+  if (selected) {
+    // Invalider le cache pour forcer un recalcul frais du fil et la découverte des liaisons
+    tabLastMessageId.delete(mailTab.id);
+  } else {
     // Le message n'a pas pu être sélectionné dans la liste (ex: masqué par un filtre rapide actif)
     // Fallback d'affichage direct dans le visualiseur sans toucher au filtre
     let directOk = await browser.magicThreadsWindow.displayMessageDirectly(mailTab.id, messageId).catch(() => false);

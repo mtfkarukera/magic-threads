@@ -46,7 +46,7 @@ Point d'entrée de l'extension. Responsabilités :
 - **Détection du contexte** : distingue la vue 3-pane des onglets message
 - **Workflow de liaison manuelle (Staging)** : gère le menu contextuel `browser.menus` (`message_list`), conserve l'état de pré-liaison (`pendingStagingState`), maintient le panneau ouvert sur les messages cibles orphelins, et écoute les événements d'action (`onConfirmManualLink`, `onCancelManualLink`, `onDetachManualLink`)
 
-#### `background/manualLinksManager.js` (v2.7.0)
+#### `background/manualLinksManager.js` (v2.7.1)
 
 Gestionnaire CRUD de persistance pour l'Overlay Virtuel dans `browser.storage.local` basé sur un modèle de **Clusters de Conversation** (`ConversationCluster`) :
 
@@ -54,19 +54,22 @@ Gestionnaire CRUD de persistance pour l'Overlay Virtuel dans `browser.storage.lo
 - Clés universelles basées sur les `headerMessageId` RFC 822 normalisés (sans chevrons)
 - Fusion automatique des clusters connexes (Union-Find) : si deux fils liés rejoignent un autre fil, l'ensemble des branches est consolidé sans rupture
 - Support de la multi-sélection directe (`addMultiMessageCluster`) pour réunir plusieurs e-mails d'un seul clic
-- Méthodes exposées : `getAllLinks()`, `addLink()`, `addMultiMessageCluster()`, `removeLink()`, `removeLinksByHeaderId()`, `getClustersForHeaderIds()`
+- **Auto-consolidation (Self-Healing Overlay)** via `healCluster()` : réinjecte asynchronement dans le cluster les Message-IDs et ancres numériques nouvellement découverts lors des résolutions dynamiques de Gloda
+- **Recherche résiliente avec ancre de secours** : `getClustersForMessage()` et `getClustersForHeaderIds()` interrogent à la fois la collection de Message-IDs et l'identifiant numérique WebExtension d'ancre
+- Méthodes exposées : `getAllLinks()`, `addLink()`, `addMultiMessageCluster()`, `removeLink()`, `removeLinksByHeaderId()`, `getClustersForHeaderIds()`, `getClustersForMessage()`, `healCluster()`
 
-#### `background/threadResolver.js` (v2.7.0)
+#### `background/threadResolver.js` (v2.7.1)
 
 Couche d'accès aux données (DAL) unifiant Gloda et les Clusters de Conversation :
 
 - Appelle `browser.convGloda.getThreadMessages()` avec l'identifiant du message sélectionné
-- Interroge les clusters actifs via `ManualLinksManager.getClustersForHeaderIds()`
+- Interroge les clusters actifs via `ManualLinksManager.getClustersForMessage()` (en-têtes et ancre de secours)
 - Rapatrie en priorité les branches distantes via les identifiants d'ancres WebExtension (`convGloda.getThreadMessages`), garantissant une résolution complète et instantanée
 - Fallback automatique par en-tête Gloda (`convGloda.getThreadByHeaderId`) pour les messages sans ancre active
 - Fusionne les ensembles de messages, élimine les doublons stricts par `headerMessageId`, et marque les messages rattachés (`isManualLink: true`, `manualLinkId`)
 - Trie l'ensemble chronologiquement de manière uniforme
-- Garantit une visibilité totale de la fusion quel que soit le message cliqué dans l'une quelconque des conversations réunies
+- **Déclenchement du Self-Healing** : après consolidation du fil fusionné, notifie `ManualLinksManager.healCluster()` pour persister immédiatement l'intégralité des participants découverts dans `storage.local`
+- Garantit une visibilité totale et symétrique de la fusion quel que soit le message cliqué dans l'une quelconque des conversations réunies
 
 ### 2. Experiment APIs (contexte chrome)
 
@@ -241,7 +244,7 @@ Lorsqu'une recherche ou un filtre rapide est actif dans la vue 3-pane de Thunder
 - `mailTabs.setSelectedMessages` échoue à sélectionner ce message hors vue.
 - **Résolution** : `handleOpenMessage` déclenche automatiquement le fallback `browser.magicThreadsWindow.displayMessageDirectly(mailTab.id, messageId)`. Celui-ci accède directement au visualiseur via le composant de haut niveau `messagePane.displayMessage(msgURI)` (ou `msgBrowser.contentWindow.displayMessage`), tout en restaurant impérativement la visibilité du visualiseur natif (`messageBrowser.hidden = false`) masqué par Thunderbird lors d'un résultat de filtre vide. Le filtre rapide de l'utilisateur n'est ni altéré ni réinitialisé, préservant son contexte de recherche tout en affichant instantanément l'e-mail désiré.
 
-## Overlay Virtuel, Multi-sélection & Clusters de Conversation (v2.7.0)
+## Overlay Virtuel, Multi-sélection & Clusters de Conversation (v2.7.0 - v2.7.1)
 
 Pour pallier l'absence d'API de réassignation interne dans Gloda et garantir la persistance des regroupements même après une réindexation globale de Thunderbird, Magic Threads utilise un **Overlay Virtuel** fondé sur des **Clusters de Conversation**.
 
@@ -261,14 +264,17 @@ flowchart TD
     C --> J
     J --> K["ThreadResolver : rapatriement prioritaire par ancres et en-tetes"]
     K --> L["Panneau reunifie pour toutes les branches du cluster"]
+    L --> M["Self-Healing Overlay : persistance des decouverts via healCluster"]
+    M -.-> J
 ```
 
 1. **Isolation et Intégrité** : La base de données SQLite de Gloda n'est jamais modifiée directement. Les liaisons sont stockées dans `browser.storage.local` sous la clé `manualThreadLinks`.
-2. **Identification universelle RFC 822 & Ancres WebExtension** : Les clusters combinent l'ensemble des `allHeaderIds` normalisés (résistance aux déplacements/compactages de dossiers) et les `anchorMessageIds` (identifiants WebExtension des e-mails pivots pour un rapatriement instantané).
-3. **Propagation bidirectionnelle intégrale** : Contrairement au modèle de paires ponctuelles, le cluster englobe toutes les conversations fusionnées. Quel que soit le message affiché (source, cible, ou message secondaire de l'un des fils), l'intégralité du fil combiné s'affiche.
-4. **Bouton persistant `message_display_action`** :
+2. **Identification universelle RFC 822 & Ancres WebExtension** : Les clusters combinent l'ensemble des `allHeaderIds` normalisés (résistance aux déplacements/compactages de dossiers) et les `anchorMessageIds` (identifiants WebExtension des e-mails pivots pour un rapatriement instantané). En cas d'e-mail non encore indexé dans Gloda, la résolution bascule automatiquement sur l'ancre numérique de secours.
+3. **Propagation bidirectionnelle intégrale & Self-Healing (v2.7.1)** : Contrairement au modèle de paires ponctuelles, le cluster englobe toutes les conversations fusionnées. Le mécanisme d'**Auto-consolidation dynamique (`healCluster`)** réinjecte asynchronement dans `browser.storage.local` l'intégralité des Message-IDs et ancres découverts lors de la résolution du fil unifié. Quel que soit le message affiché (source, cible, ou message secondaire de l'un des fils), l'intégralité du fil combiné s'affiche de façon pérenne et symétrique.
+4. **Bouton persistant `message_display_action` & Cloisonnement Staging (v2.7.1)** :
    - Indique visuellement l'état de staging via un **badge ambre `🔗`** (ou nombre d'e-mails mis en attente).
    - Offre une annulation ergonomique en un clic sans friction.
+   - Cloisonnement par compte de messagerie (`sourceAccountId`) et expiration automatique avec TTL de 10 minutes pour prévenir toute association involontaire inter-comptes.
 5. **Fiabilisation de l'événement de confirmation** : Le Shadow DOM passe un `targetContext` explicite (`tabId`, `targetMessageId`, `targetHeaderId`, liste des en-têtes cibles) lors du clic sur `[Confirmer l'association]`, éliminant les devinettes asynchrones sur l'onglet actif.
 6. **Réversibilité instantanée** :
    - Clic sur le bouton de détachement rapide `×` d'un message : déclenche `onDetachManualLink` et supprime la liaison correspondante.
