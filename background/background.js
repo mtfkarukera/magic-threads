@@ -132,15 +132,15 @@ function getLabels(count) {
     "panelTitle",
     "modeCurrentTab", "modeNewTab",
     "tooltipCurrentTab", "tooltipNewTab",
-    "tooltipToggleMode", "tooltipCollapseExpand",
+    "tooltipCollapseExpand",
     "tooltipResize", "tooltipAttachment",
     "folderInbox", "folderSent", "folderArchive",
     "folderDrafts", "folderTrash",
     "unknownAuthor", "unreadLabel",
     "stagingBannerTitle", "stagingBannerPromptSingle", "stagingBannerPromptThread",
     "stagingSourceLabel", "stagingOptionMergeThreads", "stagingOptionSingleMsg",
-    "btnConfirmLink", "btnCancelLink", "badgeManualLink", "btnDetachLink", "confirmDetachPrompt",
-    "optManualLinksDeletedFeedback"
+    "btnConfirmLink", "btnCancelLink", "badgeManualLink", "btnDetachLink",
+    "optManualLinksDeletedFeedback", "messageRoleDescription"
   ];
   let labels = {};
   for (let key of keys) {
@@ -325,6 +325,9 @@ browser.mailTabs.onSelectedMessagesChanged.addListener(async (tab, messageList) 
       return;
     }
 
+    // Invalider immédiatement toute requête en vol précédente avant la fenêtre de debounce
+    invalidateRequests(tab.id);
+
     // Temporisation (debounce) pour filtrer les défilements clavier rapides
     const targetMsg = messageList.messages[0];
     const timer = setTimeout(async () => {
@@ -358,10 +361,11 @@ browser.storage.onChanged.addListener(async (changes) => {
 
     // Réactualiser tous les onglets actifs affichant actuellement un fil
     for (const [tabId, msgId] of Array.from(tabLastMessageId.entries())) {
-      tabLastMessageId.delete(tabId);
       const tab = await browser.tabs.get(tabId).catch(() => null);
+      if (!tab || tabLastMessageId.get(tabId) !== msgId) continue;
       const msg = await browser.messages.get(msgId).catch(() => null);
-      if (tab && msg) {
+      if (msg && tabLastMessageId.get(tabId) === msgId) {
+        tabLastMessageId.delete(tabId);
         await showThreadForMessage(tab, msg);
       }
     }
@@ -494,6 +498,15 @@ browser.menus.onClicked.addListener(async (info, tab) => {
     // Intention 2 : Mise en attente (staging) pour rattachement à un autre fil distant
     try {
       let primaryMsg = selectedMessages[0];
+      let firstAccountId = primaryMsg.folder?.accountId;
+      let isSameAccount = selectedMessages.every(
+        m => !firstAccountId || !m.folder?.accountId || m.folder.accountId === firstAccountId
+      );
+      if (!isSameAccount) {
+        console.warn("Magic Threads: Mise en attente inter-comptes refusée pour des raisons de sécurité.");
+        return;
+      }
+
       let fullMsg = await browser.messages.get(primaryMsg.id).catch(() => primaryMsg);
       let headerId = normalizeMessageId(fullMsg.headerMessageId || fullMsg.messageId || primaryMsg.headerMessageId || primaryMsg.messageId);
 
@@ -574,6 +587,18 @@ browser.magicThreadsWindow.onConfirmManualLink.addListener(async (scope, targetC
       targetMsg = await browser.messages.get(targetMsgId).catch(() => null);
     }
 
+    // Garde de cloisonnement multi-comptes à la confirmation
+    if (
+      pendingStagingState.sourceAccountId &&
+      targetMsg?.folder?.accountId &&
+      targetMsg.folder.accountId !== pendingStagingState.sourceAccountId
+    ) {
+      console.warn("Magic Threads: Confirmation d'association inter-comptes refusée.");
+      pendingStagingState = null;
+      await updateActionState(false);
+      return;
+    }
+
     if (!targetHeaderId && targetMsg) {
       targetHeaderId = normalizeMessageId(targetMsg.headerMessageId || targetMsg.messageId);
     }
@@ -602,8 +627,13 @@ browser.magicThreadsWindow.onConfirmManualLink.addListener(async (scope, targetC
       targetThreadHeaders.push(targetHeaderId);
     }
 
+    const effectiveScope = scope || "entire_thread";
+    const sourceAnchors = effectiveScope === "single_message"
+      ? []
+      : (pendingStagingState.sourceThreadAnchorIds || []);
+
     let combinedAnchors = new Set([
-      ...(pendingStagingState.sourceThreadAnchorIds || []),
+      ...sourceAnchors,
       ...targetAnchors
     ]);
     if (typeof pendingStagingState.sourceMsgId === "number" && pendingStagingState.sourceMsgId > 0) {
@@ -626,7 +656,7 @@ browser.magicThreadsWindow.onConfirmManualLink.addListener(async (scope, targetC
       targetThreadHeaderIds: targetThreadHeaders,
       targetMsgId: effTargetMsgId,
       anchorMessageIds: Array.from(combinedAnchors),
-      scope: scope || "entire_thread"
+      scope: effectiveScope
     });
 
     console.log("Magic Threads: Association confirmée avec succès.");
@@ -811,7 +841,15 @@ async function handleOpenMessage(messageId, mode) {
 // ---- Communication inter-scripts (Options -> Background) ----
 if (typeof browser.runtime?.onMessage !== "undefined") {
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (sender && sender.id && sender.id !== browser.runtime.id) {
+      return false;
+    }
+
     if (message?.action === "removeManualLink") {
+      if (typeof message.linkId !== "string" || !message.linkId.trim()) {
+        sendResponse({ success: false, error: "Identifiant de liaison invalide." });
+        return false;
+      }
       ManualLinksManager.removeLink(message.linkId).then(success => {
         sendResponse({ success });
       }).catch(err => {

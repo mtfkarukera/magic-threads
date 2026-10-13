@@ -3,13 +3,17 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 const storage = browser.storage.sync || browser.storage.local;
-
+let statusTimer = null;
 
 /**
  * Localise tous les éléments avec l'attribut data-i18n.
  * Remplace le textContent par la traduction correspondante.
  */
 function localizeDocument() {
+  if (typeof browser.i18n?.getUILanguage === "function") {
+    document.documentElement.lang = browser.i18n.getUILanguage() || "fr";
+  }
+
   document.querySelectorAll("[data-i18n]").forEach((el) => {
     let key = el.getAttribute("data-i18n");
     let msg = browser.i18n.getMessage(key);
@@ -96,13 +100,17 @@ function saveOptions() {
     threadOrder: threadOrderEl ? threadOrderEl.value : "antichronological"
   }).then(() => {
     const status = document.getElementById("status");
+    if (statusTimer) {
+      clearTimeout(statusTimer);
+    }
     // Insérer le texte au moment de l'enregistrement : la zone role="status"
     // (aria-live) annonce le changement de contenu aux lecteurs d'écran.
     status.textContent = browser.i18n.getMessage("optStatusSaved");
     status.classList.add("show");
-    setTimeout(() => {
+    statusTimer = setTimeout(() => {
       status.classList.remove("show");
       status.textContent = "";
+      statusTimer = null;
     }, 2000);
   }).catch(console.error);
 }
@@ -138,13 +146,15 @@ async function loadManualLinks() {
 
   try {
     let links = [];
+    let loadedFromBg = false;
     if (typeof browser.runtime?.sendMessage !== "undefined") {
       let res = await browser.runtime.sendMessage({ action: "getManualLinks" }).catch(() => null);
       if (res && Array.isArray(res.links)) {
         links = res.links;
+        loadedFromBg = true;
       }
     }
-    if (links.length === 0) {
+    if (!loadedFromBg) {
       const data = await browser.storage.local.get({ manualThreadLinks: [] });
       links = Array.isArray(data.manualThreadLinks) ? data.manualThreadLinks : [];
     }

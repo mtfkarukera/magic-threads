@@ -33,10 +33,6 @@
     "message": "Klick öffnet die Nachricht in einem neuen Tab",
     "description": "Tooltip for new tab mode"
   },
-  "tooltipToggleMode": {
-    "message": "Navigationsmodus wechseln",
-    "description": "Tooltip for the toggle navigation mode button"
-  },
   "tooltipCollapseExpand": {
     "message": "Bereich ein-/ausklappen",
     "description": "Tooltip for collapse/expand button"
@@ -209,10 +205,6 @@
     "message": "Vom Thema trennen",
     "description": "Button to detach message from thread"
   },
-  "confirmDetachPrompt": {
-    "message": "Diese Nachricht vom Thema trennen?",
-    "description": "Confirmation prompt before detaching a message"
-  },
   "optManualLinksGroupTitle": {
     "message": "Manuell verknüpfte Themen:",
     "description": "Title of manual links section in options"
@@ -256,10 +248,6 @@
   "optManualLinksBtnDelete": {
     "message": "Verknüpfung löschen",
     "description": "Tooltip / button label to delete manual link"
-  },
-  "optManualLinksConfirmDelete": {
-    "message": "Sind Sie sicher, dass Sie diese manuelle Verknüpfung löschen möchten?",
-    "description": "Confirmation prompt when deleting link in options"
   },
   "optManualLinksDeletedFeedback": {
     "message": "Manuelle Verknüpfung erfolgreich gelöscht.",
@@ -306,7 +294,7 @@
     "description": "Placeholder for search input in links manager"
   },
   "linksPageBackToOptions": {
-    "message": "← Magic Threads Einstellungen",
+    "message": "Magic Threads Einstellungen",
     "description": "Back link to options page"
   },
   "linksPageCountActive": {
@@ -316,5 +304,9 @@
   "linksPageEmptySearch": {
     "message": "Keine Verknüpfungen entsprechen Ihrer Suche.",
     "description": "Notice when search filter returns 0 results"
+  },
+  "messageRoleDescription": {
+    "message": "Nachricht",
+    "description": "ARIA role description for a message card in the thread panel"
   }
 }

@@ -27,6 +27,10 @@ echo "✅ web-ext lint exécuté."
 # 2. Sécurité Anti-Leak (Fichiers sensibles suivis par Git)
 echo "👉 3/4 Audit de sécurité anti-leak..."
 SENSITIVE_FILES=(
+    "AGENTS.md"
+    "submission_kit.md"
+    "task.md"
+    "tasks.md"
     "JUSTIFICATION_ATN.md"
     "PLAN_ACTION.md"
     "RAPPORT_AUDIT.md"

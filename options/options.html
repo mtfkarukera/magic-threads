@@ -107,6 +107,10 @@
         border-color: #8a6d1f;
       }
     }
+    .option-group > .description {
+      padding-left: 0;
+      margin-bottom: 12px;
+    }
     .links-summary-card {
       padding: 14px 16px;
       border-radius: 8px;
@@ -135,131 +139,140 @@
       font-weight: 600;
       border-radius: 6px;
       text-decoration: none;
-      background-color: #0060df;
-      color: #ffffff;
+      background-color: var(--in-content-primary-button-background, #0060df);
+      color: var(--in-content-primary-button-text-color, #ffffff);
       border: none;
       cursor: pointer;
       transition: background-color 0.15s ease, transform 0.1s ease;
     }
     .open-manager-btn:hover {
-      background-color: #003eaa;
-      color: #ffffff;
+      background-color: var(--in-content-primary-button-background-hover, #003eaa);
+      color: var(--in-content-primary-button-text-color, #ffffff);
       transform: translateY(-1px);
     }
+    .open-manager-btn:active {
+      transform: translateY(0);
+    }
     .open-manager-btn:focus-visible {
-      outline: 2px solid var(--in-content-focus-outline-color, #0060df);
+      outline: 2px solid var(--in-content-focus-outline-color, light-dark(#0060df, #63aaff));
       outline-offset: 2px;
     }
-    @media (prefers-color-scheme: dark) {
+    @media (prefers-reduced-motion: reduce) {
+      .status-msg,
       .open-manager-btn {
-        background-color: #0060df;
+        transition: none !important;
       }
-      .open-manager-btn:hover {
-        background-color: #0050bc;
+      .status-msg,
+      .status-msg.show,
+      .open-manager-btn:hover,
+      .open-manager-btn:active {
+        transform: none !important;
       }
     }
   </style>
 </head>
 <body>
-  <h1 data-i18n="optionsTitle"></h1>
+  <main>
+    <h1 data-i18n="optionsTitle"></h1>
 
-  <!-- Alerte affichée si l'index Gloda est désactivé ou absent (rempli par options.js) -->
-  <div id="gloda-warning" class="warning-banner" role="alert" hidden></div>
+    <!-- Alerte affichée si l'index Gloda est désactivé ou absent (rempli par options.js) -->
+    <div id="gloda-warning" class="warning-banner" role="alert" hidden></div>
 
-  <fieldset class="option-group">
-    <legend class="option-group-title" data-i18n="optNavGroupTitle"></legend>
+    <fieldset class="option-group">
+      <legend class="option-group-title" data-i18n="optNavGroupTitle"></legend>
 
-    <div class="option-row">
-      <label for="nav-mode-current">
-        <input type="radio" id="nav-mode-current" name="navigationMode" value="currentTab" aria-describedby="nav-mode-current-desc" checked>
-        <strong data-i18n="optNavCurrentTabLabel"></strong>
-      </label>
-      <div id="nav-mode-current-desc" class="description" data-i18n="optNavCurrentTabDesc"></div>
-    </div>
-    
-    <div class="option-row">
-      <label for="nav-mode-new">
-        <input type="radio" id="nav-mode-new" name="navigationMode" value="newTab" aria-describedby="nav-mode-new-desc">
-        <strong data-i18n="optNavNewTabLabel"></strong>
-      </label>
-      <div id="nav-mode-new-desc" class="description" data-i18n="optNavNewTabDesc"></div>
-    </div>
-  </fieldset>
-
-  <fieldset class="option-group">
-    <legend class="option-group-title" data-i18n="optSidebarGroupTitle"></legend>
-
-    <div class="option-row">
-      <label for="sidebar-pos-right">
-        <input type="radio" id="sidebar-pos-right" name="sidebarPosition" value="right" aria-describedby="sidebar-pos-right-desc" checked>
-        <strong data-i18n="optSidebarRight"></strong>
-      </label>
-      <div id="sidebar-pos-right-desc" class="description" data-i18n="optSidebarRightDesc"></div>
-    </div>
-    
-    <div class="option-row">
-      <label for="sidebar-pos-left">
-        <input type="radio" id="sidebar-pos-left" name="sidebarPosition" value="left" aria-describedby="sidebar-pos-left-desc">
-        <strong data-i18n="optSidebarLeft"></strong>
-      </label>
-      <div id="sidebar-pos-left-desc" class="description" data-i18n="optSidebarLeftDesc"></div>
-    </div>
-  </fieldset>
-
-  <fieldset class="option-group">
-    <legend class="option-group-title" data-i18n="optMainViewGroupTitle"></legend>
-
-    <div class="option-row">
-      <label for="main-view-pos-bottom">
-        <input type="radio" id="main-view-pos-bottom" name="mainViewPosition" value="bottom" aria-describedby="main-view-pos-bottom-desc" checked>
-        <strong data-i18n="optMainViewBottom"></strong>
-      </label>
-      <div id="main-view-pos-bottom-desc" class="description" data-i18n="optMainViewBottomDesc"></div>
-    </div>
-    
-    <div class="option-row">
-      <label for="main-view-pos-right">
-        <input type="radio" id="main-view-pos-right" name="mainViewPosition" value="right" aria-describedby="main-view-pos-right-desc">
-        <strong data-i18n="optMainViewRight"></strong>
-      </label>
-      <div id="main-view-pos-right-desc" class="description" data-i18n="optMainViewRightDesc"></div>
-    </div>
-
-  </fieldset>
-
-  <fieldset class="option-group" aria-describedby="thread-order-desc">
-    <legend class="option-group-title" data-i18n="optThreadOrderTitle"></legend>
-    <div id="thread-order-desc" class="description" style="padding-left: 0; margin-bottom: 12px;" data-i18n="optThreadOrderDesc"></div>
-
-    <div class="option-row">
-      <label for="thread-order-antichrono">
-        <input type="radio" id="thread-order-antichrono" name="threadOrder" value="antichronological" checked>
-        <strong data-i18n="optThreadOrderAntichrono"></strong>
-      </label>
-    </div>
-    
-    <div class="option-row">
-      <label for="thread-order-chrono">
-        <input type="radio" id="thread-order-chrono" name="threadOrder" value="chronological">
-        <strong data-i18n="optThreadOrderChrono"></strong>
-      </label>
-    </div>
-  </fieldset>
-
-  <fieldset class="option-group" aria-describedby="manual-links-desc">
-    <legend class="option-group-title" data-i18n="optManualLinksGroupTitle"></legend>
-    <div id="manual-links-desc" class="description" style="padding-left: 0; margin-bottom: 12px;" data-i18n="optManualLinksDesc"></div>
-
-    <div class="links-summary-card">
-      <div class="links-summary-text">
-        <span id="manual-links-count-text">...</span>
+      <div class="option-row">
+        <label for="nav-mode-current">
+          <input type="radio" id="nav-mode-current" name="navigationMode" value="currentTab" aria-describedby="nav-mode-current-desc" checked>
+          <strong data-i18n="optNavCurrentTabLabel"></strong>
+        </label>
+        <div id="nav-mode-current-desc" class="description" data-i18n="optNavCurrentTabDesc"></div>
       </div>
-      <a href="links.html" class="open-manager-btn" id="open-links-manager-btn" target="_blank" rel="noopener noreferrer">
-        <span data-i18n="optManualLinksBtnOpenManager"></span>
-        <span aria-hidden="true">↗</span>
-      </a>
-    </div>
-  </fieldset>
+      
+      <div class="option-row">
+        <label for="nav-mode-new">
+          <input type="radio" id="nav-mode-new" name="navigationMode" value="newTab" aria-describedby="nav-mode-new-desc">
+          <strong data-i18n="optNavNewTabLabel"></strong>
+        </label>
+        <div id="nav-mode-new-desc" class="description" data-i18n="optNavNewTabDesc"></div>
+      </div>
+    </fieldset>
+
+    <fieldset class="option-group">
+      <legend class="option-group-title" data-i18n="optSidebarGroupTitle"></legend>
+
+      <div class="option-row">
+        <label for="sidebar-pos-right">
+          <input type="radio" id="sidebar-pos-right" name="sidebarPosition" value="right" aria-describedby="sidebar-pos-right-desc" checked>
+          <strong data-i18n="optSidebarRight"></strong>
+        </label>
+        <div id="sidebar-pos-right-desc" class="description" data-i18n="optSidebarRightDesc"></div>
+      </div>
+      
+      <div class="option-row">
+        <label for="sidebar-pos-left">
+          <input type="radio" id="sidebar-pos-left" name="sidebarPosition" value="left" aria-describedby="sidebar-pos-left-desc">
+          <strong data-i18n="optSidebarLeft"></strong>
+        </label>
+        <div id="sidebar-pos-left-desc" class="description" data-i18n="optSidebarLeftDesc"></div>
+      </div>
+    </fieldset>
+
+    <fieldset class="option-group">
+      <legend class="option-group-title" data-i18n="optMainViewGroupTitle"></legend>
+
+      <div class="option-row">
+        <label for="main-view-pos-bottom">
+          <input type="radio" id="main-view-pos-bottom" name="mainViewPosition" value="bottom" aria-describedby="main-view-pos-bottom-desc" checked>
+          <strong data-i18n="optMainViewBottom"></strong>
+        </label>
+        <div id="main-view-pos-bottom-desc" class="description" data-i18n="optMainViewBottomDesc"></div>
+      </div>
+      
+      <div class="option-row">
+        <label for="main-view-pos-right">
+          <input type="radio" id="main-view-pos-right" name="mainViewPosition" value="right" aria-describedby="main-view-pos-right-desc">
+          <strong data-i18n="optMainViewRight"></strong>
+        </label>
+        <div id="main-view-pos-right-desc" class="description" data-i18n="optMainViewRightDesc"></div>
+      </div>
+
+    </fieldset>
+
+    <fieldset class="option-group" aria-describedby="thread-order-desc">
+      <legend class="option-group-title" data-i18n="optThreadOrderTitle"></legend>
+      <div id="thread-order-desc" class="description" data-i18n="optThreadOrderDesc"></div>
+
+      <div class="option-row">
+        <label for="thread-order-antichrono">
+          <input type="radio" id="thread-order-antichrono" name="threadOrder" value="antichronological" checked>
+          <strong data-i18n="optThreadOrderAntichrono"></strong>
+        </label>
+      </div>
+      
+      <div class="option-row">
+        <label for="thread-order-chrono">
+          <input type="radio" id="thread-order-chrono" name="threadOrder" value="chronological">
+          <strong data-i18n="optThreadOrderChrono"></strong>
+        </label>
+      </div>
+    </fieldset>
+
+    <section class="option-group" aria-labelledby="manual-links-title" aria-describedby="manual-links-desc">
+      <div id="manual-links-title" class="option-group-title" data-i18n="optManualLinksGroupTitle"></div>
+      <div id="manual-links-desc" class="description" data-i18n="optManualLinksDesc"></div>
+
+      <div class="links-summary-card">
+        <div class="links-summary-text">
+          <span id="manual-links-count-text" class="links-summary-count">...</span>
+        </div>
+        <a href="links.html" class="open-manager-btn" id="open-links-manager-btn">
+          <span data-i18n="optManualLinksBtnOpenManager"></span>
+          <span aria-hidden="true">→</span>
+        </a>
+      </div>
+    </section>
+  </main>
 
   <!-- Zone de feedback « préférences enregistrées » : role="status" (aria-live
        implicite) ; le texte est inséré à l'enregistrement pour être annoncé. -->

@@ -33,10 +33,6 @@
     "message": "クリックで新しいタブにメッセージを開きます",
     "description": "Tooltip for new tab mode"
   },
-  "tooltipToggleMode": {
-    "message": "ナビゲーションモードを切り替える",
-    "description": "Tooltip for the toggle navigation mode button"
-  },
   "tooltipCollapseExpand": {
     "message": "パネルの折りたたみ/展開",
     "description": "Tooltip for collapse/expand button"
@@ -209,10 +205,6 @@
     "message": "スレッドからリンクを解除",
     "description": "Button to detach message from thread"
   },
-  "confirmDetachPrompt": {
-    "message": "このメッセージのスレッドへのリンクを解除しますか？",
-    "description": "Confirmation prompt before detaching a message"
-  },
   "optManualLinksGroupTitle": {
     "message": "手動でリンクされたスレッド:",
     "description": "Title of manual links section in options"
@@ -256,10 +248,6 @@
   "optManualLinksBtnDelete": {
     "message": "リンクを削除",
     "description": "Tooltip / button label to delete manual link"
-  },
-  "optManualLinksConfirmDelete": {
-    "message": "この手動リンクを削除してもよろしいですか？",
-    "description": "Confirmation prompt when deleting link in options"
   },
   "optManualLinksDeletedFeedback": {
     "message": "手動リンクが正常に削除されました。",
@@ -306,7 +294,7 @@
     "description": "Placeholder for search input in links manager"
   },
   "linksPageBackToOptions": {
-    "message": "← Magic Threads 設定",
+    "message": "Magic Threads 設定",
     "description": "Back link to options page"
   },
   "linksPageCountActive": {
@@ -316,5 +304,9 @@
   "linksPageEmptySearch": {
     "message": "検索条件に一致するリンクはありません。",
     "description": "Notice when search filter returns 0 results"
+  },
+  "messageRoleDescription": {
+    "message": "メッセージ",
+    "description": "ARIA role description for a message card in the thread panel"
   }
 }

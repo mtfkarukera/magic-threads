@@ -33,10 +33,6 @@
     "message": "Clic ouvre le message dans un nouvel onglet",
     "description": "Tooltip for new tab mode"
   },
-  "tooltipToggleMode": {
-    "message": "Changer le mode de navigation",
-    "description": "Tooltip for the toggle navigation mode button"
-  },
   "tooltipCollapseExpand": {
     "message": "Réduire/Déplier le panneau",
     "description": "Tooltip for collapse/expand button"
@@ -209,10 +205,6 @@
     "message": "Détacher du fil",
     "description": "Button to detach message from thread"
   },
-  "confirmDetachPrompt": {
-    "message": "Détacher ce message du fil de discussion ?",
-    "description": "Confirmation prompt before detaching a message"
-  },
   "optManualLinksGroupTitle": {
     "message": "Fils associés manuellement :",
     "description": "Title of manual links section in options"
@@ -256,10 +248,6 @@
   "optManualLinksBtnDelete": {
     "message": "Supprimer la liaison",
     "description": "Tooltip / button label to delete manual link"
-  },
-  "optManualLinksConfirmDelete": {
-    "message": "Voulez-vous vraiment supprimer cette liaison manuelle ?",
-    "description": "Confirmation prompt when deleting link in options"
   },
   "optManualLinksDeletedFeedback": {
     "message": "Liaison manuelle supprimée avec succès.",
@@ -306,7 +294,7 @@
     "description": "Placeholder for search input in links manager"
   },
   "linksPageBackToOptions": {
-    "message": "← Préférences de Magic Threads",
+    "message": "Préférences de Magic Threads",
     "description": "Back link to options page"
   },
   "linksPageCountActive": {
@@ -316,5 +304,9 @@
   "linksPageEmptySearch": {
     "message": "Aucune liaison ne correspond à votre recherche.",
     "description": "Notice when search filter returns 0 results"
+  },
+  "messageRoleDescription": {
+    "message": "Message",
+    "description": "ARIA role description for a message card in the thread panel"
   }
 }

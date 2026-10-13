@@ -403,19 +403,26 @@ export class ManualLinksManager {
       this.removeSessionAnchor(clusterId, validMsgId);
     }
 
-    return withStorageLock(async () => {
-      const links = await this.getAllLinks();
-      const clusterIndex = links.findIndex(l => (l.clusterId || l.id) === clusterId);
-      if (clusterIndex === -1) {
-        return this.removeLink(clusterId);
-      }
+    // 1. Pré-résolution Gloda HORS du verrou withStorageLock pour éviter toute expiration
+    // du mutex (5s) pendant une requête d'indexation Gloda (timeout 10s).
+    const initialLinks = await this.getAllLinks();
+    const initialCluster = initialLinks.find(l => (l.clusterId || l.id) === clusterId);
+    if (!initialCluster) {
+      sessionClusterAnchorsMap.delete(clusterId);
+      return false;
+    }
 
-      const cluster = links[clusterIndex];
+    let headersToRemove = new Set();
+    if (normHeader) headersToRemove.add(normHeader);
+    let anchorsToRemove = new Set();
+    if (validMsgId) anchorsToRemove.add(validMsgId);
 
-      // Collecte des identifiants du fil natif du message cliqué
-      let headersToRemove = new Set();
-      if (normHeader) headersToRemove.add(normHeader);
+    const isSingleSourceDetach =
+      initialCluster.scope === "single_message" &&
+      normHeader &&
+      normHeader === normalizeMessageId(initialCluster.sourceHeaderId);
 
+    if (!isSingleSourceDetach) {
       try {
         let nativeMsgs = [];
         if (validMsgId && browser.convGloda?.getThreadMessages) {
@@ -425,19 +432,56 @@ export class ManualLinksManager {
         }
 
         if (Array.isArray(nativeMsgs) && nativeMsgs.length > 1) {
-          // Le message appartient à un fil natif complet (branche).
-          // On soustrait l'ensemble des messages de cette branche.
           for (let m of nativeMsgs) {
             let h = normalizeMessageId(m.headerMessageId);
             if (h) headersToRemove.add(h);
             if (typeof m.id === "number" && m.id > 0) {
-              this.removeSessionAnchor(clusterId, m.id);
+              anchorsToRemove.add(m.id);
             }
           }
         }
       } catch (err) {
         console.warn("Magic Threads: Erreur lors de la résolution du fil natif pour détachement :", err?.message || err);
       }
+    }
+
+    // Pré-calcul des en-têtes natifs du premier message restant pour le test de viabilité résiduelle
+    let preResolvedRemainingNativeSet = null;
+    const candidateRemaining = (initialCluster.allHeaderIds || [])
+      .map(normalizeMessageId)
+      .filter(h => h && !headersToRemove.has(h));
+
+    if (candidateRemaining.length > 1) {
+      try {
+        const sampleHeader = candidateRemaining[0];
+        if (sampleHeader && browser.convGloda?.getThreadByHeaderId) {
+          const remainingNative = await browser.convGloda.getThreadByHeaderId(sampleHeader);
+          if (Array.isArray(remainingNative) && remainingNative.length > 0) {
+            preResolvedRemainingNativeSet = new Set(
+              remainingNative.map(m => normalizeMessageId(m.headerMessageId)).filter(Boolean)
+            );
+          }
+        }
+      } catch (err) {
+        console.warn("Magic Threads: Erreur lors du contrôle de viabilité résiduelle :", err?.message || err);
+      }
+    }
+
+    // 2. Section critique rapide et atomique sous withStorageLock (zéro appel réentrant, zéro appel Gloda)
+    return withStorageLock(async () => {
+      for (let ancId of anchorsToRemove) {
+        this.removeSessionAnchor(clusterId, ancId);
+      }
+
+      const data = await browser.storage.local.get({ [STORAGE_KEY]: [] });
+      const links = Array.isArray(data[STORAGE_KEY]) ? data[STORAGE_KEY] : [];
+      const clusterIndex = links.findIndex(l => (l.clusterId || l.id) === clusterId);
+      if (clusterIndex === -1) {
+        sessionClusterAnchorsMap.delete(clusterId);
+        return false;
+      }
+
+      const cluster = links[clusterIndex];
 
       // Soustraction des en-têtes
       let remainingHeaders = (cluster.allHeaderIds || [])
@@ -455,31 +499,15 @@ export class ManualLinksManager {
       }
 
       // Vérifier si tous les messages restants appartiennent au même fil natif
-      try {
-        let sampleHeader = remainingHeaders[0];
-        let remainingNative = [];
-
-        if (sampleHeader && browser.convGloda?.getThreadByHeaderId) {
-          remainingNative = await browser.convGloda.getThreadByHeaderId(sampleHeader);
+      if (preResolvedRemainingNativeSet) {
+        const allBelongToSameNativeThread = remainingHeaders.every(h => preResolvedRemainingNativeSet.has(h));
+        if (allBelongToSameNativeThread) {
+          links.splice(clusterIndex, 1);
+          const toSave = links.map(l => { const c = { ...l }; delete c.anchorMessageIds; return c; });
+          await browser.storage.local.set({ [STORAGE_KEY]: toSave });
+          sessionClusterAnchorsMap.delete(clusterId);
+          return true;
         }
-
-        if (Array.isArray(remainingNative) && remainingNative.length > 0) {
-          let remainingNativeSet = new Set(
-            remainingNative.map(m => normalizeMessageId(m.headerMessageId)).filter(Boolean)
-          );
-          let allBelongToSameNativeThread = remainingHeaders.every(h => remainingNativeSet.has(h));
-          if (allBelongToSameNativeThread) {
-            // Tous les messages restants sont déjà naturellement groupés par Thunderbird,
-            // le cluster n'a plus lieu d'exister.
-            links.splice(clusterIndex, 1);
-            const toSave = links.map(l => { const c = { ...l }; delete c.anchorMessageIds; return c; });
-            await browser.storage.local.set({ [STORAGE_KEY]: toSave });
-            sessionClusterAnchorsMap.delete(clusterId);
-            return true;
-          }
-        }
-      } catch (err) {
-        console.warn("Magic Threads: Erreur lors du contrôle de viabilité résiduelle :", err?.message || err);
       }
 
       // Le cluster contient encore au moins deux entités distinctes : sauvegarde
@@ -531,11 +559,16 @@ export class ManualLinksManager {
     return withStorageLock(async () => {
       const data = await browser.storage.local.get({ [STORAGE_KEY]: [] });
       const links = Array.isArray(data[STORAGE_KEY]) ? data[STORAGE_KEY] : [];
-      const filtered = links.filter(l =>
-        !l.allHeaderIds.includes(normId) &&
-        normalizeMessageId(l.sourceHeaderId) !== normId &&
-        normalizeMessageId(l.targetHeaderId) !== normId
-      );
+      const filtered = links.filter(l => {
+        const inAll = Array.isArray(l.allHeaderIds) && l.allHeaderIds.includes(normId);
+        const isSource = normalizeMessageId(l.sourceHeaderId) === normId;
+        const isTarget = normalizeMessageId(l.targetHeaderId) === normId;
+        const keep = !inAll && !isSource && !isTarget;
+        if (!keep) {
+          sessionClusterAnchorsMap.delete(l.clusterId || l.id);
+        }
+        return keep;
+      });
       if (filtered.length !== links.length) {
         const toSave = filtered.map(l => { const c = { ...l }; delete c.anchorMessageIds; return c; });
         await browser.storage.local.set({ [STORAGE_KEY]: toSave });
@@ -621,12 +654,7 @@ export class ManualLinksManager {
       ? discoveredAnchorIds.filter(id => typeof id === "number" && id > 0)
       : [];
 
-    // Enregistrer immédiatement les ancres de session en RAM (aucune persistance sur disque)
-    for (let a of validAnchors) {
-      this.addSessionAnchor(clusterId, a);
-    }
-
-    if (normHeaders.length === 0) {
+    if (normHeaders.length === 0 && validAnchors.length === 0) {
       return false;
     }
 
@@ -637,10 +665,21 @@ export class ManualLinksManager {
         let targetIndex = links.findIndex(l => (l.clusterId || l.id) === clusterId);
 
         if (targetIndex === -1) {
+          sessionClusterAnchorsMap.delete(clusterId);
           return false;
         }
 
+        // Le cluster existe : enregistrer les ancres de session en RAM
+        for (let a of validAnchors) {
+          this.addSessionAnchor(clusterId, a);
+        }
+
         let cluster = links[targetIndex];
+        // Ne jamais étendre automatiquement les en-têtes d'une liaison restreinte à un seul message
+        if (cluster.scope === "single_message" || normHeaders.length === 0) {
+          return false;
+        }
+
         let existingHeaders = new Set(
           Array.isArray(cluster.allHeaderIds) ? cluster.allHeaderIds.map(normalizeMessageId).filter(Boolean) : []
         );

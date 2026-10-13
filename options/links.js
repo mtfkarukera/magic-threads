@@ -4,6 +4,8 @@
  */
 
 let allLinksCache = [];
+let statusToastTimer = null;
+let pendingFocusIndex = null;
 
 /**
  * Générateur d'icône SVG sécurisé pour la corbeille de suppression.
@@ -53,6 +55,10 @@ function createSearchIcon() {
  * via textContent ou setAttribute (strictement sans innerHTML).
  */
 function localizeDocument() {
+  if (typeof browser.i18n?.getUILanguage === "function") {
+    document.documentElement.lang = browser.i18n.getUILanguage() || "fr";
+  }
+
   document.querySelectorAll("[data-i18n]").forEach((el) => {
     const key = el.getAttribute("data-i18n");
     const msg = browser.i18n.getMessage(key);
@@ -68,6 +74,14 @@ function localizeDocument() {
       el.placeholder = msg;
     }
   });
+
+  document.querySelectorAll("[data-i18n-aria-label]").forEach((el) => {
+    const key = el.getAttribute("data-i18n-aria-label");
+    const msg = browser.i18n.getMessage(key);
+    if (msg) {
+      el.setAttribute("aria-label", msg);
+    }
+  });
 }
 
 /**
@@ -77,23 +91,30 @@ function showStatusToast(message) {
   const status = document.getElementById("status");
   if (!status) return;
 
+  if (statusToastTimer) {
+    clearTimeout(statusToastTimer);
+  }
+
   status.textContent = message;
   status.classList.add("show");
-  setTimeout(() => {
+  statusToastTimer = setTimeout(() => {
     status.classList.remove("show");
     status.textContent = "";
+    statusToastTimer = null;
   }, 2200);
 }
 
 /**
- * Met à jour le compteur dynamique de liaisons actives.
+ * Met à jour le compteur dynamique de liaisons actives (avec ratio si filtré).
  */
-function updateCounter(count) {
+function updateCounter(filteredCount, totalCount, isFiltered) {
   const counterEl = document.getElementById("links-counter");
   if (!counterEl) return;
 
   const countSuffix = browser.i18n.getMessage("linksPageCountActive") || "liaison(s) active(s)";
-  counterEl.textContent = `${count} ${countSuffix}`;
+  counterEl.textContent = isFiltered
+    ? `${filteredCount} / ${totalCount} ${countSuffix}`
+    : `${totalCount} ${countSuffix}`;
 }
 
 /**
@@ -107,18 +128,23 @@ function renderTable(links) {
     container.firstChild.remove();
   }
 
-  updateCounter(links.length);
-
   const searchInput = document.getElementById("search-input");
-  const isFiltered = searchInput && searchInput.value.trim().length > 0;
+  const isFiltered = Boolean(searchInput && searchInput.value.trim().length > 0);
+  updateCounter(links.length, allLinksCache.length, isFiltered);
 
   if (links.length === 0) {
     let emptyNotice = document.createElement("div");
     emptyNotice.className = "empty-notice";
+    emptyNotice.setAttribute("role", "status");
     emptyNotice.textContent = isFiltered
       ? (browser.i18n.getMessage("linksPageEmptySearch") || "Aucune liaison ne correspond à votre recherche.")
       : (browser.i18n.getMessage("optManualLinksEmpty") || "Aucune liaison manuelle enregistrée pour le moment.");
     container.appendChild(emptyNotice);
+
+    if (pendingFocusIndex !== null) {
+      pendingFocusIndex = null;
+      if (searchInput) searchInput.focus();
+    }
     return;
   }
 
@@ -148,20 +174,23 @@ function renderTable(links) {
 
   let tbody = document.createElement("tbody");
 
-  for (let link of links) {
+  links.forEach((link, rowIndex) => {
     let row = document.createElement("tr");
 
     // Colonne 1 : Source
     let tdSource = document.createElement("td");
     let sourceTitle = document.createElement("span");
     sourceTitle.className = "cell-title";
-    sourceTitle.textContent = link.sourceSubject || link.sourceHeaderId || "?";
+    const sText = link.sourceSubject || link.sourceHeaderId || "?";
+    sourceTitle.textContent = sText;
+    sourceTitle.title = sText;
     tdSource.appendChild(sourceTitle);
 
     if (link.sourceAuthor) {
       let sourceAuthor = document.createElement("span");
       sourceAuthor.className = "cell-author";
       sourceAuthor.textContent = link.sourceAuthor;
+      sourceAuthor.title = link.sourceAuthor;
       tdSource.appendChild(sourceAuthor);
     }
     row.appendChild(tdSource);
@@ -170,13 +199,16 @@ function renderTable(links) {
     let tdTarget = document.createElement("td");
     let targetTitle = document.createElement("span");
     targetTitle.className = "cell-title";
-    targetTitle.textContent = link.targetSubject || link.targetHeaderId || "?";
+    const tText = link.targetSubject || link.targetHeaderId || "?";
+    targetTitle.textContent = tText;
+    targetTitle.title = tText;
     tdTarget.appendChild(targetTitle);
 
     if (link.targetAuthor) {
       let targetAuthor = document.createElement("span");
       targetAuthor.className = "cell-author";
       targetAuthor.textContent = link.targetAuthor;
+      targetAuthor.title = link.targetAuthor;
       tdTarget.appendChild(targetAuthor);
     }
     row.appendChild(tdTarget);
@@ -210,24 +242,31 @@ function renderTable(links) {
     let delBtn = document.createElement("button");
     delBtn.className = "delete-link-btn";
     delBtn.appendChild(createTrashIcon());
-    delBtn.title = browser.i18n.getMessage("optManualLinksBtnDelete") || "Supprimer la liaison";
-    delBtn.setAttribute("aria-label", browser.i18n.getMessage("optManualLinksBtnDelete") || "Supprimer la liaison");
+    const baseDeleteLabel = browser.i18n.getMessage("optManualLinksBtnDelete") || "Supprimer la liaison";
+    delBtn.title = baseDeleteLabel;
+    delBtn.setAttribute("aria-label", `${baseDeleteLabel} — ${sText}`);
 
     delBtn.addEventListener("click", async () => {
-      let success = false;
+      if (delBtn.disabled) return;
+      delBtn.disabled = true;
+      pendingFocusIndex = rowIndex;
+
+      const targetLinkId = link.id || link.clusterId;
+      let res = null;
       if (typeof browser.runtime?.sendMessage !== "undefined") {
-        let res = await browser.runtime.sendMessage({
+        res = await browser.runtime.sendMessage({
           action: "removeManualLink",
-          linkId: link.id
+          linkId: targetLinkId
         }).catch(() => null);
-        success = !!res?.success;
       }
 
-      // Repli direct de sécurité si le background n'est pas joignable
-      if (!success) {
+      let success = Boolean(res?.success);
+
+      // Repli direct uniquement si le script d'arrière-plan est réellement injoignable (res === null)
+      if (res === null) {
         let currentData = await browser.storage.local.get({ manualThreadLinks: [] });
         let currentLinks = Array.isArray(currentData.manualThreadLinks) ? currentData.manualThreadLinks : [];
-        let updated = currentLinks.filter(l => l.id !== link.id);
+        let updated = currentLinks.filter(l => l.id !== targetLinkId && l.clusterId !== targetLinkId);
         await browser.storage.local.set({ manualThreadLinks: updated });
         success = true;
       }
@@ -236,17 +275,32 @@ function renderTable(links) {
         showStatusToast(browser.i18n.getMessage("optManualLinksDeletedFeedback") || "Liaison supprimée avec succès.");
       }
 
-      await loadLinks();
+      // Si storage.onChanged n'est pas disponible ou si rien n'a changé en stockage, recharger manuellement
+      if (!success || typeof browser.storage?.onChanged === "undefined") {
+        await loadLinks();
+      }
     });
 
     tdAction.appendChild(delBtn);
     row.appendChild(tdAction);
 
     tbody.appendChild(row);
-  }
+  });
 
   table.appendChild(tbody);
   container.appendChild(table);
+
+  // Restauration du focus clavier après suppression d'une ligne (WCAG 2.4.3)
+  if (pendingFocusIndex !== null) {
+    const allDelBtns = container.querySelectorAll(".delete-link-btn");
+    const targetBtn = allDelBtns[Math.min(pendingFocusIndex, allDelBtns.length - 1)];
+    pendingFocusIndex = null;
+    if (targetBtn) {
+      targetBtn.focus();
+    } else if (searchInput) {
+      searchInput.focus();
+    }
+  }
 }
 
 /**
@@ -262,9 +316,9 @@ function applyFilter() {
   }
 
   const filtered = allLinksCache.filter(link => {
-    const sSub = (link.sourceSubject || "").toLowerCase();
+    const sSub = (link.sourceSubject || link.sourceHeaderId || "").toLowerCase();
     const sAuth = (link.sourceAuthor || "").toLowerCase();
-    const tSub = (link.targetSubject || "").toLowerCase();
+    const tSub = (link.targetSubject || link.targetHeaderId || "").toLowerCase();
     const tAuth = (link.targetAuthor || "").toLowerCase();
     return sSub.includes(query) || sAuth.includes(query) || tSub.includes(query) || tAuth.includes(query);
   });
@@ -278,14 +332,16 @@ function applyFilter() {
 async function loadLinks() {
   try {
     let links = [];
+    let loadedFromBg = false;
     if (typeof browser.runtime?.sendMessage !== "undefined") {
       let res = await browser.runtime.sendMessage({ action: "getManualLinks" }).catch(() => null);
       if (res && Array.isArray(res.links)) {
         links = res.links;
+        loadedFromBg = true;
       }
     }
 
-    if (links.length === 0) {
+    if (!loadedFromBg) {
       const data = await browser.storage.local.get({ manualThreadLinks: [] });
       links = Array.isArray(data.manualThreadLinks) ? data.manualThreadLinks : [];
     }
@@ -310,9 +366,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const searchInput = document.getElementById("search-input");
   if (searchInput) {
     searchInput.addEventListener("input", applyFilter);
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && searchInput.value) {
+        e.preventDefault();
+        searchInput.value = "";
+        applyFilter();
+      }
+    });
   }
 
-  // Synchronisation temps réel si le stockage est modifié depuis un autre onglet/fenêtre
+  // Synchronisation temps réel si le stockage est modifié
   if (typeof browser.storage?.onChanged !== "undefined") {
     browser.storage.onChanged.addListener((changes, areaName) => {
       if (areaName === "local" && changes.manualThreadLinks) {

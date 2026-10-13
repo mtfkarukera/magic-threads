@@ -4,6 +4,34 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
+
+## [2.10.1] - 2026-10-14
+
+### Corrigé
+- **Concurrence & Verrou de Stockage (`withStorageLock`) ([manualLinksManager.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/manualLinksManager.js))** :
+  - Élimination d'un deadlock réentrant dans `detachMessageFromCluster` lorsqu'un cluster comptait 2 messages ou moins (suppression directe en mémoire/stockage sans rappel récursif à `removeLink`).
+  - Déport de la résolution asynchrone Gloda (`getThreadByHeaderId`) hors de la section critique de `withStorageLock` pour prévenir toute famine du verrou en cas de latence d'indexation.
+  - Protection défensive (`Array.isArray(l.allHeaderIds)`) dans `removeLinksByHeaderId` et synchronisation atomique des ancres RAM dans `healCluster`.
+- **Respect Strict de la Portée « Message Unique » (`single_message`) ([background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js), [threadResolver.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/threadResolver.js), [manualLinksManager.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/manualLinksManager.js))** :
+  - Restriction des ancres source et de la résolution `ThreadResolver` aux seuls messages explicitement rattachés dans le cluster lorsque `scope === "single_message"`, évitant toute absorption involontaire du fil natif source complet.
+  - Désactivation de l'expansion automatique (`healCluster`) sur les clusters à portée `single_message`.
+- **Cohérence du Badge et du Bouton de Détachement ([threadResolver.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/threadResolver.js), [magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - Marquage systématique (`isManualLink: true`, `manualLinkId`) sur tous les messages appartenant à un cluster manuel, y compris le message initialement sélectionné (`baseMessages`).
+  - Enrichissement de la signature DOM (`computeThreadSignature`) avec l'état de liaison manuelle pour rafraîchir instantanément les badges et boutons `×` après fusion ou détachement sans changement d'IDs.
+  - Restauration automatique des dimensions dépliées lors de la reconstruction d'un panneau précédemment replié.
+- **Fiabilité & Ergonomie du Gestionnaire Dédié ([options/links.html](file:///Users/mtfkarukera/Scripts/magic-threads-b/options/links.html), [options/links.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/options/links.js), [options/options.html](file:///Users/mtfkarukera/Scripts/magic-threads-b/options/options.html), [options/options.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/options/options.js))** :
+  - Suppression du double appel concurrent `loadLinks()` à la suppression et désactivation immédiate du bouton corbeille cliqué.
+  - Mise en page `table-layout: fixed` avec troncature élégante (`text-overflow: ellipsis` + info-bulle `title`), compteur dynamique `filtrés / total`, recherche étendue aux `Message-ID` et touche `Échap` pour vider le filtre.
+  - Correction de la double flèche `← ←` sur le lien retour dans les 7 catalogues de langues (`linksPageBackToOptions`).
+
+### Accessibilité (WCAG 2.1 AA) & Sécurité
+- **Conformité WCAG 2.1 AA Renforcée** :
+  - Restauration intelligente du focus clavier sur le bouton de suppression suivant (ou précédent, ou champ de recherche) après suppression d'une ligne dans `links.html`.
+  - Contraste AA garanti ($\ge 4.5:1$) sur le bouton de suppression au survol (`#d70022` en clair, `#ff6961` en sombre), cible cliquable `.thread-detach-btn` portée à `22×22px`, ordre `aria-label` conforme WCAG 2.5.3 sur `.threads-nav-mode-btn`, et préservation de `#threads-live-region` lors des reconstructions du Shadow DOM.
+  - Ajout de la clé `messageRoleDescription` dans les 7 catalogues i18n, attribution dynamique de `document.documentElement.lang` et prise en charge de `@media (prefers-reduced-motion: reduce)`.
+- **Cloisonnement Multi-Comptes & Validation IPC ([background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js), [release.sh](file:///Users/mtfkarukera/Scripts/magic-threads-b/release.sh))** :
+  - Vérification `isSameAccount` étendue au workflow de staging (`magic-threads-link-to-thread` et `onConfirmManualLink`), validation stricte de `sender.id` dans `runtime.onMessage` et renforcement de `SENSITIVE_FILES` dans `release.sh`.
+
 ## [2.10.0] - 2026-10-11
 
 ### Ajouté

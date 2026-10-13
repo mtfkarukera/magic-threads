@@ -114,7 +114,6 @@
               "modeNewTab": { "type": "string", "optional": true },
               "tooltipCurrentTab": { "type": "string", "optional": true },
               "tooltipNewTab": { "type": "string", "optional": true },
-              "tooltipToggleMode": { "type": "string", "optional": true },
               "tooltipCollapseExpand": { "type": "string", "optional": true },
               "tooltipResize": { "type": "string", "optional": true },
               "tooltipAttachment": { "type": "string", "optional": true },
@@ -135,7 +134,6 @@
               "btnCancelLink": { "type": "string", "optional": true },
               "badgeManualLink": { "type": "string", "optional": true },
               "btnDetachLink": { "type": "string", "optional": true },
-              "confirmDetachPrompt": { "type": "string", "optional": true },
               "optManualLinksDeletedFeedback": { "type": "string", "optional": true },
               "messageRoleDescription": { "type": "string", "optional": true }
             }

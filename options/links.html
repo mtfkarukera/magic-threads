@@ -26,7 +26,7 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      color: var(--in-content-link-color, #0060df);
+      color: var(--in-content-link-color, light-dark(#0060df, #63aaff));
       text-decoration: none;
       font-weight: 500;
       font-size: 0.875rem;
@@ -39,7 +39,7 @@
       text-decoration: underline;
     }
     .back-link:focus-visible {
-      outline: 2px solid var(--in-content-focus-outline-color, #0060df);
+      outline: 2px solid var(--in-content-focus-outline-color, light-dark(#0060df, #63aaff));
       outline-offset: 2px;
     }
     header.page-header {
@@ -53,7 +53,7 @@
       flex-wrap: wrap;
     }
     h1 {
-      font-size: 1.35rem;
+      font-size: 1.25rem;
       font-weight: 600;
       margin: 0;
     }
@@ -92,10 +92,11 @@
       border: 1px solid var(--in-content-border-color, color-mix(in srgb, CanvasText 25%, Canvas));
       transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .search-input:focus {
-      outline: none;
-      border-color: var(--in-content-focus-outline-color, #0060df);
-      box-shadow: 0 0 0 2px color-mix(in srgb, #0060df 25%, transparent);
+    .search-input:focus,
+    .search-input:focus-visible {
+      outline: 2px solid var(--in-content-focus-outline-color, light-dark(#0060df, #63aaff));
+      outline-offset: 0;
+      border-color: var(--in-content-focus-outline-color, light-dark(#0060df, #63aaff));
     }
     .search-icon {
       position: absolute;
@@ -107,8 +108,12 @@
       display: flex;
       align-items: center;
     }
+    #links-table-container {
+      overflow-x: auto;
+    }
     table.links-table {
       width: 100%;
+      table-layout: fixed;
       border-collapse: collapse;
       font-size: 0.875rem;
       background-color: var(--in-content-box-background, Canvas);
@@ -138,10 +143,17 @@
       color: var(--in-content-page-color, CanvasText);
       display: block;
       margin-bottom: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .cell-author {
+      display: block;
       font-size: 0.8125rem;
       color: color-mix(in srgb, CanvasText 65%, Canvas);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .scope-badge {
       display: inline-block;
@@ -175,18 +187,25 @@
       font-size: 1rem;
       padding: 6px;
       border-radius: 4px;
-      color: #ff3b30;
+      color: #d70022;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       transition: background-color 0.15s ease, transform 0.1s ease;
     }
-    .delete-link-btn:hover {
-      background-color: rgba(255, 59, 48, 0.15);
+    .delete-link-btn:hover:not(:disabled) {
+      background-color: rgba(215, 0, 34, 0.12);
       transform: scale(1.08);
     }
+    .delete-link-btn:active:not(:disabled) {
+      transform: scale(0.95);
+    }
+    .delete-link-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
     .delete-link-btn:focus-visible {
-      outline: 2px solid var(--in-content-focus-outline-color, #0060df);
+      outline: 2px solid var(--in-content-focus-outline-color, light-dark(#0060df, #63aaff));
       outline-offset: 2px;
     }
     .empty-notice {
@@ -221,13 +240,16 @@
       transform: translateY(0) scale(1);
     }
     @media (prefers-color-scheme: dark) {
-      .back-link {
-        color: #63aaff;
-      }
       .scope-badge {
         background-color: color-mix(in srgb, #528bff 18%, Canvas);
         color: #79a8ff;
         border-color: color-mix(in srgb, #528bff 45%, Canvas);
+      }
+      .delete-link-btn {
+        color: #ff6961;
+      }
+      .delete-link-btn:hover:not(:disabled) {
+        background-color: rgba(255, 105, 97, 0.18);
       }
       .status-msg {
         color: #54d196;
@@ -236,10 +258,24 @@
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
       }
     }
+    @media (prefers-reduced-motion: reduce) {
+      .back-link,
+      .search-input,
+      .delete-link-btn,
+      .status-msg {
+        transition: none !important;
+      }
+      .delete-link-btn:hover:not(:disabled),
+      .delete-link-btn:active:not(:disabled),
+      .status-msg,
+      .status-msg.show {
+        transform: none !important;
+      }
+    }
   </style>
 </head>
 <body>
-  <nav class="back-nav" aria-label="Navigation principale">
+  <nav class="back-nav">
     <a href="options.html" class="back-link" id="back-link">
       <span aria-hidden="true">←</span>
       <span data-i18n="linksPageBackToOptions"></span>
@@ -248,14 +284,14 @@
 
   <header class="page-header">
     <h1 data-i18n="linksPageTitle"></h1>
-    <div id="links-counter" class="badge-counter" aria-live="polite"></div>
+    <div id="links-counter" class="badge-counter" aria-live="polite" aria-atomic="true"></div>
   </header>
 
   <main>
     <div class="toolbar">
       <div class="search-wrapper">
         <span class="search-icon" aria-hidden="true" id="search-icon-placeholder"></span>
-        <input type="search" id="search-input" class="search-input" data-i18n-placeholder="linksPageSearchPlaceholder" autocomplete="off" spellcheck="false">
+        <input type="search" id="search-input" class="search-input" data-i18n-placeholder="linksPageSearchPlaceholder" data-i18n-aria-label="linksPageSearchPlaceholder" autocomplete="off" spellcheck="false">
       </div>
     </div>
 

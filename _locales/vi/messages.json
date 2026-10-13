@@ -33,10 +33,6 @@
     "message": "Nhấp để mở tin nhắn trong thẻ mới",
     "description": "Tooltip for new tab mode"
   },
-  "tooltipToggleMode": {
-    "message": "Thay đổi chế độ điều hướng",
-    "description": "Tooltip for the toggle navigation mode button"
-  },
   "tooltipCollapseExpand": {
     "message": "Thu gọn/Mở rộng bảng",
     "description": "Tooltip for collapse/expand button"
@@ -209,10 +205,6 @@
     "message": "Tách khỏi luồng",
     "description": "Button to detach message from thread"
   },
-  "confirmDetachPrompt": {
-    "message": "Tách thư này khỏi luồng?",
-    "description": "Confirmation prompt before detaching a message"
-  },
   "optManualLinksGroupTitle": {
     "message": "Các luồng được liên kết thủ công:",
     "description": "Title of manual links section in options"
@@ -256,10 +248,6 @@
   "optManualLinksBtnDelete": {
     "message": "Xóa liên kết",
     "description": "Tooltip / button label to delete manual link"
-  },
-  "optManualLinksConfirmDelete": {
-    "message": "Bạn có chắc chắn muốn xóa liên kết thủ công này không?",
-    "description": "Confirmation prompt when deleting link in options"
   },
   "optManualLinksDeletedFeedback": {
     "message": "Đã xóa liên kết thủ công thành công.",
@@ -306,7 +294,7 @@
     "description": "Placeholder for search input in links manager"
   },
   "linksPageBackToOptions": {
-    "message": "← Tùy chọn Magic Threads",
+    "message": "Tùy chọn Magic Threads",
     "description": "Back link to options page"
   },
   "linksPageCountActive": {
@@ -316,5 +304,9 @@
   "linksPageEmptySearch": {
     "message": "Không có liên kết nào khớp với tìm kiếm của bạn.",
     "description": "Notice when search filter returns 0 results"
+  },
+  "messageRoleDescription": {
+    "message": "Tin nhắn",
+    "description": "ARIA role description for a message card in the thread panel"
   }
 }

@@ -67,12 +67,13 @@ export class ThreadResolver {
         return baseMessages;
       }
 
-      // 4. Constitution de la carte de messages par en-tête normalisé
+      // 4. Constitution de la carte de messages par en-tête normalisé (ou clé de secours par ID)
       let messagesByHeaderId = new Map();
       for (let m of baseMessages) {
         let hid = normalizeMessageId(m.headerMessageId);
-        if (hid) {
-          messagesByHeaderId.set(hid, m);
+        let key = hid || (typeof m.id === "number" ? "__id_" + m.id : null);
+        if (key) {
+          messagesByHeaderId.set(key, m);
         }
       }
 
@@ -84,14 +85,24 @@ export class ThreadResolver {
         if (visitedClusters.has(clusterKey)) continue;
         visitedClusters.add(clusterKey);
 
-        // a) Rapatriement prioritaire via les ancres WebExtension de la session en RAM
-        // avec GARDE D'INTÉGRITÉ STRICT (SEC-01 / B1)
-        let sessionAnchors = Array.isArray(cluster.anchorMessageIds) ? cluster.anchorMessageIds : [];
+        let normSourceHeader = normalizeMessageId(cluster.sourceHeaderId);
         let clusterHeadersSet = new Set(
           (cluster.allHeaderIds || []).map(normalizeMessageId).filter(Boolean)
         );
-        if (cluster.sourceHeaderId) clusterHeadersSet.add(normalizeMessageId(cluster.sourceHeaderId));
+        if (normSourceHeader) clusterHeadersSet.add(normSourceHeader);
         if (cluster.targetHeaderId) clusterHeadersSet.add(normalizeMessageId(cluster.targetHeaderId));
+
+        // Marquer les messages déjà présents dans baseMessages qui appartiennent à ce cluster manuel
+        for (let [key, existingMsg] of messagesByHeaderId.entries()) {
+          if (!key.startsWith("__id_") && clusterHeadersSet.has(key)) {
+            existingMsg.isManualLink = true;
+            existingMsg.manualLinkId = cluster.id;
+          }
+        }
+
+        // a) Rapatriement prioritaire via les ancres WebExtension de la session en RAM
+        // avec GARDE D'INTÉGRITÉ STRICT (SEC-01 / B1)
+        let sessionAnchors = Array.isArray(cluster.anchorMessageIds) ? cluster.anchorMessageIds : [];
 
         for (let anchorId of sessionAnchors) {
           if (loadedAnchorIds.has(anchorId)) continue;
@@ -109,7 +120,12 @@ export class ThreadResolver {
 
               for (let addMsg of anchorThread) {
                 let hid = normalizeMessageId(addMsg.headerMessageId);
-                if (hid && !messagesByHeaderId.has(hid)) {
+                if (!hid) continue;
+                // Si la liaison est restreinte à un seul message, ne pas importer les autres messages du fil source
+                if (cluster.scope === "single_message" && !clusterHeadersSet.has(hid)) {
+                  continue;
+                }
+                if (!messagesByHeaderId.has(hid)) {
                   addMsg.isManualLink = true;
                   addMsg.manualLinkId = cluster.id;
                   messagesByHeaderId.set(hid, addMsg);
@@ -124,7 +140,7 @@ export class ThreadResolver {
         // b) Rapatriement canonique pérenne par Message-ID RFC 822 (infaillible inter-sessions)
         let allIds = Array.isArray(cluster.allHeaderIds) ? cluster.allHeaderIds : [];
         if (allIds.length === 0) {
-          let s = normalizeMessageId(cluster.sourceHeaderId);
+          let s = normSourceHeader;
           let t = normalizeMessageId(cluster.targetHeaderId);
           if (s) allIds.push(s);
           if (t && t !== s) allIds.push(t);
@@ -137,12 +153,16 @@ export class ThreadResolver {
             if (browser.convGloda.getThreadByHeaderId) {
               let threadMsgs = await browser.convGloda.getThreadByHeaderId(extHeaderId);
               if (Array.isArray(threadMsgs)) {
-                if (cluster.scope === "single_message") {
+                if (cluster.scope === "single_message" && extHeaderId === normSourceHeader) {
                   threadMsgs = threadMsgs.filter(m => normalizeMessageId(m.headerMessageId) === extHeaderId);
                 }
                 for (let addMsg of threadMsgs) {
                   let hid = normalizeMessageId(addMsg.headerMessageId);
-                  if (hid && !messagesByHeaderId.has(hid)) {
+                  if (!hid) continue;
+                  if (cluster.scope === "single_message" && !clusterHeadersSet.has(hid)) {
+                    continue;
+                  }
+                  if (!messagesByHeaderId.has(hid)) {
                     addMsg.isManualLink = true;
                     addMsg.manualLinkId = cluster.id;
                     messagesByHeaderId.set(hid, addMsg);
@@ -175,15 +195,19 @@ export class ThreadResolver {
         if (cluster.targetHeaderId) existingHeaders.add(normalizeMessageId(cluster.targetHeaderId));
 
         let existingAnchors = ManualLinksManager.getSessionAnchors(clusterKey);
+        let isSingleMessageScope = cluster.scope === "single_message";
 
         for (let m of merged) {
           let hid = normalizeMessageId(m.headerMessageId);
-          if (hid && !existingHeaders.has(hid)) {
+          if (!isSingleMessageScope && hid && !existingHeaders.has(hid)) {
             newHeaders.push(hid);
             existingHeaders.add(hid);
           }
+          // En mode single_message, n'enregistrer l'ancre que si l'en-tête fait déjà partie du cluster
           if (typeof m.id === "number" && m.id > 0 && !existingAnchors.has(m.id)) {
-            newAnchors.push(m.id);
+            if (!isSingleMessageScope || (hid && existingHeaders.has(hid))) {
+              newAnchors.push(m.id);
+            }
           }
         }
 

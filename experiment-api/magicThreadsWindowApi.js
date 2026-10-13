@@ -97,30 +97,6 @@ const SHARED_CSS = `
           }
         }
 
-        @media (prefers-color-scheme: dark) {
-          :host {
-            /* Mêmes variables de thème TB ; seuls les fallbacks changent
-               (--text-muted relevé à #9fa8b7 pour ≥ 4,5:1 sur --card-hover-bg). */
-            --banner-bg: var(--layout-background-1, #1e222b);
-            --banner-border: var(--layout-border-0, #3e4451);
-            --card-bg: var(--layout-background-0, #282c34);
-            --card-hover-bg: var(--layout-background-2, #353b45);
-            --text-main: var(--layout-color-1, #abb2bf);
-            --text-muted: var(--layout-color-2, #9fa8b7);
-            --accent-border: var(--color-accent-primary, #528bff);
-            --accent-bg: #223147;
-            --accent-text: #82aaff;
-            --folder-bg: #2d3139;
-            --folder-text: #abb2bf;
-            --inbox-bg: #1e3a5f;
-            --inbox-text: #82aaff;
-            --sent-bg: #1b4d3e;
-            --sent-text: #a3e635;
-            --archive-bg: #4d3d1b;
-            --archive-text: #fbbf24;
-          }
-        }
-
         .threads-header {
           display: flex;
           justify-content: space-between;
@@ -179,6 +155,9 @@ const SHARED_CSS = `
         }
 
         .threads-collapse-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
           padding: 2px 6px;
         }
 
@@ -313,7 +292,6 @@ const SHARED_CSS = `
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          margin-left: 4px;
           flex-shrink: 0;
         }
 
@@ -335,9 +313,14 @@ const SHARED_CSS = `
           position: absolute;
           right: 6px;
           bottom: 5px;
+          width: 22px;
+          height: 22px;
+          padding: 0;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
           background: none;
           border: none;
-          padding: 2px 5px;
           cursor: pointer;
           color: var(--text-muted);
           font-size: 1.1em;
@@ -352,7 +335,14 @@ const SHARED_CSS = `
         }
 
         .thread-item.has-manual-link .thread-snippet {
-          padding-right: 20px;
+          padding-right: 24px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
         }
 
         .staging-banner {
@@ -541,6 +531,7 @@ const SIDEBAR_CSS = `
         .thread-author {
           grid-column: 1;
           grid-row: 1;
+          min-width: 0;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -560,6 +551,10 @@ const SIDEBAR_CSS = `
           grid-row: 2;
           justify-self: end;
           margin-left: 0;
+          max-width: 110px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
       `;
 
@@ -668,7 +663,8 @@ function updateNavModeButton(btn, mode, labels, doc) {
   btn.appendChild(labelSpan);
 
   btn.title = tooltipText;
-  btn.setAttribute("aria-label", tooltipText + " (" + labelText + ")");
+  // WCAG 2.5.3 (Label in Name) : le nom accessible commence par le libellé visible
+  btn.setAttribute("aria-label", labelText + " \u2014 " + tooltipText);
   btn.dataset.mode = mode;
 }
 
@@ -736,6 +732,27 @@ function updateCollapseButton(btn, isCollapsed, layout, side, doc) {
     direction = isCollapsed ? "left" : "right";
   }
   btn.appendChild(createChevronIcon(doc, direction));
+}
+
+/**
+ * Retourne le comportement de défilement adapté à prefers-reduced-motion.
+ */
+function getScrollBehavior(doc) {
+  try {
+    if (doc?.defaultView?.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
+      return "auto";
+    }
+  } catch (e) {
+    // Ignorer
+  }
+  return "smooth";
+}
+
+/**
+ * Calcule la signature structurelle d'un fil (IDs + état de liaison manuelle).
+ */
+function computeThreadSignature(threadData) {
+  return threadData.map(m => `${m.id}:${m.isManualLink ? 1 : 0}:${m.manualLinkId || ""}`).join(",");
 }
 
 /**
@@ -902,7 +919,6 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       modeNewTab: "New tab",
       tooltipCurrentTab: "Click switches the message in the active tab",
       tooltipNewTab: "Click opens the message in a new tab",
-      tooltipToggleMode: "Change navigation mode",
       tooltipCollapseExpand: "Collapse/Expand panel",
       tooltipResize: "Drag to resize",
       tooltipAttachment: "Attachment(s)",
@@ -923,7 +939,6 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       btnCancelLink: "Cancel",
       badgeManualLink: "Manually linked message",
       btnDetachLink: "Detach from thread",
-      confirmDetachPrompt: "Detach this message from the thread?",
       optManualLinksDeletedFeedback: "Manual link deleted successfully.",
       messageRoleDescription: "Message"
     };
@@ -1073,7 +1088,9 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       if (msg.hasAttachments) {
         let clip = doc.createElement("span");
         clip.className = "thread-attachment";
-        clip.title = labels.tooltipAttachment;
+        clip.setAttribute("role", "img");
+        clip.title = labels.tooltipAttachment || "Attachment(s)";
+        clip.setAttribute("aria-label", labels.tooltipAttachment || "Attachment(s)");
         clip.appendChild(createPaperclipIcon(doc));
         ensureIndicators().appendChild(clip);
       }
@@ -1081,6 +1098,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       if (msg.isManualLink) {
         let linkBadge = doc.createElement("span");
         linkBadge.className = "thread-badge-manual";
+        linkBadge.setAttribute("role", "img");
         linkBadge.title = labels.badgeManualLink || "Message rattaché manuellement";
         linkBadge.setAttribute("aria-label", labels.badgeManualLink || "Message rattaché manuellement");
         linkBadge.appendChild(createLinkIcon(doc));
@@ -1171,8 +1189,9 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         activate();
       });
       item.addEventListener("keydown", (e) => {
-        if (e.target && e.target.classList.contains("thread-detach-btn")) return;
         if (e.key === "Enter" || e.key === " ") {
+          // Si le focus est sur le bouton de détachement, laisser son handler natif click s'exécuter
+          if (e.target && e.target.classList.contains("thread-detach-btn")) return;
           // Espace ou Entrée : activer l'item
           e.preventDefault();
           if (item.classList.contains("current")) return;
@@ -1215,7 +1234,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
             if (targetDetach) targetDetach.tabIndex = 0;
 
             targetItem.focus();
-            targetItem.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            targetItem.scrollIntoView({ block: "nearest", behavior: getScrollBehavior(doc) });
           }
         }
       });
@@ -1248,8 +1267,8 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         return false;
       }
 
-      // Vérifier si la composition du fil a changé (signature basée sur les IDs ordonnés)
-      let newSignature = threadData.map(m => m.id).join(",");
+      // Vérifier si la composition ou l'état de liaison manuelle du fil a changé
+      let newSignature = computeThreadSignature(threadData);
       if (hostEl.dataset.threadSignature !== newSignature) {
         return false;
       }
@@ -1325,8 +1344,9 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       // Scroll doux vers l'élément sélectionné si nécessaire
       let currentItem = list.querySelector(".thread-item.current");
       if (currentItem && currentItem.ownerDocument?.defaultView) {
-        currentItem.ownerDocument.defaultView.requestAnimationFrame(() => {
-          currentItem.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        let itemDoc = currentItem.ownerDocument;
+        itemDoc.defaultView.requestAnimationFrame(() => {
+          currentItem.scrollIntoView({ block: "nearest", behavior: getScrollBehavior(itemDoc) });
         });
       }
 
@@ -1344,16 +1364,57 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         return;
       }
 
+      let doc = shadowRoot.ownerDocument;
+      let hostEl = shadowRoot.host;
+
+      // Préserver la région aria-live existante pour éviter d'interrompre une annonce vocale en cours
+      let existingLiveRegion = shadowRoot.getElementById ? shadowRoot.getElementById("threads-live-region") : shadowRoot.querySelector("#threads-live-region");
+      if (existingLiveRegion) {
+        existingLiveRegion.remove();
+      }
+
       // Nettoyage DOM itératif (évite innerHTML dans le contexte chrome privilégié — flag AMO)
       while (shadowRoot.firstChild) {
         shadowRoot.firstChild.remove();
       }
-      let doc = shadowRoot.ownerDocument;
-      let hostEl = shadowRoot.host;
+
       if (hostEl) {
+        // Si le panneau était replié avant la reconstruction, restaurer ses dimensions dépliées
+        if (hostEl.dataset.collapsed === "true") {
+          delete hostEl.dataset.collapsed;
+          let contentDoc = hostEl.ownerDocument;
+          let sidePos = sidebarPosition || "right";
+          if (layoutMode === "bottom") {
+            let savedHeight = hostEl.dataset.expandedHeight || (BOTTOM_DEFAULT_HEIGHT + "px");
+            hostEl.style.height = savedHeight;
+          } else {
+            let savedWidth = parseInt(hostEl.dataset.expandedWidth, 10) || SIDEBAR_DEFAULT_WIDTH;
+            hostEl.style.width = savedWidth + "px";
+            if (hostEl.dataset.layoutContext === "messageTab" && contentDoc) {
+              let body = contentDoc.body || contentDoc.documentElement;
+              if (body) {
+                if (sidePos === "left") {
+                  body.style.paddingLeft = savedWidth + "px";
+                } else {
+                  body.style.paddingRight = savedWidth + "px";
+                }
+              }
+            } else if (hostEl.dataset.layoutMode === "sidebar3pane" && contentDoc) {
+              let msgBrowserId = hostEl.dataset.msgBrowserId;
+              let msgBrowser = msgBrowserId ? contentDoc.getElementById(msgBrowserId) : contentDoc.getElementById("messageBrowser");
+              if (msgBrowser) {
+                if (sidePos === "left") {
+                  msgBrowser.style.marginLeft = savedWidth + "px";
+                } else {
+                  msgBrowser.style.marginRight = savedWidth + "px";
+                }
+              }
+            }
+          }
+        }
         hostEl.dataset.bannerLayout = layoutMode;
         hostEl.dataset.bannerSide = sidebarPosition;
-        hostEl.dataset.threadSignature = threadData.map(m => m.id).join(",");
+        hostEl.dataset.threadSignature = computeThreadSignature(threadData);
       }
 
       // Poignée de redimensionnement à insérer APRÈS le wrapper (cas sidebar gauche).
@@ -1372,6 +1433,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         let resizeHandle = doc.createElement("div");
         resizeHandle.className = "resize-handle";
         resizeHandle.title = labels.tooltipResize;
+        resizeHandle.setAttribute("aria-label", labels.tooltipResize || "Drag to resize");
         attachResizeBehavior(resizeHandle, "y", shadowRoot, sidebarPosition);
         shadowRoot.appendChild(resizeHandle);
       }
@@ -1381,6 +1443,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         let resizeHandle = doc.createElement("div");
         resizeHandle.className = "resize-handle";
         resizeHandle.title = labels.tooltipResize;
+        resizeHandle.setAttribute("aria-label", labels.tooltipResize || "Drag to resize");
         attachResizeBehavior(resizeHandle, "x", shadowRoot, sidebarPosition);
 
         // La poignée est placée du côté intérieur du sidebar
@@ -1404,12 +1467,15 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       }
 
       // Région live pour annonces vocales accessibles (détachement, staging, etc.)
-      let liveRegion = doc.createElement("div");
-      liveRegion.id = "threads-live-region";
-      liveRegion.className = "visually-hidden";
-      liveRegion.setAttribute("role", "status");
-      liveRegion.setAttribute("aria-live", "polite");
-      liveRegion.setAttribute("aria-atomic", "true");
+      let liveRegion = existingLiveRegion;
+      if (!liveRegion) {
+        liveRegion = doc.createElement("div");
+        liveRegion.id = "threads-live-region";
+        liveRegion.className = "visually-hidden";
+        liveRegion.setAttribute("role", "status");
+        liveRegion.setAttribute("aria-live", "polite");
+        liveRegion.setAttribute("aria-atomic", "true");
+      }
       wrapper.appendChild(liveRegion);
 
       let announceLive = (text) => {
@@ -1592,6 +1658,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         collapseBtn.setAttribute("aria-expanded", String(!isCollapsed));
 
         let hostEl = shadowRoot.host;
+        hostEl.dataset.collapsed = isCollapsed ? "true" : "false";
         let contentDoc = hostEl.ownerDocument;
 
         // En mode bottom : ajuster la hauteur du conteneur
@@ -1670,8 +1737,9 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
       let currentItem = list.querySelector(".thread-item.current");
       if (currentItem) {
         // Utiliser un micro-delay pour que le layout soit calculé avant le scroll
-        currentItem.ownerDocument.defaultView.requestAnimationFrame(() => {
-          currentItem.scrollIntoView({ block: "center", behavior: "smooth" });
+        let itemDoc = currentItem.ownerDocument;
+        itemDoc.defaultView.requestAnimationFrame(() => {
+          currentItem.scrollIntoView({ block: "center", behavior: getScrollBehavior(itemDoc) });
         });
       }
     }

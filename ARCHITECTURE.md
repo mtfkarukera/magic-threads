@@ -47,31 +47,32 @@ Point d'entrée de l'extension. Responsabilités :
 - **Détection du contexte** : distingue la vue 3-pane des onglets message
 - **Workflow de liaison manuelle (Staging)** : gère le menu contextuel `browser.menus` (`message_list`), conserve l'état de pré-liaison (`pendingStagingState`), maintient le panneau ouvert sur les messages cibles orphelins, et écoute les événements d'action (`onConfirmManualLink`, `onCancelManualLink`, `onDetachManualLink`)
 
-#### `background/manualLinksManager.js` (v2.8.0)
+#### `background/manualLinksManager.js` (v2.8.0 - v2.10.1)
 
 Gestionnaire CRUD de persistance pour l'Overlay Virtuel dans `browser.storage.local` basé sur un modèle de **Clusters de Conversation** (`ConversationCluster`) et immunisé contre les collisions de redémarrage :
 
-- **Exclusion mutuelle asynchrone (`withStorageLock`)** : sérialise toutes les mutations de `storage.local` via une file de promesses pour éliminer toute condition de course (R1) ou écrasement concurrent (timeout de sécurité 5s anti-blocage)
+- **Exclusion mutuelle asynchrone sans blocage I/O (`withStorageLock` - v2.10.1)** : sérialise toutes les mutations de `storage.local` via une file de promesses pour éliminer toute condition de course (R1). Les résolutions XPCOM/Gloda (`getThreadMessages`, `getThreadByHeaderId`) sont exécutées en amont hors de la section critique, et la dissolution de cluster s'exécute directement in-place sans appel réentrant (`removeLink`), éliminant tout risque d'expiration du verrou (5s)
 - **Persistance pure RFC 822 (SEC-01 / B1)** : les identifiants numériques de session (`message.id`) ne sont JAMAIS enregistrés sur disque, éliminant tout risque de collision avec des e-mails tiers après redémarrage de Thunderbird
 - **Gestionnaire d'ancres en mémoire vive (`sessionClusterAnchorsMap`)** : maintien d'une table volatile en RAM reliant les clusters aux IDs numériques actifs pour la session en cours, purgée automatiquement à la fermeture
 - **Migration nettoyante transparente** : suppression automatique en arrière-plan des anciens `anchorMessageIds` résiduels dans `storage.local` au démarrage
 - Clés universelles basées sur les `headerMessageId` RFC 822 normalisés (sans chevrons)
 - Fusion automatique des clusters connexes (Union-Find) : si deux fils liés rejoignent un autre fil, l'ensemble des branches est consolidé sans rupture
 - Support de la multi-sélection directe (`addMultiMessageCluster`) pour réunir plusieurs e-mails d'un seul clic
-- **Auto-consolidation (Self-Healing Overlay)** via `healCluster()` : réinjecte asynchronement dans le cluster les seuls Message-IDs authentifiés découverts lors des résolutions dynamiques de Gloda
+- **Auto-consolidation (Self-Healing Overlay)** via `healCluster()` : réinjecte asynchronement dans le cluster les seuls Message-IDs authentifiés découverts lors des résolutions dynamiques de Gloda (uniquement pour les clusters de portée `entire_thread`)
 - **Recherche résiliente** : `getClustersForMessage()` et `getClustersForHeaderIds()` interrogent à la fois la collection de Message-IDs et les ancres de la session active en RAM
 - **Déliaison intelligente & Découplage sémantique** via `detachMessageFromCluster()` : différencie le retrait chirurgical d'un message orphelin du découplage de branches complètes, avec dissolution automatique des clusters résiduels
 - Méthodes exposées : `getAllLinks()`, `addLink()`, `addMultiMessageCluster()`, `removeLink()`, `removeLinksByHeaderId()`, `getClustersForHeaderIds()`, `getClustersForMessage()`, `healCluster()`, `detachMessageFromCluster()`, `withStorageLock()`, `getSessionAnchors()`
 
-#### `background/threadResolver.js` (v2.8.0)
+#### `background/threadResolver.js` (v2.8.0 - v2.10.1)
 
 Couche d'accès aux données (DAL) unifiant Gloda et les Clusters de Conversation avec Garde d'Intégrité Strict :
 
 - Appelle `browser.convGloda.getThreadMessages()` avec l'identifiant du message sélectionné
 - Interroge les clusters actifs via `ManualLinksManager.getClustersForMessage()` (en-têtes RFC 822 et ancres de session en RAM)
 - **Garde d'Intégrité Strict (SEC-01 / B1)** : lors de la résolution via une ancre de session, valide systématiquement qu'au moins un message retourné correspond aux `allHeaderIds` du cluster. Si l'ancre est invalide ou recyclée, le fil est rejeté immédiatement
+- **Respect strict de la portée (`single_message` vs `entire_thread` - v2.10.1)** : lorsque `cluster.scope === "single_message"`, filtre les messages rapatriés pour ne conserver que ceux explicitement listés dans `cluster.allHeaderIds` sans déclencher d'expansion transitive Gloda ni d'auto-consolidation (`healCluster`)
 - **Résolution canonique inter-sessions par RFC 822** : s'appuie sur `convGloda.getThreadByHeaderId` pour restaurer les conversations de manière infaillible après un redémarrage
-- Fusionne les ensembles de messages, élimine les doublons stricts par `headerMessageId`, et marque les messages rattachés (`isManualLink: true`, `manualLinkId`)
+- Fusionne les ensembles de messages, élimine les doublons stricts par `headerMessageId`, et marque de manière homogène tous les messages appartenant à un cluster manuel (`isManualLink: true`, `manualLinkId`), y compris ceux déjà présents dans `baseMessages`
 - Trie l'ensemble chronologiquement de manière uniforme
 - **Auto-consolidation (Self-Healing)** : notifie `ManualLinksManager.healCluster()` pour mémoriser les nouveaux Message-IDs découverts (et enregistrer les ancres numériques en RAM uniquement)
 - **Assainissement des journaux (SEC-02)** : aucun Message-ID, sujet ou auteur n'est exposé en clair dans les logs console en cas d'erreur de résolution
@@ -109,7 +110,7 @@ flowchart LR
 - Expose aussi `isGlodaAvailable()` (v2.3.0) : vérifie la préférence `mailnews.database.global.indexer.enabled` et le chargement du module Gloda — utilisé par la page d'options pour avertir si l'index est désactivé
 - Schéma défini dans `glodaSchema.json`
 
-#### `experiment-api/magicThreadsWindowApi.js` (v2.9.1)
+#### `experiment-api/magicThreadsWindowApi.js` (v2.9.1 - v2.10.1)
 
 Experiment API pour l'injection DOM :
 
@@ -118,21 +119,21 @@ Experiment API pour l'injection DOM :
 - Gère les trois modes d'affichage (bottom panel en 3-pane / sidebar en 3-pane / sidebar en onglet message)
 - Injecte les styles CSS dans le Shadow DOM
 - **Bannière d'association en Staging (v2.6.0)** : Construit et insère en tête de panneau l'interface de pré-liaison interactive avec prévisualisation du message source, choix de la portée (`entire_thread` / `single_message`) dans un conteneur sémantique `role="radiogroup"` et boutons `[Confirmer l'association]` et `[Annuler]`.
-- **Badges et dissociation rapide (v2.6.0, v2.9.2 & v2.9.3)** : Regroupement unifié des indicateurs (pièce jointe `📎` et lien manuel `🔗`) dans un conteneur flex dédié (`.thread-indicators`) en cellule `(col 2, row 1)` de la grille, garantissant une hauteur d'en-tête de carte strictement constante de 2 lignes. Le bouton `×` de détachement direct reste ancré de façon fixe et absolue dans le coin inférieur droit de la carte (`.thread-item`) avec protection anti-chevauchement sur le snippet de texte, sans rupture de mise en page en vue latérale et sans dialogue bloquant (conforme Règle 14).
+- **Badges et dissociation rapide (v2.6.0, v2.9.2, v2.9.3 & v2.10.1)** : Regroupement unifié des indicateurs (pièce jointe `📎` et lien manuel `🔗`) dans un conteneur flex dédié (`.thread-indicators`) en cellule `(col 2, row 1)` de la grille, garantissant une hauteur d'en-tête de carte strictement constante de 2 lignes. Le bouton `×` de détachement direct (`22×22px`) reste ancré de façon fixe et absolue dans le coin inférieur droit de la carte (`.thread-item`) avec protection anti-chevauchement sur le snippet de texte, sans rupture de mise en page en vue latérale et sans dialogue bloquant (conforme Règle 14).
 - **Communication bidirectionnelle d'événements** : Expose les événements `onConfirmManualLink`, `onCancelManualLink`, `onDetachManualLink` et `onNavigationModeChanged` via `EventManager` pour notifier le background.
 - **Bouton de navigation unifié et réactif (v2.9.1)** : Remplacement de l'ancien couple indicateur inerte + engrenage par un unique bouton toggle interactif `<button class="threads-nav-mode-btn">` avec icônes SVG contextuelles (switch / external-tab). La Container Query compacte élégamment le bouton en masquant son texte sous 260px sans jamais faire disparaître le contrôle. L'événement `onNavigationModeChanged` persiste immédiatement le mode dans `browser.storage.local` et synchronise toutes les fenêtres ouvertes.
-- **Accessibilité WCAG 2.1 AA (v2.8.1)** :
-  - **Élimination du contrôle interactif imbriqué (WCAG 4.1.2)** : Les cartes de messages utilisent `role="article"` avec `aria-roledescription="message"` au lieu de `role="button"` parent, permettant la cohabitation sémantique légale du bouton de détachement interne.
-  - **Roving Tabindex étanche** : Seule la carte active et son éventuel bouton de détachement possèdent `tabIndex = 0` ; les cartes inactives et leurs boutons restent à `tabIndex = -1` pour préserver le cycle de tabulation clavier.
+- **Accessibilité WCAG 2.1 AA (v2.8.1 - v2.10.1)** :
+  - **Élimination du contrôle interactif imbriqué (WCAG 4.1.2)** : Les cartes de messages utilisent `role="article"` avec `aria-roledescription` localisé au lieu de `role="button"` parent, permettant la cohabitation sémantique légale du bouton de détachement interne.
+  - **Roving Tabindex étanche & Navigation Flèches** : Seule la carte active et son éventuel bouton de détachement possèdent `tabIndex = 0` ; la navigation par flèches (`ArrowUp`/`ArrowDown`/`Home`/`End`) fonctionne aussi bien depuis la carte que lorsque le focus est sur son bouton de détachement.
   - **Raccourci clavier de détachement** : Touches `Suppr` ou `Retour arrière` actives directement sur la carte sélectionnée.
-  - **Repère sémantique Landmark & Région vocale** : Déclaration de `role="complementary"` sur le conteneur du volet et région `aria-live="polite"` pour annoncer vocalement les confirmations et détachements.
+  - **Repère sémantique Landmark & Région vocale persistante** : Déclaration de `role="complementary"` sur le conteneur du volet et région `#threads-live-region` (`aria-live="polite"`) préservée lors des reconstructions DOM pour garantir les annonces vocales de confirmation et de détachement.
   - **Conformité des contrastes (WCAG 1.4.3 & 1.4.11)** : Bouton de confirmation dark mode à ratio 4.95:1, poignée de redimensionnement sans opacité avec points contrastés $\ge 3:1$, badge manuel sur `--accent-text` ($\ge 4{,}98:1$).
   - **Typographie adaptative (WCAG 1.4.4)** : Unités relatives `em` s'adaptant fidèlement à la taille de police définie dans Thunderbird.
-- **Intégration Visuelle Supernova & Modernisation (v2.9.0 - v2.9.1)** :
+- **Intégration Visuelle Supernova & Modernisation (v2.9.0 - v2.10.1)** :
   - **Responsivité Volet Étroit via Container Queries** : Déclaration de `container-type: inline-size` sur `.threads-wrapper` et règle `@container (max-width: 260px)` compactant automatiquement l'en-tête et les métadonnées sur sidebar étroite (150px-260px).
-  - **Colorimétrie Moderne** : Factorisation CSS de la palette `:host` avec les fonctions standard `color-scheme: light dark;`, `light-dark()` et `color-mix()` calquées sur les tokens natifs Thunderbird.
+  - **Colorimétrie Moderne** : Factorisation CSS de la palette `:host` avec les fonctions standard `color-scheme: light dark;`, `light-dark()` et `color-mix()` calquées sur les tokens natifs Thunderbird, sans bloc `@media (prefers-color-scheme: dark)` redondant.
   - **Icônes Vectorielles SVG Monochromes** : Remplacement de tous les emojis par des glyphes SVG sécurisés (`createElementNS`) adoptant la couleur courante (`currentColor`).
-- Gère le nettoyage du DOM quand le message change
+- Gère le nettoyage du DOM quand le message change et restaure fidèlement l'état replié (`collapsed`) lors des reconstructions de bannière
 - Schéma défini dans `magicThreadsWindowSchema.json` (avec typage strict des labels i18n et validation conforme Gecko `ExtensionParent.sys.mjs` v2.8.2)
 
 ### 3. Options (contexte WebExtension)
@@ -145,17 +146,17 @@ Page de paramètres accessible depuis le gestionnaire de modules complémentaire
 - **Position du sidebar** en onglet message : gauche ou droite
 - **Position du panneau** en vue 3-pane : bottom, gauche ou droite
 - **Ordre de tri** : antichronologique ou chronologique
-- **Toast Flottant Moderne (v2.9.0)** : Composant fixe animé (`position: fixed; bottom: 24px; right: 24px`) avec ombre douce et respect de `role="status"` (`aria-live="polite"`).
+- **Toast Flottant Moderne (v2.9.0)** : Composant fixe animé (`position: fixed; bottom: 24px; right: 24px`) avec ombre douce, respect de `role="status"` (`aria-live="polite"`) et adaptation `@media (prefers-reduced-motion: reduce)`.
 - **Carte Récapitulative des Liaisons (v2.10.0)** : Remplacement de l'ancien tableau compressé par une carte moderne affichant le nombre de liaisons actives et un bouton d'accès direct vers le gestionnaire dédié pleine page.
 - Persistance des préférences via `browser.storage.sync` (avec fallback depuis `browser.storage.local`) et synchronisation temps réel avec `browser.storage.onChanged`.
 
-#### `options/links.html` + `links.js` (v2.10.0)
+#### `options/links.html` + `links.js` (v2.10.0 - v2.10.1)
 
 Gestionnaire dédié des fils associés manuellement (grand format ~1000px) :
-- **Interface Pleine Page Accessible** : Page dédiée ouverte dans un onglet autonome avec repères sémantiques complets (`nav`, `header`, `main`), tokens système Supernova (`Canvas`, `CanvasText`), en-tête avec bouton retour vers les options et compteur dynamique de liaisons.
-- **Recherche Instantanée In-Memory** : Filtrage en temps réel ultra-rapide sur le sujet et l'expéditeur des messages source et cible, insensible à la casse et protégé contre les dégradations de performance.
+- **Interface Pleine Page Accessible (WCAG 2.1 AA)** : Page dédiée ouverte dans un onglet autonome avec repères sémantiques complets (`nav`, `header`, `main`), attribut `lang` dynamique, tokens système Supernova (`Canvas`, `CanvasText`), tableau à colonnes stables (`table-layout: fixed` avec troncature et info-bulles `title`), restauration intelligente du focus clavier après suppression et contraste certifié (`#d70022` / `#ff6961`) sur le bouton corbeille.
+- **Recherche Instantanée In-Memory** : Filtrage en temps réel ultra-rapide sur le sujet, l'expéditeur et les Message-IDs des messages source et cible, raccourci clavier `Escape` pour réinitialiser le filtre et compteur dynamique affichant le ratio `filtrés / total`.
 - **Sécurité & Intégrité Strictes** : Rendu DOM 100% sécurisé (strictement aucun `innerHTML`, usage exclusif de `createElement` et `textContent`), conformité totale CSP MV2 (`script-src 'self'`).
-- **Opérations Atomiques** : Suppression de liaisons déléguée au background via `removeManualLink` avec synchronisation sous mutex `withStorageLock`, notifications de feedback via toast flottant et synchronisation instantanée inter-onglets via `browser.storage.onChanged`.
+- **Opérations Atomiques & Anti-Rebond** : Suppression de liaisons déléguée au background via `removeManualLink` avec désactivation immédiate du bouton au clic, synchronisation sous mutex `withStorageLock`, garde `isMutating` évitant tout double rechargement DOM et synchronisation instantanée inter-onglets via `browser.storage.onChanged`.
 
 ## Structure du Shadow DOM
 
@@ -369,6 +370,7 @@ graph LR
 
     subgraph "Stockage & Configuration"
         OPT["options.js"]
+        LNK["links.js"]
         STORAGE_SYNC["browser.storage.sync"]
         STORAGE_LOCAL["browser.storage.local (Overlay & fallback)"]
     end
@@ -384,6 +386,8 @@ graph LR
     OPT --> STORAGE_SYNC
     MLM --> STORAGE_LOCAL
     OPT --> STORAGE_LOCAL
+    LNK --> BG
+    LNK --> STORAGE_LOCAL
 
     style GLODA fill:#ff6b6b,color:#fff
     style DOM fill:#ff6b6b,color:#fff
