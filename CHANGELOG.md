@@ -5,6 +5,16 @@ Toutes les modifications notables de Magic Threads sont documentées dans ce fic
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Versionnage Sémantique](https://semver.org/lang/fr/).
 
+## [2.10.2] - 2026-10-16
+
+### Corrigé
+- **Navigation Inter-Dossiers & Intégrité du Volet de Message ([background.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/background/background.js), [magicThreadsWindowApi.js](file:///Users/mtfkarukera/Scripts/magic-threads-b/experiment-api/magicThreadsWindowApi.js))** :
+  - **Élimination de la collision asynchrone lors du changement de dossier** : suppression de l'appel manuel concurrent `mailTabs.update({ displayedFolder })` dans `handleOpenMessage`, permettant à `mailTabs.setSelectedMessages` d'exécuter un basculement atomique de dossier avec réinitialisation complète de l'ancienne sélection (`clearPreviousSelection = true` / `forgetSavedSelection`).
+  - **Sélection avec tolérance apaisée (`setSelectedMessagesWithRetry`)** : remplacement de la rafale de 6 tentatives espacées de 30 ms par 2 tentatives calmes espacées de 150 ms en cas de changement de dossier, évitant tout conflit d'écriture ou d'indexation avec `updateFolder` sur les dossiers IMAP volumineux.
+  - **Priorité au pipeline natif Thunderbird (`threadTree`)** : sélection directe de la ligne dans l'arbre des messages (`threadTree.selectedIndex = viewIndex` + `threadTree.scrollToIndex`) lorsque le message est présent dans la vue active, garantissant le respect de la chaîne de chargement native `_onSelect()`.
+  - **Préservation stricte de `gViewWrapper` lors de l'affichage direct** : suppression du second appel destructeur `msgBrowser.contentWindow.displayMessage(msgURI)` sans `viewWrapper`, et transmission systématique de `contentWin.gViewWrapper` pour préserver le contexte d'en-têtes.
+  - **Filet de sécurité d'affichage des en-têtes (`ensureHeaderPaneVisible`)** : détection et rétablissement automatique de `#msgHeaderView` (`collapsed = false` et `ShowMessageHeaderPane()`) lors du chargement (`MsgLoaded`) pour immuniser l'interface contre tout masquage accidentel de l'en-tête du message.
+
 ## [2.10.1] - 2026-10-14
 
 ### Corrigé

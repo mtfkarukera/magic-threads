@@ -731,12 +731,12 @@ browser.magicThreadsWindow.onDetachManualLink.addListener(async (manualLinkId, m
   }
 });
 
-// Sélectionne un message avec retry adapté selon le contexte (même dossier vs changement de dossier)
+// Sélectionne un message avec tolérance adaptée (immédiate si même dossier, retry différé si changement de dossier)
 async function setSelectedMessagesWithRetry(tabId, messageId, isFolderChange = false) {
-  // Dans le même dossier, la liste est déjà chargée et stable : une seule tentative suffit.
-  // Lors d'un changement de dossier, Thunderbird doit ouvrir la base : 6 tentatives rapides de 30 ms (180 ms max).
-  const maxAttempts = isFolderChange ? 6 : 1;
-  const delayMs = 30;
+  // Dans le même dossier, la vue est stable : une seule tentative immédiate.
+  // Lors d'un changement de dossier : 2 tentatives espacées de 150 ms pour laisser Thunderbird ouvrir la base sans surcharger l'indexation.
+  const maxAttempts = isFolderChange ? 2 : 1;
+  const retryDelayMs = 150;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
@@ -746,10 +746,10 @@ async function setSelectedMessagesWithRetry(tabId, messageId, isFolderChange = f
         return true;
       }
     } catch (e) {
-      // Ignorer l'erreur et réessayer
+      // Ignorer l'erreur transitoire lors du chargement de la base du dossier
     }
     if (attempt < maxAttempts - 1) {
-      await new Promise(resolve => setTimeout(resolve, delayMs));
+      await new Promise(resolve => setTimeout(resolve, retryDelayMs));
     }
   }
   return false;
@@ -811,14 +811,11 @@ async function handleOpenMessage(messageId, mode) {
     (mailTab.displayedFolder.accountId !== targetMsg.folder.accountId ||
      mailTab.displayedFolder.path !== targetMsg.folder.path)
   );
-  if (isFolderChange) {
-    // Dossier différent : changement de dossier
-    await browser.mailTabs.update(mailTab.id, {
-      displayedFolder: targetMsg.folder
-    });
-  }
 
-  // Sélection avec tolérance différenciée (immédiate si même dossier, retry si changement de dossier)
+  // Sélection avec tolérance différenciée.
+  // Note : browser.mailTabs.setSelectedMessages gère nativement le changement de dossier de façon atomique
+  // avec réinitialisation de la sélection précédente (clearPreviousSelection = true).
+  // Ne pas appeler manuellement mailTabs.update({ displayedFolder }) avant pour éviter les collisions avec updateFolder IMAP.
   let selected = await setSelectedMessagesWithRetry(mailTab.id, messageId, isFolderChange);
   if (selected) {
     // Invalider le cache pour forcer un recalcul frais du fil et la découverte des liaisons

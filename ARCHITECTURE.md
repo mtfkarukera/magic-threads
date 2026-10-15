@@ -243,18 +243,21 @@ suit l'un de **trois chemins** selon le contexte et le mode de navigation :
    sur `browser.messageDisplay.open()` en nouvel onglet si l'appel échoue.
 2. **Vue 3-pane, mode « nouvel onglet »** : `browser.messageDisplay.open()`
    ouvre le message dans un nouvel onglet.
-3. **Vue 3-pane, mode « onglet courant »** : `mailTabs.update` change le dossier
-   affiché puis `mailTabs.setSelectedMessages` sélectionne le message ciblé
-   (repli sur `messageDisplay.open()` si aucun `mailTab` n'est disponible).
+3. **Vue 3-pane, mode « onglet courant »** : `browser.mailTabs.setSelectedMessages`
+   gère de façon atomique le changement de dossier éventuel (`clearPreviousSelection = true` / `forgetSavedSelection`)
+   et la sélection du message ciblé (repli sur `magicThreadsWindow.displayMessageDirectly()`
+   puis `messageDisplay.open()` si le message est masqué par un filtre rapide actif).
 
-### Résilience de la sélection (Envois récents)
+### Résilience de la sélection & Intégrité du volet de message
 
-La sélection programmée de messages (en particulier après un envoi récent) fait face aux limites asynchrones de l'indexation de Thunderbird et de l'écriture des fichiers de dossier.
+La sélection programmée de messages (en particulier après un envoi récent ou lors d'un basculement inter-dossiers volumineux en IMAP) fait face aux limites asynchrones de l'indexation de Thunderbird et de l'écriture des fichiers de dossier.
 
 1. **Délai de sécurité des messages récents** : Si l'e-mail a été envoyé depuis moins de 5 minutes, une temporisation fixe de 250 ms est systématiquement appliquée. Cela évite d'ouvrir le dossier et de forcer la sélection alors que le fichier physique de dossier/index est verrouillé ou en cours d'écriture locale.
 2. **Boucle de validation de sélection différenciée (Adaptive Retry Loop)** : La fonction `setSelectedMessagesWithRetry` adapte sa stratégie selon le contexte de navigation :
    - **Même dossier (`isFolderChange === false`)** : Déterminé par comparaison stricte des attributs d'identité `{ accountId, path }` des dossiers. Une seule tentative immédiate (0 ms d'attente). Si le message est masqué par un filtre rapide actif, l'échec est constaté instantanément, déclenchant le fallback d'affichage direct sans délai perceptible (~200 ms au total).
-   - **Changement de dossier (`isFolderChange === true`)** : 6 tentatives rapides espacées de 30 ms (180 ms max au lieu des 500 ms d'origine) pour laisser à Thunderbird le temps de charger la base du dossier.
+   - **Changement de dossier (`isFolderChange === true`)** : 2 tentatives espacées de 150 ms pour laisser à Thunderbird le temps de charger la base du dossier sans collision avec `updateFolder` sur les dossiers distants.
+3. **Priorité au pipeline natif Thunderbird (`threadTree`)** : Dans `displayMessageInTab`, si le message est présent dans la vue active (`gViewWrapper` / `gDBView`), la sélection s'effectue directement sur l'arbre natif (`threadTree.selectedIndex = viewIndex` + `threadTree.scrollToIndex`), exploitant le pipeline natif `_onSelect()` de Thunderbird.
+4. **Préservation stricte de `gViewWrapper` & Filet de sécurité des en-têtes** : Si le message est affiché directement (ex: masqué par un filtre rapide), `contentWin.gViewWrapper` est impérativement transmis à `about:message` pour éviter la réinitialisation du contexte d'en-têtes (`ClearCurrentHeaders()`), et `ensureHeaderPaneVisible` vérifie à l'événement `MsgLoaded` que le conteneur `#msgHeaderView` est bien visible (`collapsed = false` / `ShowMessageHeaderPane()`).
 
 ### Zéro scintillement & DOM Patching in-place
 

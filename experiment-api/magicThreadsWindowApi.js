@@ -1937,6 +1937,36 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
     // Navigation directe intra-onglet & Fallback 3-pane
     // =================================================================
 
+    function ensureHeaderPaneVisible(targetWin) {
+      if (!targetWin) return;
+      try {
+        let checkAndRestore = () => {
+          try {
+            let doc = targetWin.document;
+            if (!doc) return;
+            let hdrView = doc.getElementById("msgHeaderView");
+            if (hdrView && hdrView.collapsed) {
+              hdrView.collapsed = false;
+              hdrView.removeAttribute("collapsed");
+              if (typeof targetWin.ShowMessageHeaderPane === "function") {
+                targetWin.ShowMessageHeaderPane();
+              }
+            }
+          } catch (e) {
+            // Ignorer les erreurs d'accès DOM transitoires
+          }
+        };
+        // Vérification immédiate
+        checkAndRestore();
+        // Filet de sécurité sur l'événement MsgLoaded (fin du chargement d'about:message)
+        if (typeof targetWin.addEventListener === "function") {
+          targetWin.addEventListener("MsgLoaded", checkAndRestore, { once: true });
+        }
+      } catch (e) {
+        // Ignorer
+      }
+    }
+
     function displayMessageInTab(tabId, messageId) {
       try {
         let tabInfo = getTabInfo(tabId);
@@ -1960,6 +1990,7 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
         // Cas 1 : Onglet de message (about:message directement hébergé dans chromeBrowser)
         if (typeof contentWin.displayMessage === "function") {
           contentWin.displayMessage(msgURI);
+          ensureHeaderPaneVisible(contentWin);
           return true;
         }
 
@@ -1970,6 +2001,47 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           let msgBrowser = contentDoc.getElementById("messageBrowser");
           let multiBrowser = contentDoc.getElementById("multiMessageBrowser");
 
+          // Synchronisation préalable du dossier si nécessaire
+          let currentFolderURI = contentWin.gFolder?.URI;
+          let targetFolderURI = msgHdr.folder?.URI;
+          if (targetFolderURI && currentFolderURI !== targetFolderURI) {
+            try {
+              contentWin.threadPane?.forgetSavedSelection?.(targetFolderURI);
+              contentWin.displayFolder?.(targetFolderURI);
+            } catch (e) {
+              // Ignorer si displayFolder échoue
+            }
+          }
+
+          // Empêcher les réceptions asynchrones IMAP de déplacer le scroll ou la sélection
+          if (contentWin.threadPane) {
+            contentWin.threadPane.scrollToNewMessage = false;
+          }
+
+          // Priorité au pipeline natif threadTree si le message est présent dans la vue active
+          let viewIndex;
+          try {
+            if (typeof contentWin.gViewWrapper?.getViewIndexForMsgHdr === "function") {
+              viewIndex = contentWin.gViewWrapper.getViewIndexForMsgHdr(msgHdr);
+            } else if (contentWin.gDBView && typeof contentWin.gDBView.findIndexOfMsgHdr === "function") {
+              viewIndex = contentWin.gDBView.findIndexOfMsgHdr(msgHdr, true);
+            }
+          } catch (e) {
+            // Vue non prête ou erreur
+          }
+
+          if (viewIndex !== undefined && viewIndex !== -1 && viewIndex !== 0xffffffff && contentWin.threadTree) {
+            try {
+              contentWin.threadTree.selectedIndex = viewIndex;
+              contentWin.threadTree.scrollToIndex(viewIndex, true);
+              ensureHeaderPaneVisible(msgBrowser?.contentWindow);
+              return true;
+            } catch (e) {
+              console.warn("Magic Threads: threadTree selection failed:", e);
+            }
+          }
+
+          // Message masqué par un filtre rapide actif : affichage direct dans messagePane
           // S'assurer que le conteneur messagePane n'est ni masqué ni replié
           if (messagePane) {
             if (messagePane.hidden) {
@@ -1983,42 +2055,41 @@ var magicThreadsWindow = class extends ExtensionCommon.ExtensionAPI {
           }
 
           // 1. Tenter via le composant de haut niveau <message-pane> de Thunderbird 128+
+          // Note : messagePane.displayMessage(msgURI) passe proprement contentWin.gViewWrapper à aboutMessage
+          let displayed = false;
           if (messagePane && typeof messagePane.displayMessage === "function") {
             try {
               messagePane.displayMessage(msgURI);
+              displayed = true;
             } catch (e) {
               console.warn("Magic Threads: messagePane.displayMessage failed:", e);
             }
           }
 
-          // 2. Vérification / Fallback direct : si aboutMessage n'a pas chargé l'URI, appeler directement displayMessage
-          if (msgBrowser && msgBrowser.contentWindow && typeof msgBrowser.contentWindow.displayMessage === "function") {
+          // 2. Si messagePane.displayMessage n'est pas disponible, appeler directement displayMessage
+          // EN TRANSMETTANT TOUJOURS contentWin.gViewWrapper pour ne pas détruire le contexte d'en-têtes
+          if (!displayed && msgBrowser && msgBrowser.contentWindow && typeof msgBrowser.contentWindow.displayMessage === "function") {
             try {
-              if (msgBrowser.contentWindow.gMessageURI !== msgURI) {
-                msgBrowser.contentWindow.displayMessage(msgURI);
-              }
+              msgBrowser.contentWindow.displayMessage(msgURI, contentWin.gViewWrapper);
+              displayed = true;
             } catch (e) {
-              try {
-                msgBrowser.contentWindow.displayMessage(msgURI);
-              } catch (err) {
-                console.warn("Magic Threads: msgBrowser.contentWindow.displayMessage failed:", err);
-              }
+              console.warn("Magic Threads: msgBrowser.contentWindow.displayMessage failed:", e);
             }
           }
 
-          // 3. CRITIQUE : Restaurer la visibilité du visualiseur et masquer la multi-sélection.
-          // Quand la vue 3-pane est filtrée sans résultat, Thunderbird passe messageBrowser en hidden = true.
+          // 3. Restaurer la visibilité du visualiseur et masquer la multi-sélection
           if (msgBrowser) {
             msgBrowser.hidden = false;
             msgBrowser.removeAttribute("hidden");
             msgBrowser.style.display = "";
+            ensureHeaderPaneVisible(msgBrowser.contentWindow);
           }
           if (multiBrowser) {
             multiBrowser.hidden = true;
             multiBrowser.setAttribute("hidden", "true");
           }
 
-          return true;
+          return displayed;
         }
 
         console.warn("Magic Threads: displayMessage not available for tabId:", tabId);
